@@ -1,0 +1,67 @@
+.profile-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh; /* Ensure it takes full viewport height */
+    background-color: #f9f9f9;
+    padding: 20px;
+  }
+  
+  .profile-box {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center elements inside the box */
+  }
+  
+  .profile-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center text inside the profile info */
+    margin-bottom: 20px;
+  }
+  
+  .profile-details {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center text inside the profile details */
+    margin-bottom: 20px;
+  }
+  
+  .edit-name {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center text inside the edit name box */
+    width: 100%;
+  }
+  
+  .profile-input {
+    margin-bottom: 10px;
+    width: 100%;
+  }
+  
+  .button-group {
+    display: flex;
+    justify-content: space-around; /* Ensure buttons are next to each other */
+    width: 100%;
+  }
+  
+  .profile-button {
+    margin: 5px;
+  }
+  
+  .username-display {
+    margin-bottom: 10px;
+  }
+  
+  .game-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  

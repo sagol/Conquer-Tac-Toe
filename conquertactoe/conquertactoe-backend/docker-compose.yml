@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: conquertactoe_backend
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    networks:
+      - conquer-network    
+
+networks:
+  conquer-network:
+    external: true

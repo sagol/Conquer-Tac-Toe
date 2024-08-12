@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  db:
+    build: .
+    container_name: conquertactoe_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    user: "999:999"  # Ensure the container uses the same UID and GID as the postgres user on the host
+    networks:
+      - conquer-network
+
+networks:
+  conquer-network:
+    name: conquer-network
+  
+volumes:
+  pgdata:

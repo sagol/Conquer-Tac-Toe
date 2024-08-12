@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+    container_name: conquertactoe_frontend
+    ports:
+      - "3001:3000"
+    networks:
+      - conquer-network
+
+networks:
+  conquer-network:
+    external: true

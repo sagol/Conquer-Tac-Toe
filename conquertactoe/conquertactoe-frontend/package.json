@@ -1,0 +1,48 @@
+{
+    "name": "conquertactoe-frontend",
+    "version": "1.0.0",
+    "private": true,
+    "dependencies": {
+      "@material-ui/core": "^4.12.4",
+      "@material-ui/icons": "^4.11.3",
+      "axios": "^1.7.2",
+      "react": "^18.3.1",
+      "react-dom": "^18.3.1",
+      "react-redux": "^8.1.3",
+      "react-router-dom": "^6.25.1",
+      "react-scripts": "^5.0.1",
+      "redux": "^5.0.1",
+      "redux-thunk": "^3.1.0",
+      "socket.io-client": "^4.7.5",
+      "serve": "^14.2.3"
+    },
+    "scripts": {
+      "start": "react-scripts start",
+      "build": "react-scripts build",
+      "test": "react-scripts test",
+      "eject": "react-scripts eject",
+      "serve": "serve -s build"
+    },
+    "eslintConfig": {
+      "extends": [
+        "react-app",
+        "react-app/jest"
+      ]
+    },
+    "browserslist": {
+      "production": [
+        ">0.2%",
+        "not dead",
+        "not op_mini all"
+      ],
+      "development": [
+        "last 1 chrome version",
+        "last 1 firefox version",
+        "last 1 safari version"
+      ]
+    },
+    "devDependencies": {
+        "@babel/plugin-proposal-private-property-in-object": "^7.18.6"
+    }    
+  }
+  
