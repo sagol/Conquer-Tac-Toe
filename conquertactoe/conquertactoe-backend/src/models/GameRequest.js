@@ -36,15 +36,19 @@ class GameRequest {
     return result.rows;
   }
 
-  static async getGamesUserHasCreatedOrJoined(userId, limit = 25, offset = 0) {
+  static async getGamesUserHasCreatedOrJoined(userId, page = 1, limit = 50) {
+    const offset = (page - 1) * limit;
     const result = await pool.query(
-      `SELECT * FROM GameRequests WHERE (creator_id = $1 OR joiner_id = $1) 
-       ORDER BY created_at DESC 
+      `SELECT gr.*, u.username as creator_name
+       FROM GameRequests gr
+       JOIN Users u ON gr.creator_id = u.user_id
+       WHERE gr.creator_id = $1 OR gr.joiner_id = $1
+       ORDER BY gr.created_at DESC
        LIMIT $2 OFFSET $3`,
       [userId, limit, offset]
     );
     return result.rows;
-  }  
+  }
 
   static async join(requestId, joinerId) {
     const result = await pool.query(

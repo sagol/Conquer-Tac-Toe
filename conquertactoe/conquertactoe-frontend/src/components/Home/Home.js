@@ -23,7 +23,7 @@ const Home = () => {
               2. Each player has their own color.
             </Typography>
             <Typography variant="body1" paragraph>
-              3. Players can overlap opponents' cones only with bigger size cones.
+              3. Players can overlap opponents' or own cones only with cones of the same size or bigger.
             </Typography>
             <Typography variant="body1" paragraph>
               4. Other rules are the same as in the original tic-tac-toe.

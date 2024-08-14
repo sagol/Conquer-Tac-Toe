@@ -148,7 +148,7 @@ const Lobby = () => {
             <TableBody>
               {gameRequests.map((request) => (
                 <TableRow key={request.id}>
-                  <TableCell>{request.creator_id}</TableCell>
+                  <TableCell>{request.creator_name}</TableCell>
                   <TableCell>{request.game_type}</TableCell>
                   <TableCell>{getUserGameStatus(request)}</TableCell>
                   <TableCell>

@@ -171,14 +171,13 @@ exports.createGameRequest = async (req, res) => {
 exports.getActiveGameRequests = async (req, res) => {
   try {
     const { page = 1, limit = 25 } = req.query;
-    const offset = (page - 1) * limit;
 
     let gameRequests = [];
     let userStats = {};
     let totalGames = 0;
 
     if (req.user) {
-      gameRequests = await GameRequest.getGamesUserHasCreatedOrJoined(req.user.user_id, limit, offset);
+      gameRequests = await GameRequest.getGamesUserHasCreatedOrJoined(req.user.user_id, page, limit);
       totalGames = await GameRequest.getTotalGameCount(req.user.user_id);
 
       // Fetch user stats
