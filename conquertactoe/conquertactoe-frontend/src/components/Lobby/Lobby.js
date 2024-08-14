@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Container, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Snackbar, Typography } from '@material-ui/core';
+import { Container, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Snackbar, Typography} from '@material-ui/core';
+import Pagination from '@material-ui/lab/Pagination';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { fetchActiveGameRequests, addGameRequest, updateGameRequest } from '../../redux/actions/gameRequestActions';
@@ -17,6 +18,8 @@ const Lobby = () => {
   const [open, setOpen] = useState(false);
   const [userStats, setUserStats] = useState({ wins: 0, losses: 0, draws: 0 });
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
+  const totalPages = useSelector(state => state.gameRequests.totalPages);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (auth.user) {
@@ -32,7 +35,8 @@ const Lobby = () => {
       };
 
       fetchStats();
-      dispatch(fetchActiveGameRequests());
+      console.log(`Fetching game requests for page: ${page}`);
+      dispatch(fetchActiveGameRequests(page));
       const newSocket = io(backendUrl);
       setSocket(newSocket);
 
@@ -50,7 +54,12 @@ const Lobby = () => {
 
       return () => newSocket.close();
     }
-  }, [dispatch, backendUrl, auth.user]);
+  }, [dispatch, backendUrl, auth.user, page]);
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    dispatch(fetchActiveGameRequests(value));
+  };
 
   const createGameRequest = async () => {
     try {
@@ -156,6 +165,7 @@ const Lobby = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        <Pagination count={totalPages} page={page} onChange={handlePageChange}/>
       </Box>
       <Snackbar
         open={open}

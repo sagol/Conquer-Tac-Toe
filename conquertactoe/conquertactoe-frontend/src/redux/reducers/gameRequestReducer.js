@@ -1,6 +1,7 @@
 const initialState = {
   gameRequests: [],
-  userStats: { wins: 0, losses: 0, draws: 0 }
+  userStats: { wins: 0, losses: 0, draws: 0 },
+  totalPages: 1,
 };
 
 const gameRequestReducer = (state = initialState, action) => {
@@ -9,7 +10,8 @@ const gameRequestReducer = (state = initialState, action) => {
       return {
         ...state,
         gameRequests: action.payload,
-        userStats: action.userStats // Update state with user stats
+        userStats: action.userStats,
+        totalPages: action.totalPages, // Store total pages in state
       };
     case 'FETCH_ACTIVE_GAME_REQUESTS_FAILURE':
       return state;

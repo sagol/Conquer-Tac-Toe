@@ -170,13 +170,17 @@ exports.createGameRequest = async (req, res) => {
 
 exports.getActiveGameRequests = async (req, res) => {
   try {
-    const gameRequests = await GameRequest.getAllActive();
-    let userGames = [];
+    const { page = 1, limit = 25 } = req.query;
+    const offset = (page - 1) * limit;
+
+    let gameRequests = [];
     let userStats = {};
+    let totalGames = 0;
 
     if (req.user) {
-      userGames = await GameRequest.getGamesUserHasCreatedOrJoined(req.user.user_id);
-      
+      gameRequests = await GameRequest.getGamesUserHasCreatedOrJoined(req.user.user_id, limit, offset);
+      totalGames = await GameRequest.getTotalGameCount(req.user.user_id);
+
       // Fetch user stats
       const userStatsResult = await pool.query(
         'SELECT wins, losses, draws FROM Users WHERE user_id = $1',
@@ -185,13 +189,10 @@ exports.getActiveGameRequests = async (req, res) => {
       userStats = userStatsResult.rows[0];
     }
 
-    // Merge and filter out duplicate game requests
-    const allRequests = [...gameRequests, ...userGames];
-    const uniqueRequests = Array.from(new Map(allRequests.map(item => [item.id, item])).values());
-
     res.json({
-      gameRequests: uniqueRequests,
-      userStats, // Include user stats in the response
+      gameRequests,
+      userStats,
+      totalGames, // Include total game count in the response
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

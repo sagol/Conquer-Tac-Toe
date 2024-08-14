@@ -36,13 +36,15 @@ class GameRequest {
     return result.rows;
   }
 
-  static async getGamesUserHasCreatedOrJoined(userId) {
+  static async getGamesUserHasCreatedOrJoined(userId, limit = 25, offset = 0) {
     const result = await pool.query(
-      `SELECT * FROM GameRequests WHERE (creator_id = $1 OR joiner_id = $1) ORDER BY created_at DESC`,
-      [userId]
+      `SELECT * FROM GameRequests WHERE (creator_id = $1 OR joiner_id = $1) 
+       ORDER BY created_at DESC 
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
     );
     return result.rows;
-  }
+  }  
 
   static async join(requestId, joinerId) {
     const result = await pool.query(
@@ -83,6 +85,14 @@ class GameRequest {
     );
     return result.rows[0];
   }
+
+  static async getTotalGameCount(userId) {
+    const result = await pool.query(
+      `SELECT COUNT(*) FROM GameRequests WHERE (creator_id = $1 OR joiner_id = $1)`,
+      [userId]
+    );
+    return parseInt(result.rows[0].count, 10);
+  }  
 }
 
 module.exports = GameRequest;
