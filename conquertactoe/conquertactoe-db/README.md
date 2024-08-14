@@ -10,9 +10,10 @@ DROP TABLE IF EXISTS GameMoves;
 DROP TABLE IF EXISTS Games;
 DROP TABLE IF EXISTS Leaderboards;
 DROP TABLE IF EXISTS Users;
+DROP TABLE IF EXISTS GameRequests;
 
 -- Users Table
-CREATE TABLE IF NOT EXISTS Users (
+CREATE TABLE Users (
     user_id SERIAL PRIMARY KEY,
     oauth_id VARCHAR(255) NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -58,6 +59,21 @@ CREATE TABLE Leaderboards (
     losses INTEGER NOT NULL,
     draws INTEGER NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- GameRequests Table
+CREATE TABLE GameRequests (
+  id SERIAL PRIMARY KEY,
+  creator_id INT NOT NULL,
+  joiner_id INT,
+  game_type VARCHAR(50),
+  status VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  board JSONB,
+  active_player INTEGER,
+  player1_cones JSONB,
+  player2_cones JSONB,
+  winner INTEGER
 );
 ```
 
@@ -198,6 +214,7 @@ Ensure that the tables are created correctly by running a few queries:
 SELECT * FROM Users;
 SELECT * FROM Games;
 SELECT * FROM GameMoves;
+SELECT * FROM Leaderboards;
 SELECT * FROM Leaderboards;
 ```
 
