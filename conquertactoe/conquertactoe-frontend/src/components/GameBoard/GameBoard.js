@@ -191,11 +191,24 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
   const renderGameResult = () => {
     if (winner) {
-      console.log('Rendering winner with details:', { winner, gameResult });
+      console.log('Rendering winner with details:', { winner, gameResult, gameType: game.game_type });
 
-      const winnerName = winner === game.creator_id ? creatorName : joinerName;
-      const isCurrentUserWinner = currentUser?.user_id === winner;
-      const isCurrentUserLoser = currentUser?.user_id === (winner === game.creator_id ? game.joiner_id : game.creator_id);
+      // For bot games, winner is player number (1 or 2), not user_id
+      let winnerName;
+      let isCurrentUserWinner;
+      let isCurrentUserLoser;
+
+      if (game.game_type === 'bot') {
+        // Bot game: winner is 1 (player) or 2 (bot)
+        winnerName = winner === 1 ? creatorName : joinerName;
+        isCurrentUserWinner = winner === 1;
+        isCurrentUserLoser = winner === 2;
+      } else {
+        // PvP game: winner is user_id
+        winnerName = winner === game.creator_id ? creatorName : joinerName;
+        isCurrentUserWinner = currentUser?.user_id === winner;
+        isCurrentUserLoser = currentUser?.user_id === (winner === game.creator_id ? game.joiner_id : game.creator_id);
+      }
 
       let message;
 

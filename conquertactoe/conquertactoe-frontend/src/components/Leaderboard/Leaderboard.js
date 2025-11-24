@@ -1,51 +1,295 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@material-ui/core';
+import {
+  Container,
+  Box,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Tabs,
+  Tab,
+  TextField,
+  InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  CircularProgress
+} from '@material-ui/core';
+import { Autocomplete } from '@material-ui/lab';
+import SearchIcon from '@material-ui/icons/Search';
 import axios from 'axios';
 import './Leaderboard.css';
 
 const Leaderboard = () => {
-  const [leaderboard, setLeaderboard] = useState([]);
+  const [activeTab, setActiveTab] = useState(0); // 0 = PvP, 1 = Bot
+  const [pvpLeaderboard, setPvpLeaderboard] = useState([]);
+  const [botLeaderboard, setBotLeaderboard] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [playerStats, setPlayerStats] = useState(null);
+  const [statsDialogOpen, setStatsDialogOpen] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
+  // Fetch leaderboards
   useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/leaderboard`, { withCredentials: true });
-        setLeaderboard(res.data);
-      } catch (error) {
-        console.error('Error fetching leaderboard:', error.response?.data || error.message);
-      }
-    };
-
-    fetchLeaderboard();
+    fetchPvPLeaderboard();
+    fetchBotLeaderboard();
   }, []);
+
+  const fetchPvPLeaderboard = async () => {
+    try {
+      const res = await axios.get(`${backendUrl}/leaderboard/pvp`, { withCredentials: true });
+      setPvpLeaderboard(res.data);
+    } catch (error) {
+      console.error('Error fetching PvP leaderboard:', error.response?.data || error.message);
+    }
+  };
+
+  const fetchBotLeaderboard = async () => {
+    try {
+      const res = await axios.get(`${backendUrl}/leaderboard/bot`, { withCredentials: true });
+      setBotLeaderboard(res.data);
+    } catch (error) {
+      console.error('Error fetching Bot leaderboard:', error.response?.data || error.message);
+    }
+  };
+
+  //Search for players
+  const handleSearchChange = async (event, value) => {
+    setSearchQuery(value);
+
+    if (value && value.trim().length > 0) {
+      setSearching(true);
+      try {
+        const res = await axios.get(`${backendUrl}/leaderboard/search`, {
+          params: { query: value },
+          withCredentials: true
+        });
+        setSearchResults(res.data);
+      } catch (error) {
+        console.error('Error searching players:', error);
+      } finally {
+        setSearching(false);
+      }
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  // Fetch player stats
+  const fetchPlayerStats = async (userId) => {
+    setLoadingStats(true);
+    try {
+      const res = await axios.get(`${backendUrl}/leaderboard/player/${userId}`, { withCredentials: true });
+      setPlayerStats(res.data);
+      setStatsDialogOpen(true);
+    } catch (error) {
+      console.error('Error fetching player stats:', error.response?.data || error.message);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const handlePlayerSelect = (event, player) => {
+    if (player) {
+      setSelectedPlayer(player);
+      fetchPlayerStats(player.user_id);
+    }
+  };
+
+  const handleRowClick = (userId) => {
+    fetchPlayerStats(userId);
+  };
+
+  const handleCloseStatsDialog = () => {
+    setStatsDialogOpen(false);
+    setPlayerStats(null);
+    setSelectedPlayer(null);
+  };
+
+  const renderLeaderboardTable = (data) => (
+    <TableContainer component={Paper} className="table-container">
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell><strong>Rank</strong></TableCell>
+            <TableCell><strong>Username</strong></TableCell>
+            <TableCell align="center"><strong>Games</strong></TableCell>
+            <TableCell align="center"><strong>Wins</strong></TableCell>
+            <TableCell align="center"><strong>Losses</strong></TableCell>
+            <TableCell align="center"><strong>Draws</strong></TableCell>
+            <TableCell align="center"><strong>Win Rate</strong></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((user, index) => (
+            <TableRow
+              key={user.user_id}
+              hover
+              onClick={() => handleRowClick(user.user_id)}
+              style={{ cursor: 'pointer' }}
+            >
+              <TableCell>{index + 1}</TableCell>
+              <TableCell>{user.username}</TableCell>
+              <TableCell align="center">{user.total_games}</TableCell>
+              <TableCell align="center">{user.wins}</TableCell>
+              <TableCell align="center">{user.losses}</TableCell>
+              <TableCell align="center">{user.draws}</TableCell>
+              <TableCell align="center">{(user.win_rate * 100).toFixed(1)}%</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  const renderStatsDialog = () => {
+    if (!playerStats) return null;
+
+    return (
+      <Dialog open={statsDialogOpen} onClose={handleCloseStatsDialog} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Typography variant="h5">{playerStats.username}'s Statistics</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={3}>
+            {/* PvP Stats */}
+            <Grid item xs={12} md={6}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="h6" gutterBottom color="primary">
+                    Player vs Player
+                  </Typography>
+                  <Box mt={2}>
+                    <Typography><strong>Total Games:</strong> {playerStats.pvp_total_games || 0}</Typography>
+                    <Typography><strong>Wins:</strong> {playerStats.pvp_wins || 0}</Typography>
+                    <Typography><strong>Losses:</strong> {playerStats.pvp_losses || 0}</Typography>
+                    <Typography><strong>Draws:</strong> {playerStats.pvp_draws || 0}</Typography>
+                    <Typography>
+                      <strong>Win Rate:</strong> {((playerStats.pvp_win_rate || 0) * 100).toFixed(1)}%
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Bot Stats */}
+            <Grid item xs={12} md={6}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="h6" gutterBottom color="secondary">
+                    Player vs AI Bot
+                  </Typography>
+                  <Box mt={2}>
+                    <Typography><strong>Total Games:</strong> {playerStats.bot_total_games || 0}</Typography>
+                    <Typography><strong>Wins:</strong> {playerStats.bot_wins || 0}</Typography>
+                    <Typography><strong>Losses:</strong> {playerStats.bot_losses || 0}</Typography>
+                    <Typography><strong>Draws:</strong> {playerStats.bot_draws || 0}</Typography>
+                    <Typography>
+                      <strong>Win Rate:</strong> {((playerStats.bot_win_rate || 0) * 100).toFixed(1)}%
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Account Info */}
+            <Grid item xs={12}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Account Information
+                  </Typography>
+                  <Typography>
+                    <strong>Member Since:</strong> {new Date(playerStats.created_at).toLocaleDateString()}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseStatsDialog} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
 
   return (
     <Container className="leaderboard-container">
       <Box className="leaderboard-box">
-        <TableContainer component={Paper} className="table-container">
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Rank</TableCell>
-                <TableCell>Username</TableCell>
-                <TableCell>Wins</TableCell>
-                <TableCell>Losses</TableCell>
-                <TableCell>Draws</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {leaderboard.map((user, index) => (
-                <TableRow key={user.user_id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{user.username}</TableCell>
-                  <TableCell>{user.wins}</TableCell>
-                  <TableCell>{user.losses}</TableCell>
-                  <TableCell>{user.draws}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Typography variant="h4" gutterBottom align="center">
+          Leaderboard
+        </Typography>
+
+        {/* Search Bar */}
+        <Box mb={3} mt={2}>
+          <Autocomplete
+            freeSolo
+            options={searchResults}
+            getOptionLabel={(option) => option.username || ''}
+            loading={searching}
+            onInputChange={handleSearchChange}
+            onChange={handlePlayerSelect}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Search for a player"
+                variant="outlined"
+                fullWidth
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <>
+                      {searching ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+        </Box>
+
+        {/* Tabs */}
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          indicatorColor="primary"
+          textColor="primary"
+          centered
+        >
+          <Tab label="PvP Leaderboard" />
+          <Tab label="Bot Leaderboard" />
+        </Tabs>
+
+        {/* Tab Panels */}
+        <Box mt={3}>
+          {activeTab === 0 && renderLeaderboardTable(pvpLeaderboard)}
+          {activeTab === 1 && renderLeaderboardTable(botLeaderboard)}
+        </Box>
+
+        {/* Stats Dialog */}
+        {renderStatsDialog()}
       </Box>
     </Container>
   );

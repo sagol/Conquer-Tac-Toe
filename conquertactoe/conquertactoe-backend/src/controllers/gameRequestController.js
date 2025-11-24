@@ -110,8 +110,8 @@ exports.updateGameRequest = async (req, res) => {
           console.log('Bot game over result:', botGameOver);
           if (botGameOver?.winner === 2) {
             console.log('Bot won the game');
-            await pool.query('UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3', ['won', null, gameId]);
-            socket.getIo().emit('gameWon', { gameId: parseInt(gameId), winner: null }); // null = bot won
+            await pool.query('UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3', ['won', 2, gameId]);
+            socket.getIo().emit('gameWon', { gameId: parseInt(gameId), winner: 2 });
             const finalGameState = await GameRequest.getById(gameId);
             return res.json(finalGameState);
           } else if (botGameOver?.draw) {
