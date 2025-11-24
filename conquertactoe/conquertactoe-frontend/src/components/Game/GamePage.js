@@ -74,30 +74,44 @@ const GamePage = () => {
       if (parseInt(updatedGame.gameId) === parseInt(gameId) || parseInt(updatedGame.id) === parseInt(gameId)) {
         console.log('Current game state before update:', game);
         // Force new object reference to ensure re-render
-        setGame({ ...updatedGame });
+        setGame(prev => {
+          // If we already have a winner locally (from gameWon event), don't overwrite it with 'joined' status from gameUpdated
+          // This prevents race conditions where gameUpdated arrives after gameWon
+          if (prev?.status === 'won') {
+            console.log('Ignoring status update from gameUpdated because game is already won');
+            return { ...updatedGame, status: 'won', winner: prev.winner };
+          }
+          return { ...updatedGame };
+        });
         console.log('Updated game state after setting:', updatedGame);
       }
     });
 
     socket.on('gameWon', (gameWonData) => {
       console.log('Received gameWon event from socket:', gameWonData);
-      if (gameWonData.gameId === gameId) {
-        // REMOVED: setWinner(...) - winner is now derived from game.winner
-        setGame(prev => ({ ...prev, status: 'won', winner: gameWonData.winner }));
+      console.log('Current game state before gameWon update:', game);
+      // Convert to string for comparison as gameId from params is string but socket sends number
+      if (String(gameWonData.gameId) === String(gameId)) {
+        setGame(prev => {
+          const newState = { ...prev, status: 'won', winner: gameWonData.winner };
+          console.log('Setting new game state from gameWon:', newState);
+          return newState;
+        });
+      } else {
+        console.warn('Ignored gameWon event due to ID mismatch:', { socketId: gameWonData.gameId, currentId: gameId });
       }
     });
 
     socket.on('gameDraw', (gameDrawData) => {
       console.log('Received gameDraw event from socket:', gameDrawData);
-      if (gameDrawData.gameId === gameId) {
-        // REMOVED: setIsDraw(true) - isDraw is now derived from game.status
+      if (String(gameDrawData.gameId) === String(gameId)) {
         setGame(prev => ({ ...prev, status: 'draw' }));
       }
     });
 
     socket.on('playerJoined', (joinedGame) => {
-      console.log('Received playerJoined event from socket:', joinedGame);
-      console.log('Current gameId:', gameId);
+      console.log('Received playerJoined event from socket: ' + JSON.stringify(joinedGame));
+      console.log('Current gameId: ' + gameId);
 
       // Convert both IDs to strings before comparison
       const joinedGameId = String(joinedGame.id);

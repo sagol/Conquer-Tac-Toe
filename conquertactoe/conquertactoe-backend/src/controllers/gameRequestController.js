@@ -31,7 +31,13 @@ exports.updateGameRequest = async (req, res) => {
     // Then check for a win or draw condition
     const gameOverCondition = checkGameOverCondition(board, player1Cones, player2Cones);
     if (gameOverCondition?.winner) {
-      const winnerId = gameOverCondition.winner === 1 ? gameRequest.creator_id : gameRequest.joiner_id;
+      let winnerId;
+      if (gameRequest.game_type === 'bot' && gameOverCondition.winner === 2) {
+        winnerId = 2; // Bot wins
+      } else {
+        winnerId = gameOverCondition.winner === 1 ? gameRequest.creator_id : gameRequest.joiner_id;
+      }
+
       const loserId = gameOverCondition.winner === 1 ? gameRequest.joiner_id : gameRequest.creator_id;
 
       console.log(`Setting game as won by user ID: ${winnerId}`);
@@ -110,9 +116,14 @@ exports.updateGameRequest = async (req, res) => {
           console.log('Bot game over result:', botGameOver);
           if (botGameOver?.winner === 2) {
             console.log('Bot won the game');
+            console.log('About to update database with winner=2 for gameId:', gameId);
             await pool.query('UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3', ['won', 2, gameId]);
+            console.log('Database updated successfully');
+            console.log('About to emit gameWon socket event with winner=2 for gameId:', parseInt(gameId));
             socket.getIo().emit('gameWon', { gameId: parseInt(gameId), winner: 2 });
+            console.log('gameWon socket event emitted successfully');
             const finalGameState = await GameRequest.getById(gameId);
+            console.log('Final game state retrieved:', finalGameState);
             return res.json(finalGameState);
           } else if (botGameOver?.draw) {
             console.log('Game ended in draw after bot move');

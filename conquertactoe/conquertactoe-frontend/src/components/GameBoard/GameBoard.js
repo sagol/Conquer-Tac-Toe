@@ -198,11 +198,16 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       let isCurrentUserWinner;
       let isCurrentUserLoser;
 
+      console.log('Winner type:', typeof winner, 'Value:', winner);
+      console.log('Game type:', game.game_type);
+
       if (game.game_type === 'bot') {
         // Bot game: winner is 1 (player) or 2 (bot)
-        winnerName = winner === 1 ? creatorName : joinerName;
-        isCurrentUserWinner = winner === 1;
-        isCurrentUserLoser = winner === 2;
+        // Use loose equality (==) to handle string/number mismatch
+        winnerName = winner == 1 ? creatorName : joinerName;
+        isCurrentUserWinner = winner == 1;
+        isCurrentUserLoser = winner == 2;
+        console.log('Bot game logic:', { winnerName, isCurrentUserWinner, isCurrentUserLoser });
       } else {
         // PvP game: winner is user_id
         winnerName = winner === game.creator_id ? creatorName : joinerName;
