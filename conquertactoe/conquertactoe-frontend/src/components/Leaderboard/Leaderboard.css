@@ -44,3 +44,13 @@
     background-color: transparent;
   }
   
+  /* Search box styling - match table width */
+  .search-box {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .search-box .MuiAutocomplete-root {
+    width: 100%;
+  }
+  

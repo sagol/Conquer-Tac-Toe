@@ -19,7 +19,7 @@ class Leaderboard {
           END as win_rate
         FROM Users u
         LEFT JOIN GameRequests gr ON (gr.creator_id = u.user_id OR gr.joiner_id = u.user_id)
-          AND gr.game_type = 'pvp'
+          AND gr.game_type = 'public'
           AND gr.status IN ('won', 'draw', 'surrendered')
         GROUP BY u.user_id
         HAVING COUNT(DISTINCT gr.id) > 0
@@ -75,10 +75,10 @@ class Leaderboard {
           u.email,
           u.created_at,
           -- PvP Stats
-          COUNT(DISTINCT CASE WHEN gr.game_type = 'pvp' AND gr.status IN ('won', 'draw', 'surrendered') THEN gr.id END) as pvp_total_games,
-          SUM(CASE WHEN gr.game_type = 'pvp' AND gr.winner = u.user_id THEN 1 ELSE 0 END) as pvp_wins,
-          SUM(CASE WHEN gr.game_type = 'pvp' AND gr.status = 'won' AND gr.winner != u.user_id THEN 1 ELSE 0 END) as pvp_losses,
-          SUM(CASE WHEN gr.game_type = 'pvp' AND gr.status = 'draw' THEN 1 ELSE 0 END) as pvp_draws,
+          COUNT(DISTINCT CASE WHEN gr.game_type = 'public' AND gr.status IN ('won', 'draw', 'surrendered') THEN gr.id END) as pvp_total_games,
+          SUM(CASE WHEN gr.game_type = 'public' AND gr.winner = u.user_id THEN 1 ELSE 0 END) as pvp_wins,
+          SUM(CASE WHEN gr.game_type = 'public' AND gr.status = 'won' AND gr.winner != u.user_id THEN 1 ELSE 0 END) as pvp_losses,
+          SUM(CASE WHEN gr.game_type = 'public' AND gr.status = 'draw' THEN 1 ELSE 0 END) as pvp_draws,
           -- Bot Stats
           COUNT(DISTINCT CASE WHEN gr.game_type = 'bot' AND gr.status IN ('won', 'draw') THEN gr.id END) as bot_total_games,
           SUM(CASE WHEN gr.game_type = 'bot' AND gr.winner = u.user_id THEN 1 ELSE 0 END) as bot_wins,

@@ -237,7 +237,7 @@ const Leaderboard = () => {
         </Typography>
 
         {/* Search Bar */}
-        <Box mb={3} mt={2}>
+        <Box mb={3} mt={2} className="search-box">
           <Autocomplete
             freeSolo
             options={searchResults}

@@ -14,9 +14,17 @@ const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await axios.get(`${backendUrl}/current_user`, { withCredentials: true });
-        setUser(res.data);
-        setName(res.data.username);
+        // First get current user to get user_id and email
+        const userRes = await axios.get(`${backendUrl}/current_user`, { withCredentials: true });
+        const userId = userRes.data.user_id;
+        const userEmail = userRes.data.email;
+        setName(userRes.data.username);
+
+        // Then fetch detailed stats
+        const statsRes = await axios.get(`${backendUrl}/leaderboard/player/${userId}`, { withCredentials: true });
+
+        // Merge user data with stats data (stats API doesn't return email)
+        setUser({ ...statsRes.data, email: userEmail });
       } catch (error) {
         console.error('Error fetching profile:', error.response?.data || error.message);
       }
@@ -96,10 +104,19 @@ const Profile = () => {
             <Typography variant="h6">{user.email}</Typography>
           </Box>
           <Box className="game-stats">
-            <Typography variant="h6"><strong>Games Played:</strong> {user.games_played}</Typography>
-            <Typography variant="h6"><strong>Wins:</strong> {user.wins}</Typography>
-            <Typography variant="h6"><strong>Losses:</strong> {user.losses}</Typography>
-            <Typography variant="h6"><strong>Draws:</strong> {user.draws}</Typography>
+            <Typography variant="h5" gutterBottom><strong>PvP Stats</strong></Typography>
+            <Typography variant="h6"><strong>Games Played:</strong> {user.pvp_total_games || 0}</Typography>
+            <Typography variant="h6"><strong>Wins:</strong> {user.pvp_wins || 0}</Typography>
+            <Typography variant="h6"><strong>Losses:</strong> {user.pvp_losses || 0}</Typography>
+            <Typography variant="h6"><strong>Draws:</strong> {user.pvp_draws || 0}</Typography>
+            <Typography variant="h6"><strong>Win Rate:</strong> {((user.pvp_win_rate || 0) * 100).toFixed(1)}%</Typography>
+
+            <Typography variant="h5" gutterBottom style={{ marginTop: '20px' }}><strong>Bot Game Stats</strong></Typography>
+            <Typography variant="h6"><strong>Games Played:</strong> {user.bot_total_games || 0}</Typography>
+            <Typography variant="h6"><strong>Wins:</strong> {user.bot_wins || 0}</Typography>
+            <Typography variant="h6"><strong>Losses:</strong> {user.bot_losses || 0}</Typography>
+            <Typography variant="h6"><strong>Draws:</strong> {user.bot_draws || 0}</Typography>
+            <Typography variant="h6"><strong>Win Rate:</strong> {((user.bot_win_rate || 0) * 100).toFixed(1)}%</Typography>
           </Box>
         </Box>
       </Box>
