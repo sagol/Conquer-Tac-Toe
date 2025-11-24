@@ -1,7 +1,21 @@
 import React from 'react';
-import { Container, Box, Typography, Card, CardContent } from '@material-ui/core';
+import { Container, Box, Typography, Card, CardContent, Button } from '@material-ui/core';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Home = () => {
+  const navigate = useNavigate();
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
+  const createBotGame = async () => {
+    try {
+      const res = await axios.post(`${backendUrl}/game-requests/bot`, {}, { withCredentials: true });
+      navigate(`/game/${res.data.id}`);
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to create bot game');
+    }
+  };
+
   return (
     <Container>
       <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" mt={5}>
@@ -34,6 +48,11 @@ const Home = () => {
             <Typography variant="body1" paragraph>
               The objective is to align three of your cones in a row, column, or diagonal.
             </Typography>
+            <Box mt={3} display="flex" justifyContent="center">
+              <Button variant="contained" color="primary" onClick={createBotGame}>
+                Play vs AI
+              </Button>
+            </Box>
           </CardContent>
         </Card>
       </Box>

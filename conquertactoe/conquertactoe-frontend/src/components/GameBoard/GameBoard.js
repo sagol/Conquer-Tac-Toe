@@ -5,7 +5,10 @@ import ErrorMessage from '../ErrorMessage/ErrorMessage';
 
 const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser }) => {
   const [board, setBoard] = useState(Array(3).fill().map(() => Array(3).fill(null)));
-  const [activePlayer, setActivePlayer] = useState(1);
+  // REMOVED: const [activePlayer, setActivePlayer] = useState(1);
+  // Calculate activePlayer directly from game prop instead of storing in state
+  const activePlayer = parseInt(game?.active_player) || 1;
+
   const [player1Cones, setPlayer1Cones] = useState([3, 3, 3]);
   const [player2Cones, setPlayer2Cones] = useState([3, 3, 3]);
   const [selectedCone1, setSelectedCone1] = useState(2);
@@ -17,19 +20,17 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     if (game) {
       console.log('Updating board and player details from game state.');
       setBoard(game.board && game.board.length ? game.board : Array(3).fill().map(() => Array(3).fill(null)));
-      setActivePlayer(game.active_player || 1);
+      // REMOVED: setActivePlayer(parseInt(game.active_player) || 1);
       setPlayer1Cones(game.player1_cones && game.player1_cones.length === 3 ? game.player1_cones : [3, 3, 3]);
       setPlayer2Cones(game.player2_cones && game.player2_cones.length === 3 ? game.player2_cones : [3, 3, 3]);
-      console.log('Board, activePlayer, and cones updated in GameBoard');
+      console.log('Board and cones updated in GameBoard');
       setError(null);
     }
   }, [game]);
-  
+
   useEffect(() => {
-    console.log('Active Player:', activePlayer);
-    console.log('Game Result:', gameResult);
-    console.log('Winner:', winner);
-    console.log('Draw:', isDraw);
+    console.log(`[${new Date().toISOString()}] GameBoard Render. ActivePlayer:`, activePlayer, 'Type:', typeof activePlayer);
+    console.log('Game Result:', gameResult, 'Winner:', winner);
     setError(null);
   }, [activePlayer, gameResult, winner, isDraw]);
 
@@ -44,20 +45,32 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       setError('The game has ended in a draw. No further moves can be made.');
       return;
     }
-  
-    if (game.status !== 'joined') {
+
+    if (!game.joiner_id && game.game_type !== 'bot') {
       setError('The game cannot start without another player or has not yet started.');
       return;
     }
 
-    // Ensure the player is allowed to make a move
-    if (
-      (activePlayer === 1 && currentUser.user_id !== game.creator_id) ||
-      (activePlayer === 2 && currentUser.user_id !== game.joiner_id)
-    ) {
+    // Check if it's the current user's turn
+    const isPlayer1 = currentUser.user_id === game.creator_id;
+    const isPlayer2 = currentUser.user_id === game.joiner_id;
+
+    console.log(`[Click] User:${currentUser.user_id} Creator:${game.creator_id} Active:${activePlayer} (type:${typeof activePlayer}) isP1:${isPlayer1}`);
+    console.log(`[Click] Validation: isP1=${isPlayer1} activePlayer=${activePlayer} check=${activePlayer !== 1}`);
+
+    if (isPlayer1 && activePlayer !== 1) {
+      console.warn(`BLOCKED: Player 1 but active is ${activePlayer} (type:${typeof activePlayer})`);
       setError('It is not your turn.');
       return;
     }
+
+    if (isPlayer2 && activePlayer !== 2) {
+      console.warn(`BLOCKED: Player 2 but active is ${activePlayer} (type:${typeof activePlayer})`);
+      setError('It is not your turn.');
+      return;
+    }
+
+    console.log('[Click] Turn validation PASSED');
 
     const selectedCone = activePlayer === 1 ? selectedCone1 : selectedCone2;
     const currentPlayerCones = activePlayer === 1 ? player1Cones : player2Cones;
@@ -88,7 +101,8 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       console.log('Updating game with move:', { row, col, selectedCone });
       await updateGame(newBoard, activePlayer, activePlayer === 1 ? newCones : player1Cones, activePlayer === 2 ? newCones : player2Cones, row, col, selectedCone);
       setBoard(newBoard);
-      setActivePlayer(activePlayer === 1 ? 2 : 1);
+      // REMOVED: setActivePlayer(activePlayer === 1 ? 2 : 1);
+      // activePlayer is now derived from game.active_player, backend will update it
       if (activePlayer === 1) {
         setPlayer1Cones(newCones);
       } else {
@@ -102,14 +116,14 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   };
 
   const canPlaceCone = (cell, selectedCone) => {
-    return !cell || selectedCone >= cell.size;
+    return !cell || selectedCone > cell.size;
   };
 
   const handleSurrender = async () => {
     try {
       console.log('Surrendering game...');
       const res = await axios.post(
-      `${process.env.REACT_APP_BACKEND_URL}/game-requests/${game.id}/surrender`,
+        `${process.env.REACT_APP_BACKEND_URL}/game-requests/${game.id}/surrender`,
         {},
         { withCredentials: true }
       );
@@ -178,13 +192,13 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const renderGameResult = () => {
     if (winner) {
       console.log('Rendering winner with details:', { winner, gameResult });
-  
+
       const winnerName = winner === game.creator_id ? creatorName : joinerName;
       const isCurrentUserWinner = currentUser?.user_id === winner;
       const isCurrentUserLoser = currentUser?.user_id === (winner === game.creator_id ? game.joiner_id : game.creator_id);
-  
+
       let message;
-  
+
       if (isCurrentUserWinner) {
         message = `🎉 Congratulations! ${winnerName} wins! 🎉`;
       } else if (isCurrentUserLoser) {
@@ -192,11 +206,11 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       } else {
         message = `${winnerName} has won the game!`;
       }
-  
+
       if (gameResult === 'surrendered') {
         message += ` The game was won by surrender.`;
       }
-  
+
       return (
         <div className="winner-banner">
           {message}

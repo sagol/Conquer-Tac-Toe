@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  autoplayer:
+    build: .
+    container_name: conquertactoe_autoplayer
+    ports:
+      - "8000:8000"
+    networks:
+      - conquer-network
+    depends_on:
+      - clickhouse
+
+  clickhouse:
+    image: clickhouse/clickhouse-server
+    container_name: conquertactoe_clickhouse
+    environment:
+      - CLICKHOUSE_DB=default
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=0
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - conquer-network
+
+networks:
+  conquer-network:
+    external: true
+
+volumes:
+  clickhouse_data:

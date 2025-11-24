@@ -1,83 +1,10 @@
 const GameRequest = require('../models/GameRequest');
 const socket = require('../socket');
 const pool = require('../config/db');
+const { getBotMove } = require('../services/aiService');
 
-// Helper function to check for win conditions or draw
-const checkGameOverCondition = (board, player1Cones, player2Cones) => {
-  const checkRowsAndColumns = () => {
-    for (let i = 0; i < 3; i++) {
-      // Check rows
-      if (
-        board[i][0] && board[i][1] && board[i][2] && // Ensure all cells in the row are occupied
-        board[i][0].player === board[i][1].player &&
-        board[i][1].player === board[i][2].player // All cells in the row belong to the same player
-      ) {
-        return board[i][0].player;
-      }
-      // Check columns
-      if (
-        board[0][i] && board[1][i] && board[2][i] && // Ensure all cells in the column are occupied
-        board[0][i].player === board[1][i].player &&
-        board[1][i].player === board[2][i].player // All cells in the column belong to the same player
-      ) {
-        return board[0][i].player;
-      }
-    }
-    return null;
-  };
+const { checkGameOverCondition } = require('../utils/gameUtils');
 
-  const checkDiagonals = () => {
-    if (
-      board[0][0] && board[1][1] && board[2][2] && // Ensure all cells in the diagonal are occupied
-      board[0][0].player === board[1][1].player &&
-      board[1][1].player === board[2][2].player // All cells in the diagonal belong to the same player
-    ) {
-      return board[0][0].player;
-    }
-    if (
-      board[0][2] && board[1][1] && board[2][0] && // Ensure all cells in the diagonal are occupied
-      board[0][2].player === board[1][1].player &&
-      board[1][1].player === board[2][0].player // All cells in the diagonal belong to the same player
-    ) {
-      return board[0][2].player;
-    }
-    return null;
-  };
-
-  const winner = checkRowsAndColumns() || checkDiagonals();
-  if (winner) {
-    return { winner };
-  }
-
-  // Check if any player can still make a move
-  const hasValidMoves = (cones, board) => {
-    for (let coneSize = 0; coneSize < 3; coneSize++) {
-      if (cones[coneSize] > 0) { // Check if the player has cones of this size
-        for (let row = 0; row < 3; row++) {
-          for (let col = 0; col < 3; col++) {
-            const cell = board[row][col];
-            if (!cell || coneSize >= cell.size) {
-              // If there's an empty space or the player can place a cone over a smaller one
-              return true;
-            }
-          }
-        }
-      }
-    }
-    return false;
-  };
-
-  const player1CanMove = hasValidMoves(player1Cones, board);
-  const player2CanMove = hasValidMoves(player2Cones, board);
-  const isDraw = !player1CanMove && !player2CanMove;
-
-  if (isDraw) {
-    console.log("The game is a draw!");
-    return { draw: true };
-  }
-
-  return null;
-};
 
 // Updated updateGameRequest function to include draw checks
 exports.updateGameRequest = async (req, res) => {
@@ -88,7 +15,8 @@ exports.updateGameRequest = async (req, res) => {
     console.log('Received game update request:', { gameId, board, activePlayer, player1Cones, player2Cones, row, col, coneSize });
 
     const gameRequest = await GameRequest.getById(gameId);
-    if (!gameRequest.joiner_id) {
+    console.log('Game request details:', { joiner_id: gameRequest.joiner_id, game_type: gameRequest.game_type, status: gameRequest.status });
+    if (!gameRequest.joiner_id && gameRequest.game_type !== 'bot') {
       return res.status(400).json({ error: 'The game cannot start without another player.' });
     }
     if (gameRequest.status !== 'joined') {
@@ -97,7 +25,7 @@ exports.updateGameRequest = async (req, res) => {
 
     // Emit gameUpdated event with the new board state before checking for a win
     const updatedBoardState = await GameRequest.updateBoard(gameId, board, activePlayer === 1 ? 2 : 1, player1Cones, player2Cones);
-    socket.getIo().emit('gameUpdated', { ...updatedBoardState, gameId });
+    socket.getIo().emit('gameUpdated', { ...updatedBoardState, id: gameId, gameId: parseInt(gameId) });
     console.log(`Emitting 'gameUpdated' event for gameId: ${gameId}`);
 
     // Then check for a win or draw condition
@@ -110,7 +38,7 @@ exports.updateGameRequest = async (req, res) => {
       await pool.query('UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3', ['won', winnerId, gameId]);
 
       await updateUserStats(winnerId, loserId);
-      socket.getIo().emit('gameWon', { gameId, winner: winnerId });
+      socket.getIo().emit('gameWon', { gameId: parseInt(gameId), winner: winnerId });
       console.log(`Emitting 'gameWon' event for gameId: ${gameId} to winnerId: ${winnerId}`);
 
       const updatedGameRequest = await GameRequest.getById(gameId);
@@ -121,14 +49,87 @@ exports.updateGameRequest = async (req, res) => {
       await pool.query('UPDATE GameRequests SET status = $1 WHERE id = $2', ['draw', gameId]);
 
       await updateUserStats(gameRequest.creator_id, gameRequest.joiner_id, true);
-      socket.getIo().emit('gameDraw', { gameId });
+      socket.getIo().emit('gameDraw', { gameId: parseInt(gameId) });
       console.log(`Emitting 'gameDraw' event for gameId: ${gameId}`);
 
       const updatedGameRequest = await GameRequest.getById(gameId);
       console.log('Updated GameRequest:', updatedGameRequest);
       res.json(updatedGameRequest);
     } else {
-      res.json(updatedBoardState);
+      console.log('No win/draw after player move. Checking for bot turn...');
+      console.log('Game type:', gameRequest.game_type, 'Active player:', updatedBoardState.active_player);
+      // If it's a bot game and now it's the bot's turn (player 2), get bot's move
+      if (gameRequest.game_type === 'bot' && updatedBoardState.active_player === 2) {
+        console.log('Bot turn - requesting move from AI Service');
+        try {
+          // Safely parse the board state
+          const currentBoard = typeof updatedBoardState.board === 'string'
+            ? JSON.parse(updatedBoardState.board)
+            : updatedBoardState.board;
+          const currentP1Cones = typeof updatedBoardState.player1_cones === 'string'
+            ? JSON.parse(updatedBoardState.player1_cones)
+            : updatedBoardState.player1_cones;
+          const currentP2Cones = typeof updatedBoardState.player2_cones === 'string'
+            ? JSON.parse(updatedBoardState.player2_cones)
+            : updatedBoardState.player2_cones;
+
+          const botMove = await getBotMove(
+            gameId,
+            currentBoard,
+            currentP1Cones,
+            currentP2Cones,
+            'medium'
+          );
+          console.log('Bot move received:', botMove);
+
+          // Apply bot's move using already-parsed board state
+          const botBoard = [...currentBoard.map(row => [...row])]; // Deep copy
+          const botP2Cones = [...currentP2Cones];
+          botBoard[botMove.row][botMove.col] = { player: 2, size: botMove.cone_size };
+          botP2Cones[botMove.cone_size]--;
+
+          console.log('About to update board with bot move...');
+          // Update game with bot's move
+          const botBoardState = await GameRequest.updateBoard(
+            gameId,
+            botBoard,
+            1, // Back to player 1's turn
+            currentP1Cones,
+            botP2Cones
+          );
+          console.log('Bot board state after update:', botBoardState);
+          const botEmitPayload = { ...botBoardState, id: gameId, gameId: parseInt(gameId) };
+          console.log('Emitting gameUpdated for bot move:', JSON.stringify(botEmitPayload, null, 2));
+          socket.getIo().emit('gameUpdated', botEmitPayload);
+
+          // Check for win/draw AFTER bot move
+          console.log('ABOUT TO CHECK WIN CONDITION');
+          console.log('Bot Board:', JSON.stringify(botBoard));
+          const botGameOver = checkGameOverCondition(botBoard, currentP1Cones, botP2Cones);
+          console.log('Win Condition Result:', botGameOver);
+          console.log('Bot game over result:', botGameOver);
+          if (botGameOver?.winner === 2) {
+            console.log('Bot won the game');
+            await pool.query('UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3', ['won', null, gameId]);
+            socket.getIo().emit('gameWon', { gameId: parseInt(gameId), winner: null }); // null = bot won
+            const finalGameState = await GameRequest.getById(gameId);
+            return res.json(finalGameState);
+          } else if (botGameOver?.draw) {
+            console.log('Game ended in draw after bot move');
+            await pool.query('UPDATE GameRequests SET status = $1 WHERE id = $2', ['draw', gameId]);
+            socket.getIo().emit('gameDraw', { gameId: parseInt(gameId) });
+            const finalGameState = await GameRequest.getById(gameId);
+            return res.json(finalGameState);
+          }
+
+          res.json(botBoardState);
+        } catch (botError) {
+          console.error('Bot move failed:', botError);
+          res.json(updatedBoardState); // Continue without bot move
+        }
+      } else {
+        res.json(updatedBoardState);
+      }
     }
 
   } catch (err) {
@@ -168,6 +169,28 @@ exports.createGameRequest = async (req, res) => {
   }
 };
 
+exports.createBotGameRequest = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    const creatorId = req.user.user_id;
+
+    const initialBoard = Array(3).fill().map(() => Array(3).fill(null));
+    const player1Cones = [3, 3, 3];
+    const player2Cones = [3, 3, 3];
+
+    const gameRequest = await pool.query(
+      'INSERT INTO GameRequests (creator_id, game_type, status, board, active_player, player1_cones, player2_cones, joiner_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [creatorId, 'bot', 'joined', JSON.stringify(initialBoard), 1, JSON.stringify(player1Cones), JSON.stringify(player2Cones), null]
+    );
+
+    res.status(201).json(gameRequest.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.getActiveGameRequests = async (req, res) => {
   try {
     const { page = 1, limit = 25 } = req.query;
@@ -177,7 +200,7 @@ exports.getActiveGameRequests = async (req, res) => {
     let totalGames = 0;
 
     if (req.user) {
-      gameRequests = await GameRequest.getGamesUserHasCreatedOrJoined(req.user.user_id, page, limit);
+      gameRequests = await GameRequest.getLobbyGames(req.user.user_id, page, limit);
       totalGames = await GameRequest.getTotalGameCount(req.user.user_id);
 
       // Fetch user stats
@@ -227,7 +250,7 @@ exports.joinGameRequest = async (req, res) => {
     console.error('Error in joinGameRequest:', err.message);
     res.status(500).json({ error: err.message });
   }
-};  
+};
 
 exports.cancelGameRequest = async (req, res) => {
   try {
