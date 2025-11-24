@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <users>
+        <default>
+            <!-- Allow access from any network -->
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <!-- Empty password (allow passwordless access) -->
+            <password></password>
+            <!-- Default profile and quota -->
+            <profile>default</profile>
+            <quota>default</quota>
+        </default>
+    </users>
+</clickhouse>

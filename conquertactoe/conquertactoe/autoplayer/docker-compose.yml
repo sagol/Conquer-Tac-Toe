@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   autoplayer:
     build: .
@@ -16,13 +14,12 @@ services:
     container_name: conquertactoe_clickhouse
     environment:
       - CLICKHOUSE_DB=default
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=0
     ports:
       - "8123:8123"
       - "9000:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse-config/users.xml:/etc/clickhouse-server/users.d/users.xml:ro
     ulimits:
       nofile:
         soft: 262144

@@ -43,6 +43,10 @@ const GamePage = () => {
           const joinerRes = await axios.get(`${backendUrl}/users/${res.data.joiner_id}`, { withCredentials: true });
           console.log('Fetched joiner name:', joinerRes.data.username);
           setJoinerName(joinerRes.data.username);
+        } else if (res.data.game_type === 'bot') {
+          // For bot games, display "Bot AI" as the opponent
+          setJoinerName('Bot AI');
+          console.log('Bot game detected, setting joiner name to Bot AI');
         }
 
         if (res.data.status === 'won' || res.data.status === 'surrendered') {
