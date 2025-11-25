@@ -27,6 +27,7 @@ import {
 import { Autocomplete } from '@material-ui/lab';
 import SearchIcon from '@material-ui/icons/Search';
 import axios from 'axios';
+import '../Common/SharedModernStyles.css';
 import './Leaderboard.css';
 
 const Leaderboard = () => {
@@ -230,11 +231,9 @@ const Leaderboard = () => {
   };
 
   return (
-    <Container className="leaderboard-container">
-      <Box className="leaderboard-box">
-        <Typography variant="h4" gutterBottom align="center">
-          Leaderboard
-        </Typography>
+    <div className="leaderboard-container">
+      <div className="leaderboard-box">
+        <h3 className="modern-title">Leaderboard</h3>
 
         {/* Search Bar */}
         <Box mb={3} mt={2} className="search-box">
@@ -248,9 +247,10 @@ const Leaderboard = () => {
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Search for a player"
+                placeholder="Search for a player"
                 variant="outlined"
                 fullWidth
+                InputLabelProps={{ shrink: true }}
                 InputProps={{
                   ...params.InputProps,
                   startAdornment: (
@@ -290,8 +290,8 @@ const Leaderboard = () => {
 
         {/* Stats Dialog */}
         {renderStatsDialog()}
-      </Box>
-    </Container>
+      </div>
+    </div>
   );
 };
 

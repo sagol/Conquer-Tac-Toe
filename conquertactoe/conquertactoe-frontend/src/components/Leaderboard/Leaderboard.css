@@ -1,56 +1,278 @@
+/* Modern Leaderboard Styling */
+
 .leaderboard-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 80vh;
-    background-color: #f9f9f9;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 40px 20px;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.leaderboard-box {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+  backdrop-filter: blur(20px);
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  margin-bottom: 30px;
+}
+
+.leaderboard-box h3 {
+  color: white;
+  font-weight: 700;
+  font-size: 2rem;
+  margin-bottom: 30px;
+  text-align: center;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Tabs Styling */
+.leaderboard-box .MuiTabs-root {
+  margin-bottom: 30px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 5px;
+}
+
+.leaderboard-box .MuiTab-root {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.leaderboard-box .MuiTab-root.Mui-selected {
+  color: white !important;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.5) 0%, rgba(68, 160, 141, 0.5) 100%);
+  border-radius: 10px;
+}
+
+.leaderboard-box .MuiTabs-indicator {
+  display: none;
+}
+
+/* Search Box */
+.search-box {
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 25px;
+}
+
+.search-box .MuiAutocomplete-root {
+  width: 100%;
+}
+
+.search-box .MuiInputBase-root {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 5px 15px;
+}
+
+.search-box .MuiInputBase-input {
+  color: white !important;
+}
+
+.search-box .MuiInputBase-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+  opacity: 1;
+}
+
+.search-box .MuiSvgIcon-root {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.search-box .MuiInputBase-root:hover {
+  border-color: rgba(78, 205, 196, 0.5);
+}
+
+.search-box .MuiInputBase-root.Mui-focused {
+  border-color: rgba(78, 205, 196, 0.8);
+  background: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
+}
+
+.search-box .MuiInputLabel-root {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.search-box .MuiInputLabel-root.Mui-focused {
+  color: rgba(78, 205, 196, 0.9) !important;
+}
+
+/* Table Container */
+.table-container {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 20px !important;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Table Head */
+.table-head {
+  background: rgba(78, 205, 196, 0.3) !important;
+}
+
+.table-head .MuiTableCell-head {
+  color: white !important;
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2) !important;
+  padding: 16px !important;
+}
+
+/* Table Body */
+.clickable-row {
+  background: rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  transform: scale(1.01);
+}
+
+.clickable-row .MuiTableCell-root {
+  color: rgba(255, 255, 255, 0.9) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 16px !important;
+}
+
+/* Top 3 Players Highlighting */
+.clickable-row:nth-child(1) {
+  background: rgba(255, 215, 0, 0.15) !important;
+  /* Gold for 1st */
+}
+
+.clickable-row:nth-child(2) {
+  background: rgba(192, 192, 192, 0.15) !important;
+  /* Silver for 2nd */
+}
+
+.clickable-row:nth-child(3) {
+  background: rgba(205, 127, 50, 0.15) !important;
+  /* Bronze for 3rd */
+}
+
+.clickable-row:nth-child(1):hover {
+  background: rgba(255, 215, 0, 0.25) !important;
+}
+
+.clickable-row:nth-child(2):hover {
+  background: rgba(192, 192, 192, 0.25) !important;
+}
+
+.clickable-row:nth-child(3):hover {
+  background: rgba(205, 127, 50, 0.25) !important;
+}
+
+/* Player Stats Dialog */
+.MuiDialog-paper {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%) !important;
+  backdrop-filter: blur(20px);
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.MuiDialogTitle-root {
+  color: white !important;
+  font-weight: 700 !important;
+  text-align: center;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.MuiDialogContent-root {
+  padding: 30px !important;
+}
+
+.MuiDialogContent-root .MuiCard-root {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 15px;
+}
+
+.MuiDialogContent-root .MuiCardContent-root {
+  padding: 20px !important;
+}
+
+.MuiDialogContent-root .MuiTypography-root {
+  color: white !important;
+}
+
+.MuiDialogContent-root .MuiTypography-h6 {
+  font-weight: 700 !important;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.MuiDialogContent-root .MuiTypography-body2 {
+  margin: 5px 0;
+  font-size: 1rem !important;
+}
+
+.MuiDialogActions-root {
+  border-top: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 20px !important;
+}
+
+.MuiDialogActions-root .MuiButton-root {
+  background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%) !important;
+  color: #2c3e50 !important;
+  font-weight: 600 !important;
+  padding: 10px 28px !important;
+  border-radius: 25px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.MuiDialogActions-root .MuiButton-root:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 126, 95, 0.6) !important;
+}
+
+/* Loading Spinner */
+.MuiCircularProgress-root {
+  color: white !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .leaderboard-container {
+    padding: 20px 10px;
+  }
+
+  .leaderboard-box {
     padding: 20px;
   }
-  
-  .leaderboard-box {
-    background: white;
-    padding: 30px;
-    border-radius: 15px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    max-width: 800px;
-    width: 100%;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0 auto;
+
+  .leaderboard-box h3 {
+    font-size: 1.5rem;
   }
-  
-  .table-container {
-    margin-top: 20px;
-    width: 100%;
+
+  .table-container .MuiTableCell-root {
+    padding: 12px 8px !important;
+    font-size: 0.85rem !important;
   }
-  
-  table {
-    width: 100%;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
   }
-  
-  th, td {
-    text-align: center;
-    padding: 10px;
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
-  tr:nth-child(even) {
-    background-color: #f2f2f2;
-  }
-  
-  /* Remove hover effect */
-  tr:hover {
-    background-color: transparent;
-  }
-  
-  /* Search box styling - match table width */
-  .search-box {
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .search-box .MuiAutocomplete-root {
-    width: 100%;
-  }
-  
+}

@@ -1,0 +1,149 @@
+/* Modern Login/Register Styling */
+
+.auth-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.auth-form-box {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+    backdrop-filter: blur(20px);
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    padding: 50px 40px;
+    max-width: 450px;
+    width: 100%;
+}
+
+.auth-form-box h2 {
+    color: white;
+    font-weight: 700;
+    font-size: 2.2rem;
+    text-align: center;
+    margin-bottom: 35px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.auth-form-box .MuiTextField-root {
+    margin-bottom: 25px;
+    width: 100%;
+}
+
+.auth-form-box .MuiInputBase-root {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.auth-form-box .MuiInputBase-input {
+    color: white;
+    padding: 14px 18px;
+    font-size: 1rem;
+}
+
+.auth-form-box .MuiInputLabel-root {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.auth-form-box .MuiInputLabel-root.Mui-focused {
+    color: rgba(78, 205, 196, 0.9);
+}
+
+.auth-form-box .MuiInputBase-root:hover {
+    border-color: rgba(78, 205, 196, 0.5);
+}
+
+.auth-form-box .MuiInputBase-root.Mui-focused {
+    border-color: rgba(78, 205, 196, 0.8);
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
+}
+
+.auth-form-box .MuiButton-contained {
+    background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%) !important;
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+    padding: 12px 32px !important;
+    border-radius: 25px !important;
+    font-size: 1rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 4px 15px rgba(255, 126, 95, 0.4) !important;
+    transition: all 0.3s ease !important;
+    margin-top: 15px !important;
+    width: 100% !important;
+}
+
+.auth-form-box .MuiButton-contained:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 126, 95, 0.6) !important;
+}
+
+.auth-form-box .google-login-button {
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+    padding: 12px 32px !important;
+    border-radius: 25px !important;
+    font-size: 1rem !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+    transition: all 0.3s ease !important;
+    margin-top: 15px !important;
+    width: 100% !important;
+    text-transform: none !important;
+}
+
+.auth-form-box .google-login-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+    background: white !important;
+}
+
+.auth-link {
+    text-align: center;
+    margin-top: 25px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+}
+
+.auth-link a {
+    color: rgba(78, 205, 196, 0.9);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.auth-link a:hover {
+    color: white;
+    text-shadow: 0 0 10px rgba(78, 205, 196, 0.6);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .auth-form-box {
+        padding: 35px 25px;
+    }
+
+    .auth-form-box h2 {
+        font-size: 1.8rem;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

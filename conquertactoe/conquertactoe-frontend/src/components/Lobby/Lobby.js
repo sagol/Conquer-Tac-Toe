@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Container, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Snackbar, Typography} from '@material-ui/core';
+import { Container, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Snackbar, Typography, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
 import Pagination from '@material-ui/lab/Pagination';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { fetchActiveGameRequests, addGameRequest, updateGameRequest } from '../../redux/actions/gameRequestActions';
+import '../Common/SharedModernStyles.css';
 import './Lobby.css';
 
 const Lobby = () => {
@@ -20,6 +21,12 @@ const Lobby = () => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
   const totalPages = useSelector(state => state.gameRequests.totalPages);
   const [page, setPage] = useState(1);
+  const [activeTab, setActiveTab] = useState(0);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
 
   useEffect(() => {
     if (auth.user) {
@@ -102,9 +109,9 @@ const Lobby = () => {
   );
 
   const canJoin = (request) => {
-    return request.status === 'pending' && 
-           request.creator_id !== auth.user?.user_id && 
-           !userPendingOrJoined;
+    return request.status === 'pending' &&
+      request.creator_id !== auth.user?.user_id &&
+      !userPendingOrJoined;
   };
 
   const getUserGameStatus = (request) => {
@@ -125,17 +132,41 @@ const Lobby = () => {
     return <div>Loading...</div>;
   }
 
+  // Filter games based on active tab
+  const filteredGames = gameRequests.filter(request => {
+    if (activeTab === 0) {
+      // Public Games: Pending games created by others
+      return request.status === 'pending' && request.creator_id !== auth.user?.user_id;
+    } else {
+      // My Games: Games created by me or joined by me
+      return request.creator_id === auth.user?.user_id || request.joiner_id === auth.user?.user_id;
+    }
+  });
+
   return (
-    <Container className="lobby-container">
-      <Box className="lobby-box">
-        <Typography variant="h5">Your Stats</Typography>
-        <Typography variant="body1">Wins: {userStats.wins}</Typography>
-        <Typography variant="body1">Losses: {userStats.losses}</Typography>
-        <Typography variant="body1">Draws: {userStats.draws}</Typography>
+    <div className="lobby-container">
+      <div className="lobby-box">
+        <h5 className="modern-title">Lobby</h5>
+
         {!userPendingOrJoined && (
-          <Button variant="contained" color="primary" onClick={createGameRequest} className="lobby-button">Create Game Request</Button>
+          <Button variant="contained" color="primary" onClick={createGameRequest} className="lobby-button" style={{ marginBottom: '20px' }}>
+            Create Game Request
+          </Button>
         )}
-        <TableContainer component={Paper} className="table-container">
+
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          indicatorColor="primary"
+          textColor="primary"
+          centered
+          style={{ marginBottom: '20px' }}
+        >
+          <Tab label="Public Games" />
+          <Tab label="My Games" />
+        </Tabs>
+
+        <div className="table-container">
           <Table>
             <TableHead>
               <TableRow>
@@ -146,34 +177,71 @@ const Lobby = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {gameRequests.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell>{request.creator_name}</TableCell>
-                  <TableCell>{request.game_type}</TableCell>
-                  <TableCell>{getUserGameStatus(request)}</TableCell>
-                  <TableCell>
-                    {canJoin(request) ? (
-                      <Button variant="contained" color="secondary" onClick={() => joinGameRequest(request.id)} className="lobby-button">Join</Button>
-                    ) : (request.creator_id === auth.user?.user_id && request.status === 'pending') ? (
-                      <Button variant="contained" color="secondary" onClick={() => deleteGameRequest(request.id)} className="lobby-button">Delete</Button>
-                    ) : (request.creator_id === auth.user?.user_id || request.joiner_id === auth.user?.user_id) ? (
-                      <Button variant="contained" color="primary" onClick={() => navigate(`/game/${request.id}`)} className="lobby-button">Go to Game</Button>
-                    ) : null}
+              {filteredGames.length > 0 ? (
+                filteredGames.map((request) => (
+                  <TableRow
+                    key={request.id}
+                    hover
+                    onClick={() => setSelectedRequest(request)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <TableCell>{request.creator_name}</TableCell>
+                    <TableCell>{request.game_type}</TableCell>
+                    <TableCell>{getUserGameStatus(request)}</TableCell>
+                    <TableCell>
+                      {canJoin(request) ? (
+                        <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); joinGameRequest(request.id); }} className="lobby-button">Join</Button>
+                      ) : (request.creator_id === auth.user?.user_id && request.status === 'pending') ? (
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go to Game</Button>
+                          <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); deleteGameRequest(request.id); }} className="lobby-button">Delete</Button>
+                        </div>
+                      ) : (request.creator_id === auth.user?.user_id || request.joiner_id === auth.user?.user_id) ? (
+                        <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go to Game</Button>
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">
+                    {activeTab === 0 ? "No public games available." : "You have no active games."}
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
-        </TableContainer>
-        <Pagination count={totalPages} page={page} onChange={handlePageChange}/>
-      </Box>
+        </div>
+        <Pagination count={totalPages} page={page} onChange={handlePageChange} />
+
+        {/* Game Details Dialog */}
+        <Dialog open={!!selectedRequest} onClose={() => setSelectedRequest(null)} maxWidth="sm" fullWidth>
+          <DialogTitle>Game Details</DialogTitle>
+          <DialogContent>
+            {selectedRequest && (
+              <Box>
+                <Typography variant="body1" gutterBottom><strong>Creator:</strong> {selectedRequest.creator_name}</Typography>
+                <Typography variant="body1" gutterBottom><strong>Game Type:</strong> {selectedRequest.game_type}</Typography>
+                <Typography variant="body1" gutterBottom><strong>Status:</strong> {selectedRequest.status}</Typography>
+                <Typography variant="body1" gutterBottom><strong>Created At:</strong> {new Date(selectedRequest.created_at).toLocaleString()}</Typography>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setSelectedRequest(null)} color="primary">Close</Button>
+            {selectedRequest && canJoin(selectedRequest) && (
+              <Button onClick={() => joinGameRequest(selectedRequest.id)} color="secondary" variant="contained">Join Game</Button>
+            )}
+          </DialogActions>
+        </Dialog>
+      </div>
       <Snackbar
         open={open}
         autoHideDuration={6000}
         onClose={handleClose}
         message={error}
       />
-    </Container>
+    </div>
   );
 };
 

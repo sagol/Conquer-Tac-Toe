@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import '../Common/SharedModernStyles.css';
 import './GameBoard.css';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
 
