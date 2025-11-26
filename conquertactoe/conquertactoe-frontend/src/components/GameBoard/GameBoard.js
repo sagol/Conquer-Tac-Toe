@@ -5,18 +5,71 @@ import './GameBoard.css';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
 
 const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser }) => {
-  const [board, setBoard] = useState(Array(3).fill().map(() => Array(3).fill(null)));
+  const [board, setBoard] = useState([]);
+  const [boardSize, setBoardSize] = useState(3); // Default to 3x3
+  const [error, setError] = useState(null);
   const [variant, setVariant] = useState(null);
-  const [boardSize, setBoardSize] = useState(3);
-  const activePlayer = parseInt(game?.active_player) || 1;
-
   const [player1Cones, setPlayer1Cones] = useState([3, 3, 3]);
   const [player2Cones, setPlayer2Cones] = useState([3, 3, 3]);
   const [selectedCone1, setSelectedCone1] = useState(2);
   const [selectedCone2, setSelectedCone2] = useState(2);
-  const [error, setError] = useState(null);
+  const activePlayer = parseInt(game?.active_player) || 1;
 
-  // Fetch variant information
+  // Consolidated initialization - single source of truth
+  useEffect(() => {
+    if (!game) return;
+
+    console.log('[GameBoard] Initializing from game prop:', game);
+
+    // Parse board if it's a string
+    let parsedBoard = game.board;
+    if (typeof parsedBoard === 'string') {
+      try {
+        parsedBoard = JSON.parse(parsedBoard);
+      } catch (e) {
+        console.error('[GameBoard] Failed to parse game.board:', e);
+        parsedBoard = null;
+      }
+    }
+
+    // Determine board state
+    let initialBoard;
+    if (parsedBoard && Array.isArray(parsedBoard) && parsedBoard.length > 0) {
+      console.log('[GameBoard] Using existing board from game.board, length:', parsedBoard.length);
+      initialBoard = parsedBoard;
+    } else if (game.board_size) {
+      console.log('[GameBoard] Creating empty board from game.board_size:', game.board_size);
+      initialBoard = Array(game.board_size).fill(null).map(() => Array(game.board_size).fill(null));
+    } else {
+      console.warn('[GameBoard] No board or board_size, defaulting to 3x3');
+      initialBoard = Array(3).fill(null).map(() => Array(3).fill(null));
+    }
+
+    const newSize = initialBoard.length;
+    console.log('[GameBoard] Setting board and boardSize to:', newSize);
+
+    setBoard(initialBoard);
+    setBoardSize(newSize);
+
+    // Handle cones
+    let p1Cones = game.player1_cones || [3, 3, 3];
+    let p2Cones = game.player2_cones || [3, 3, 3];
+
+    if (typeof p1Cones === 'string') {
+      try { p1Cones = JSON.parse(p1Cones); } catch (e) { console.error('Failed to parse p1Cones', e); }
+    }
+    if (typeof p2Cones === 'string') {
+      try { p2Cones = JSON.parse(p2Cones); } catch (e) { console.error('Failed to parse p2Cones', e); }
+    }
+
+    setPlayer1Cones(p1Cones);
+    setPlayer2Cones(p2Cones);
+    setError(null);
+
+    console.log('[GameBoard] Initialization complete. Board size:', newSize, 'Cones:', { p1Cones, p2Cones });
+  }, [game]);
+
+  // Fetch variant information (separate concern - doesn't update boardSize)
   useEffect(() => {
     const fetchVariant = async () => {
       if (game?.variant_id) {
@@ -24,57 +77,14 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
           const backendUrl = process.env.REACT_APP_BACKEND_URL;
           const res = await axios.get(`${backendUrl}/variants/${game.variant_id}`);
           setVariant(res.data);
-          setBoardSize(res.data.board_size);
+          console.log('[GameBoard] Fetched variant:', res.data);
         } catch (error) {
-          console.error('Error fetching variant:', error);
+          console.error('[GameBoard] Error fetching variant:', error);
         }
       }
     };
     fetchVariant();
   }, [game?.variant_id]);
-
-  useEffect(() => {
-    console.log('Game state updated in GameBoard component:', game);
-    if (game) {
-      console.log('Updating board and player details from game state.');
-
-      // Safely parse board if it's a string
-      let parsedBoard = game.board;
-      if (typeof parsedBoard === 'string') {
-        try {
-          parsedBoard = JSON.parse(parsedBoard);
-        } catch (e) {
-          console.error('Failed to parse game.board:', e);
-          parsedBoard = [];
-        }
-      }
-
-      // Dynamic board initialization based on actual board size
-      const size = parsedBoard?.length || 3;
-      setBoard(parsedBoard && parsedBoard.length ? parsedBoard : Array(size).fill().map(() => Array(size).fill(null)));
-
-      // Ensure boardSize is synced with actual board dimensions
-      if (size !== boardSize) {
-        setBoardSize(size);
-      }
-
-      // Handle cones - support different lengths
-      let p1Cones = game.player1_cones || [3, 3, 3];
-      let p2Cones = game.player2_cones || [3, 3, 3];
-
-      if (typeof p1Cones === 'string') {
-        try { p1Cones = JSON.parse(p1Cones); } catch (e) { console.error('Failed to parse p1Cones', e); }
-      }
-      if (typeof p2Cones === 'string') {
-        try { p2Cones = JSON.parse(p2Cones); } catch (e) { console.error('Failed to parse p2Cones', e); }
-      }
-
-      setPlayer1Cones(p1Cones);
-      setPlayer2Cones(p2Cones);
-      console.log('Board and cones updated in GameBoard');
-      setError(null);
-    }
-  }, [game]);
 
   // Auto-select cone size 0 for variants that don't allow overwrite (Classic, Gomoku)
   useEffect(() => {
@@ -364,6 +374,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         </div>
       </div>
       <div
+        key={boardSize} /* Force re-creation of DOM element when size changes to ensure grid style applies */
         className={`game-board ${boardSize > 10 ? 'large-board' : ''}`}
         style={{
           gridTemplateColumns: `repeat(${boardSize}, 1fr)`,

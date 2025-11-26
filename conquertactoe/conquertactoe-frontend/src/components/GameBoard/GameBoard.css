@@ -158,7 +158,7 @@
 /* Game Board */
 .game-board {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* grid-template-columns is handled inline in JS */
   /* Default 3x3, will be overridden inline */
   gap: 10px;
   /* Reduced from 15px to fit larger boards better */

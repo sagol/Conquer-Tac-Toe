@@ -76,26 +76,31 @@ const CreateGameModal = ({ open, onClose, onCreate }) => {
                     <>
                         {/* Variant Selection */}
                         <FormControl fullWidth margin="normal" className="form-control">
-                            <InputLabel id="game-variant-label">Game Variant</InputLabel>
+                            <InputLabel id="game-variant-label" shrink>Game Variant</InputLabel>
                             <Select
+                                native
                                 labelId="game-variant-label"
                                 id="game-variant-select"
                                 data-testid="game-variant-select"
                                 value={selectedVariantId}
-                                onChange={(e) => dispatch(selectVariant(e.target.value))}
+                                onChange={(e) => dispatch(selectVariant(parseInt(e.target.value, 10)))}
                                 label="Game Variant"
-                                MenuProps={{
-                                    'data-testid': 'game-variant-menu'
+                                inputProps={{
+                                    name: 'variant',
+                                    id: 'game-variant-native-select',
                                 }}
                             >
+                                <option value="" disabled>
+                                    Select a variant
+                                </option>
                                 {variants.map(variant => (
-                                    <MenuItem
+                                    <option
                                         key={variant.variant_id}
                                         value={variant.variant_id}
                                         data-testid={`variant-option-${variant.name}`}
                                     >
                                         {variant.display_name}
-                                    </MenuItem>
+                                    </option>
                                 ))}
                             </Select>
                         </FormControl>
@@ -119,19 +124,24 @@ const CreateGameModal = ({ open, onClose, onCreate }) => {
                         {/* Board Size Selection (for Gomoku) */}
                         {selectedVariant?.name === 'five_in_line' && (
                             <FormControl fullWidth margin="normal" className="form-control">
-                                <InputLabel id="board-size-label">Board Size</InputLabel>
+                                <InputLabel id="board-size-label" shrink>Board Size</InputLabel>
                                 <Select
+                                    native
                                     labelId="board-size-label"
                                     id="board-size-select"
                                     data-testid="board-size-select"
                                     value={boardSize}
                                     onChange={(e) => setBoardSize(e.target.value)}
                                     label="Board Size"
+                                    inputProps={{
+                                        name: 'boardSize',
+                                        id: 'board-size-native-select',
+                                    }}
                                 >
                                     {selectedVariant.rules.boardSizeOptions?.map(size => (
-                                        <MenuItem key={size} value={size} data-testid={`board-size-${size}`}>
+                                        <option key={size} value={size} data-testid={`board-size-${size}`}>
                                             {size}x{size}
-                                        </MenuItem>
+                                        </option>
                                     ))}
                                 </Select>
                             </FormControl>
