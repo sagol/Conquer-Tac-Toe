@@ -11,6 +11,7 @@ import Profile from './components/Profile/Profile';
 import Lobby from './components/Lobby/Lobby';
 import Leaderboard from './components/Leaderboard/Leaderboard';
 import Home from './components/Home/Home';
+import Rules from './components/Rules/Rules';
 import GamePage from './components/Game/GamePage';
 import { fetchCurrentUser } from './redux/actions/authActions';
 
@@ -33,6 +34,7 @@ const App = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/lobby" element={<Lobby />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/rules" element={<Rules />} />
             <Route path="/game/:gameId" element={<GamePage />} />
           </Routes>
         </Router>

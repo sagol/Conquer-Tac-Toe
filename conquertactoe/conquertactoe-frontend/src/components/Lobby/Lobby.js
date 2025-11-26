@@ -6,6 +6,7 @@ import Pagination from '@material-ui/lab/Pagination';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { fetchActiveGameRequests, addGameRequest, updateGameRequest } from '../../redux/actions/gameRequestActions';
+import CreateGameModal from './CreateGameModal';
 import '../Common/SharedModernStyles.css';
 import './Lobby.css';
 
@@ -23,6 +24,7 @@ const Lobby = () => {
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState(0);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -68,9 +70,12 @@ const Lobby = () => {
     dispatch(fetchActiveGameRequests(value));
   };
 
-  const createGameRequest = async () => {
+  const createGameRequest = async (gameData) => {
     try {
-      const res = await axios.post(`${backendUrl}/game-requests`, { gameType: 'public' }, { withCredentials: true });
+      const { gameType, variantId } = gameData;
+      const endpoint = gameType === 'bot' ? `${backendUrl}/bot-game` : `${backendUrl}/game-requests`;
+
+      const res = await axios.post(endpoint, gameData, { withCredentials: true });
       navigate(`/game/${res.data.id}`);
     } catch (error) {
       setError(error.response?.data.error || error.message);
@@ -149,7 +154,7 @@ const Lobby = () => {
         <h5 className="modern-title">Lobby</h5>
 
         {!userPendingOrJoined && (
-          <Button variant="contained" color="primary" onClick={createGameRequest} className="lobby-button" style={{ marginBottom: '20px' }}>
+          <Button variant="contained" color="primary" onClick={() => setCreateModalOpen(true)} className="lobby-button" style={{ marginBottom: '20px' }} data-testid="create-game-request-button">
             Create Game Request
           </Button>
         )}
@@ -240,6 +245,12 @@ const Lobby = () => {
         autoHideDuration={6000}
         onClose={handleClose}
         message={error}
+      />
+
+      <CreateGameModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreate={createGameRequest}
       />
     </div>
   );

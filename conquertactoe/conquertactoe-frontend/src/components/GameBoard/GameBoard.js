@@ -6,8 +6,8 @@ import ErrorMessage from '../ErrorMessage/ErrorMessage';
 
 const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser }) => {
   const [board, setBoard] = useState(Array(3).fill().map(() => Array(3).fill(null)));
-  // REMOVED: const [activePlayer, setActivePlayer] = useState(1);
-  // Calculate activePlayer directly from game prop instead of storing in state
+  const [variant, setVariant] = useState(null);
+  const [boardSize, setBoardSize] = useState(3);
   const activePlayer = parseInt(game?.active_player) || 1;
 
   const [player1Cones, setPlayer1Cones] = useState([3, 3, 3]);
@@ -16,18 +16,73 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [selectedCone2, setSelectedCone2] = useState(2);
   const [error, setError] = useState(null);
 
+  // Fetch variant information
+  useEffect(() => {
+    const fetchVariant = async () => {
+      if (game?.variant_id) {
+        try {
+          const backendUrl = process.env.REACT_APP_BACKEND_URL;
+          const res = await axios.get(`${backendUrl}/variants/${game.variant_id}`);
+          setVariant(res.data);
+          setBoardSize(res.data.board_size);
+        } catch (error) {
+          console.error('Error fetching variant:', error);
+        }
+      }
+    };
+    fetchVariant();
+  }, [game?.variant_id]);
+
   useEffect(() => {
     console.log('Game state updated in GameBoard component:', game);
     if (game) {
       console.log('Updating board and player details from game state.');
-      setBoard(game.board && game.board.length ? game.board : Array(3).fill().map(() => Array(3).fill(null)));
-      // REMOVED: setActivePlayer(parseInt(game.active_player) || 1);
-      setPlayer1Cones(game.player1_cones && game.player1_cones.length === 3 ? game.player1_cones : [3, 3, 3]);
-      setPlayer2Cones(game.player2_cones && game.player2_cones.length === 3 ? game.player2_cones : [3, 3, 3]);
+
+      // Safely parse board if it's a string
+      let parsedBoard = game.board;
+      if (typeof parsedBoard === 'string') {
+        try {
+          parsedBoard = JSON.parse(parsedBoard);
+        } catch (e) {
+          console.error('Failed to parse game.board:', e);
+          parsedBoard = [];
+        }
+      }
+
+      // Dynamic board initialization based on actual board size
+      const size = parsedBoard?.length || 3;
+      setBoard(parsedBoard && parsedBoard.length ? parsedBoard : Array(size).fill().map(() => Array(size).fill(null)));
+
+      // Ensure boardSize is synced with actual board dimensions
+      if (size !== boardSize) {
+        setBoardSize(size);
+      }
+
+      // Handle cones - support different lengths
+      let p1Cones = game.player1_cones || [3, 3, 3];
+      let p2Cones = game.player2_cones || [3, 3, 3];
+
+      if (typeof p1Cones === 'string') {
+        try { p1Cones = JSON.parse(p1Cones); } catch (e) { console.error('Failed to parse p1Cones', e); }
+      }
+      if (typeof p2Cones === 'string') {
+        try { p2Cones = JSON.parse(p2Cones); } catch (e) { console.error('Failed to parse p2Cones', e); }
+      }
+
+      setPlayer1Cones(p1Cones);
+      setPlayer2Cones(p2Cones);
       console.log('Board and cones updated in GameBoard');
       setError(null);
     }
   }, [game]);
+
+  // Auto-select cone size 0 for variants that don't allow overwrite (Classic, Gomoku)
+  useEffect(() => {
+    if (variant && !variant.rules?.allowOverwrite) {
+      setSelectedCone1(0);
+      setSelectedCone2(0);
+    }
+  }, [variant]);
 
   useEffect(() => {
     console.log(`[${new Date().toISOString()}] GameBoard Render. ActivePlayer:`, activePlayer, 'Type:', typeof activePlayer);
@@ -76,7 +131,10 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     const selectedCone = activePlayer === 1 ? selectedCone1 : selectedCone2;
     const currentPlayerCones = activePlayer === 1 ? player1Cones : player2Cones;
 
-    if (!currentPlayerCones || currentPlayerCones[selectedCone] <= 0) {
+    // Check if variant uses unlimited markers (single element array with value >= 900)
+    const isUnlimitedMarker = currentPlayerCones.length === 1 && currentPlayerCones[0] >= 900;
+
+    if (!isUnlimitedMarker && (!currentPlayerCones || currentPlayerCones[selectedCone] <= 0)) {
       setError(`Invalid move: Player ${activePlayer} has no cones of size ${selectedCone + 1} left.`);
       return;
     }
@@ -96,11 +154,15 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     );
 
     const newCones = [...currentPlayerCones];
-    newCones[selectedCone] -= 1;
+    // Only decrement if not unlimited marker
+    if (!isUnlimitedMarker) {
+      newCones[selectedCone] -= 1;
+    }
 
     try {
       console.log('Updating game with move:', { row, col, selectedCone });
-      await updateGame(newBoard, activePlayer, activePlayer === 1 ? newCones : player1Cones, activePlayer === 2 ? newCones : player2Cones, row, col, selectedCone);
+      // IMPORTANT: Send ORIGINAL board state, let backend apply and validate the move
+      await updateGame(board, activePlayer, player1Cones, player2Cones, row, col, selectedCone);
       setBoard(newBoard);
       // REMOVED: setActivePlayer(activePlayer === 1 ? 2 : 1);
       // activePlayer is now derived from game.active_player, backend will update it
@@ -117,7 +179,26 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   };
 
   const canPlaceCone = (cell, selectedCone) => {
-    return !cell || selectedCone > cell.size;
+    if (!cell) return true; // Empty cell always valid
+
+    // CRITICAL: Cannot overwrite your own pieces
+    if (cell.player === activePlayer) {
+      return false;
+    }
+
+    // Check variant rules for overwrite
+    if (variant?.rules?.allowOverwrite) {
+      if (variant.rules.overwriteRules === 'larger_or_same_size') {
+        // Conquer Same-Size: allow equal or larger
+        return selectedCone >= cell.size;
+      } else if (variant.rules.overwriteRules === 'larger_cone_only') {
+        // Conquer Classic: only larger
+        return selectedCone > cell.size;
+      }
+    }
+
+    // Default: only if larger (fallback)
+    return selectedCone > cell.size;
   };
 
   const handleSurrender = async () => {
@@ -175,7 +256,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const renderRow = (row) => {
     return (
       <div key={row} className="row">
-        {[0, 1, 2].map((col) => renderCell(row, col))}
+        {board[row].map((cell, col) => renderCell(row, col))}
       </div>
     );
   };
@@ -250,32 +331,47 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     <div className="game-container">
       <div className="game-info">
         <div className={`player-info ${activePlayer === 1 ? 'active' : ''}`}>
-          <strong>{creatorName}</strong>
-          <div className="legend">
-            <div className="legend-item">
-              {renderConeButton('small', 'orange', player1Cones[0], activePlayer !== 1 || player1Cones[0] === 0, selectedCone1 === 0, () => setSelectedCone1(0))}
-              <span className="splitter"></span>
-              {renderConeButton('medium', 'orange', player1Cones[1], activePlayer !== 1 || player1Cones[1] === 0, selectedCone1 === 1, () => setSelectedCone1(1))}
-              <span className="splitter"></span>
-              {renderConeButton('large', 'orange', player1Cones[2], activePlayer !== 1 || player1Cones[2] === 0, selectedCone1 === 2, () => setSelectedCone1(2))}
+          <strong>
+            <span className="player-indicator player1-indicator">●</span> {creatorName}
+          </strong>
+          {(variant?.rules?.allowOverwrite) && (
+            <div className="legend">
+              <div className="legend-item">
+                {renderConeButton('small', 'orange', player1Cones[0], activePlayer !== 1 || player1Cones[0] === 0, selectedCone1 === 0, () => setSelectedCone1(0))}
+                <span className="splitter"></span>
+                {renderConeButton('medium', 'orange', player1Cones[1], activePlayer !== 1 || player1Cones[1] === 0, selectedCone1 === 1, () => setSelectedCone1(1))}
+                <span className="splitter"></span>
+                {renderConeButton('large', 'orange', player1Cones[2], activePlayer !== 1 || player1Cones[2] === 0, selectedCone1 === 2, () => setSelectedCone1(2))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
         <div className={`player-info ${activePlayer === 2 ? 'active' : ''}`}>
-          <strong>{joinerName}</strong>
-          <div className="legend">
-            <div className="legend-item">
-              {renderConeButton('small', 'green', player2Cones[0], activePlayer !== 2 || player2Cones[0] === 0, selectedCone2 === 0, () => setSelectedCone2(0))}
-              <span className="splitter"></span>
-              {renderConeButton('medium', 'green', player2Cones[1], activePlayer !== 2 || player2Cones[1] === 0, selectedCone2 === 1, () => setSelectedCone2(1))}
-              <span className="splitter"></span>
-              {renderConeButton('large', 'green', player2Cones[2], activePlayer !== 2 || player2Cones[2] === 0, selectedCone2 === 2, () => setSelectedCone2(2))}
+          <strong>
+            <span className="player-indicator player2-indicator">●</span> {joinerName}
+          </strong>
+          {(variant?.rules?.allowOverwrite) && (
+            <div className="legend">
+              <div className="legend-item">
+                {renderConeButton('small', 'green', player2Cones[0], activePlayer !== 2 || player2Cones[0] === 0, selectedCone2 === 0, () => setSelectedCone2(0))}
+                <span className="splitter"></span>
+                {renderConeButton('medium', 'green', player2Cones[1], activePlayer !== 2 || player2Cones[1] === 0, selectedCone2 === 1, () => setSelectedCone2(1))}
+                <span className="splitter"></span>
+                {renderConeButton('large', 'green', player2Cones[2], activePlayer !== 2 || player2Cones[2] === 0, selectedCone2 === 2, () => setSelectedCone2(2))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
-      <div className="game-board">
-        {[0, 1, 2].map((row) => renderRow(row))}
+      <div
+        className={`game-board ${boardSize > 10 ? 'large-board' : ''}`}
+        style={{
+          gridTemplateColumns: `repeat(${boardSize}, 1fr)`,
+          maxWidth: boardSize >= 15 ? '800px' : '600px',
+          gap: boardSize >= 15 ? '5px' : '10px'
+        }}
+      >
+        {board.map((row, rowIndex) => renderRow(rowIndex))}
       </div>
       <ErrorMessage message={error} />
       {renderGameResult()}

@@ -30,16 +30,26 @@ def init_db():
             move_row UInt8,
             move_col UInt8,
             move_size UInt8,
-            difficulty String
+            difficulty String,
+            variant_id UInt8 DEFAULT 3,
+            board_size UInt8 DEFAULT 3
         ) ENGINE = MergeTree()
         ORDER BY (game_id, timestamp)
     """)
+    
+    # Alter table to add columns if they don't exist (for existing deployments)
+    try:
+        client.execute("ALTER TABLE game_moves ADD COLUMN IF NOT EXISTS variant_id UInt8 DEFAULT 3")
+        client.execute("ALTER TABLE game_moves ADD COLUMN IF NOT EXISTS board_size UInt8 DEFAULT 3")
+    except Exception as e:
+        print(f"Schema update warning: {e}")
+
     print("Database initialized")
 
-def log_move(game_id, board, player_cones, bot_cones, move, difficulty):
+def log_move(game_id, board, player_cones, bot_cones, move, difficulty, variant_id=3, board_size=3):
     client = get_client()
     client.execute(
-        "INSERT INTO game_moves (game_id, board_state, player_cones, bot_cones, move_row, move_col, move_size, difficulty) VALUES",
+        "INSERT INTO game_moves (game_id, board_state, player_cones, bot_cones, move_row, move_col, move_size, difficulty, variant_id, board_size) VALUES",
         [(
             game_id,
             str(board),
@@ -48,7 +58,9 @@ def log_move(game_id, board, player_cones, bot_cones, move, difficulty):
             move['row'],
             move['col'],
             move['cone_size'],
-            difficulty
+            difficulty,
+            variant_id,
+            board_size
         )]
     )
     print(f"Logged move for game {game_id}")

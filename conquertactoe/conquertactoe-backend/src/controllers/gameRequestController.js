@@ -23,29 +23,65 @@ exports.updateGameRequest = async (req, res) => {
       return res.status(400).json({ error: 'The game is not active. Please wait for another player to join.' });
     }
 
+    // Validate the player's move before applying
+    const { createRulesEngine } = require('../utils/gameRules');
+    const rules = await createRulesEngine(gameRequest.variant_id || 3);
+    const playerNumber = activePlayer; // Current active player making the move
+    const playerCones = activePlayer === 1 ? player1Cones : player2Cones;
+
+    const cellAtPosition = board[row][col];
+    console.log('DEBUG: Validating move:', { row, col, coneSize, playerNumber, cellAtPosition });
+
+    if (!rules.isValidMove(row, col, coneSize, board, playerCones, playerNumber)) {
+      console.error('Invalid move attempt:', { row, col, coneSize, playerNumber, cellAtPosition });
+      return res.status(400).json({ error: 'Invalid move: Cannot place cone at this position.' });
+    }
+
+    // CRITICAL FIX: Apply the player's move to the board BEFORE updating
+    const updatedBoard = board.map((r, rowIndex) =>
+      r.map((cell, colIndex) => {
+        if (rowIndex === row && colIndex === col) {
+          return { player: playerNumber, size: coneSize };
+        }
+        return cell;
+      })
+    );
+
+    // Update player's cones
+    const updatedPlayerCones = [...playerCones];
+    updatedPlayerCones[coneSize] -= 1;
+
+    const newPlayer1Cones = activePlayer === 1 ? updatedPlayerCones : player1Cones;
+    const newPlayer2Cones = activePlayer === 2 ? updatedPlayerCones : player2Cones;
+
     // Emit gameUpdated event with the new board state before checking for a win
-    const updatedBoardState = await GameRequest.updateBoard(gameId, board, activePlayer === 1 ? 2 : 1, player1Cones, player2Cones);
+    const updatedBoardState = await GameRequest.updateBoard(gameId, updatedBoard, activePlayer === 1 ? 2 : 1, newPlayer1Cones, newPlayer2Cones);
     socket.getIo().emit('gameUpdated', { ...updatedBoardState, id: gameId, gameId: parseInt(gameId) });
     console.log(`Emitting 'gameUpdated' event for gameId: ${gameId}`);
 
     // Then check for a win or draw condition
-    const gameOverCondition = checkGameOverCondition(board, player1Cones, player2Cones);
+    const gameOverCondition = await checkGameOverCondition(updatedBoard, newPlayer1Cones, newPlayer2Cones, gameRequest.variant_id || 3);
     if (gameOverCondition?.winner) {
-      let winnerId;
-      if (gameRequest.game_type === 'bot' && gameOverCondition.winner === 2) {
-        winnerId = 2; // Bot wins
+      let winnerId, loserId, winnerFieldValue;
+      if (gameRequest.game_type === 'bot') {
+        // Bot game: Store PLAYER NUMBER (1 or 2) in winner field for frontend
+        // But track user_id for stats
+        winnerFieldValue = gameOverCondition.winner; // 1 or 2
+        winnerId = gameOverCondition.winner === 1 ? gameRequest.creator_id : null;
+        loserId = gameOverCondition.winner === 2 ? gameRequest.creator_id : null;
       } else {
+        // PvP game: Store user_id in winner field
         winnerId = gameOverCondition.winner === 1 ? gameRequest.creator_id : gameRequest.joiner_id;
+        loserId = gameOverCondition.winner === 1 ? gameRequest.joiner_id : gameRequest.creator_id;
+        winnerFieldValue = winnerId;
       }
 
-      const loserId = gameOverCondition.winner === 1 ? gameRequest.joiner_id : gameRequest.creator_id;
-
-      console.log(`Setting game as won by user ID: ${winnerId}`);
-      await pool.query('UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3', ['won', winnerId, gameId]);
+      console.log(`Setting game as won - Winner: ${winnerFieldValue} (bot game: ${gameRequest.game_type === 'bot'})`);
+      await pool.query('UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3', ['won', winnerFieldValue, gameId]);
 
       await updateUserStats(winnerId, loserId);
-      socket.getIo().emit('gameWon', { gameId: parseInt(gameId), winner: winnerId });
-      console.log(`Emitting 'gameWon' event for gameId: ${gameId} to winnerId: ${winnerId}`);
+      socket.getIo().emit('gameWon', { gameId: parseInt(gameId), winner: winnerFieldValue });
+      console.log(`Emitting 'gameWon' event for gameId: ${gameId} to winner: ${winnerFieldValue}`);
 
       const updatedGameRequest = await GameRequest.getById(gameId);
       console.log('Updated GameRequest:', updatedGameRequest);
@@ -79,20 +115,69 @@ exports.updateGameRequest = async (req, res) => {
             ? JSON.parse(updatedBoardState.player2_cones)
             : updatedBoardState.player2_cones;
 
+          // Fetch variant info for bot
+          const GameVariant = require('../models/GameVariant');
+          const variant = await GameVariant.getById(gameRequest.variant_id || 3);
+          const boardSize = variant ? variant.board_size : 3;
+
           const botMove = await getBotMove(
             gameId,
             currentBoard,
             currentP1Cones,
             currentP2Cones,
-            'medium'
+            'medium',
+            gameRequest.variant_id || 3,
+            boardSize
           );
           console.log('Bot move received:', botMove);
+
+          // Validate bot move
+          const { createRulesEngine } = require('../utils/gameRules');
+          const rules = await createRulesEngine(gameRequest.variant_id || 3);
+          const cellBeforeBotMove = currentBoard[botMove.row][botMove.col];
+          console.log('DEBUG Bot validation:', {
+            row: botMove.row,
+            col: botMove.col,
+            coneSize: botMove.cone_size,
+            cellBefore: cellBeforeBotMove,
+            botPlayer: 2,
+            currentBoard: currentBoard
+          });
+
+          if (!rules.isValidMove(botMove.row, botMove.col, botMove.cone_size, currentBoard, currentP2Cones, 2)) {
+            console.error('Bot attempted invalid move:', botMove);
+            // Fallback: Try to find ANY valid move (simple random search)
+            let foundValid = false;
+            for (let r = 0; r < boardSize && !foundValid; r++) {
+              for (let c = 0; c < boardSize && !foundValid; c++) {
+                for (let s = 0; s < 3; s++) {
+                  if (currentP2Cones[s] > 0 && rules.isValidMove(r, c, s, currentBoard, currentP2Cones, 2)) {
+                    botMove.row = r;
+                    botMove.col = c;
+                    botMove.cone_size = s;
+                    foundValid = true;
+                    console.log('Fallback to valid random move:', botMove);
+                    break;
+                  }
+                }
+                if (foundValid) break;
+              }
+              if (foundValid) break;
+            }
+            if (!foundValid) {
+              console.error('Bot has NO valid moves!');
+              // Handle no moves (skip turn or end game?) - For now, let it fail or skip
+            }
+          }
 
           // Apply bot's move using already-parsed board state
           const botBoard = [...currentBoard.map(row => [...row])]; // Deep copy
           const botP2Cones = [...currentP2Cones];
           botBoard[botMove.row][botMove.col] = { player: 2, size: botMove.cone_size };
-          botP2Cones[botMove.cone_size]--;
+          // Only decrement if not unlimited marker (< 900)
+          if (botP2Cones[botMove.cone_size] < 900) {
+            botP2Cones[botMove.cone_size]--;
+          }
 
           console.log('About to update board with bot move...');
           // Update game with bot's move
@@ -111,7 +196,7 @@ exports.updateGameRequest = async (req, res) => {
           // Check for win/draw AFTER bot move
           console.log('ABOUT TO CHECK WIN CONDITION');
           console.log('Bot Board:', JSON.stringify(botBoard));
-          const botGameOver = checkGameOverCondition(botBoard, currentP1Cones, botP2Cones);
+          const botGameOver = await checkGameOverCondition(botBoard, currentP1Cones, botP2Cones, gameRequest.variant_id || 3);
           console.log('Win Condition Result:', botGameOver);
           console.log('Bot game over result:', botGameOver);
           if (botGameOver?.winner === 2) {
@@ -151,7 +236,7 @@ exports.updateGameRequest = async (req, res) => {
 
 exports.createGameRequest = async (req, res) => {
   try {
-    const { gameType } = req.body;
+    const { gameType, variantId = 3 } = req.body; // Default to Classic Conquer
     if (!req.user) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -164,13 +249,23 @@ exports.createGameRequest = async (req, res) => {
       return res.status(400).json({ error: 'User already has an active game request or joined game' });
     }
 
-    const initialBoard = Array(3).fill().map(() => Array(3).fill(null));
-    const player1Cones = [3, 3, 3]; // 3 cones of each size for player 1
-    const player2Cones = [3, 3, 3]; // 3 cones of each size for player 2
+    // Fetch variant configuration
+    const GameVariant = require('../models/GameVariant');
+    const variant = await GameVariant.getById(variantId);
+
+    if (!variant) {
+      return res.status(400).json({ error: 'Invalid variant ID' });
+    }
+
+    // Initialize board and cones based on variant
+    const boardSize = variant.board_size;
+    const initialBoard = Array(boardSize).fill().map(() => Array(boardSize).fill(null));
+    const player1Cones = variant.player1_cones;
+    const player2Cones = variant.player2_cones;
 
     const gameRequest = await pool.query(
-      'INSERT INTO GameRequests (creator_id, game_type, status, board, active_player, player1_cones, player2_cones) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [creatorId, gameType, 'pending', JSON.stringify(initialBoard), 1, JSON.stringify(player1Cones), JSON.stringify(player2Cones)]
+      'INSERT INTO GameRequests (creator_id, game_type, variant_id, status, board, active_player, player1_cones, player2_cones) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [creatorId, gameType, variantId, 'pending', JSON.stringify(initialBoard), 1, JSON.stringify(player1Cones), JSON.stringify(player2Cones)]
     );
 
     socket.getIo().emit('gameRequestCreated', gameRequest.rows[0]); // Emit event
@@ -182,18 +277,52 @@ exports.createGameRequest = async (req, res) => {
 
 exports.createBotGameRequest = async (req, res) => {
   try {
+    const { variantId = 3 } = req.body; // Default to Classic Conquer
     if (!req.user) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
     const creatorId = req.user.user_id;
 
-    const initialBoard = Array(3).fill().map(() => Array(3).fill(null));
-    const player1Cones = [3, 3, 3];
-    const player2Cones = [3, 3, 3];
+    // Fetch variant configuration
+    const GameVariant = require('../models/GameVariant');
+    const variant = await GameVariant.getById(variantId);
+
+    if (!variant) {
+      return res.status(400).json({ error: 'Invalid variant ID' });
+    }
+
+    // Initialize board and cones based on variant
+    // Allow custom board size for Gomoku (variant 2)
+    let boardSize = variant.board_size;
+    if (req.body.boardSize && parseInt(variantId) === 2) {
+      boardSize = parseInt(req.body.boardSize);
+      console.log(`Using custom board size: ${boardSize} for Gomoku`);
+    }
+
+    const initialBoard = Array(boardSize).fill().map(() => Array(boardSize).fill(null));
+    let player1Cones = variant.player1_cones;
+    let player2Cones = variant.player2_cones;
+
+    console.log('DEBUG: req.body =', JSON.stringify(req.body));
+    console.log('DEBUG: variantId =', variantId, typeof variantId);
+
+    // Handle custom cones for Conquer Custom variant (ID 5)
+    const { customCones } = req.body;
+    console.log('DEBUG: customCones =', customCones);
+    if (parseInt(variantId) === 5 && customCones) {
+      console.log('Applying custom cones:', customCones);
+      player1Cones = [
+        customCones.small || 0,
+        customCones.medium || 0,
+        customCones.large || 0
+      ];
+      player2Cones = [...player1Cones]; // Bot gets same inventory
+      console.log('Custom cones applied:', player1Cones);
+    }
 
     const gameRequest = await pool.query(
-      'INSERT INTO GameRequests (creator_id, game_type, status, board, active_player, player1_cones, player2_cones, joiner_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [creatorId, 'bot', 'joined', JSON.stringify(initialBoard), 1, JSON.stringify(player1Cones), JSON.stringify(player2Cones), null]
+      'INSERT INTO GameRequests (creator_id, game_type, variant_id, status, board, active_player, player1_cones, player2_cones, joiner_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [creatorId, 'bot', variantId, 'joined', JSON.stringify(initialBoard), 1, JSON.stringify(player1Cones), JSON.stringify(player2Cones), null]
     );
 
     res.status(201).json(gameRequest.rows[0]);

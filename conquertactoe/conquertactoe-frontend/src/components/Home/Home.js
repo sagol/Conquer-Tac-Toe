@@ -15,6 +15,7 @@ import SportsEsportsIcon from '@material-ui/icons/SportsEsports';
 import PeopleIcon from '@material-ui/icons/People';
 import TrendingUpIcon from '@material-ui/icons/TrendingUp';
 import AndroidIcon from '@material-ui/icons/Android';
+import CreateGameModal from '../Lobby/CreateGameModal';
 import './Home.css';
 
 const Home = () => {
@@ -22,6 +23,7 @@ const Home = () => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     fetchGlobalStats();
@@ -38,7 +40,7 @@ const Home = () => {
     }
   };
 
-  const createBotGame = async () => {
+  const handleOpenCreateModal = async () => {
     try {
       // Check if user is authenticated first
       const userCheck = await axios.get(`${backendUrl}/current_user`, { withCredentials: true });
@@ -46,16 +48,26 @@ const Home = () => {
         navigate('/login');
         return;
       }
-
-      const res = await axios.post(`${backendUrl}/game-requests/bot`, {}, { withCredentials: true });
-      navigate(`/game/${res.data.id}`);
+      setShowCreateModal(true);
     } catch (error) {
-      // If unauthorized, redirect to login
       if (error.response?.status === 401 || error.response?.status === 403) {
         navigate('/login');
-      } else {
-        alert(error.response?.data?.error || 'Failed to create bot game');
       }
+    }
+  };
+
+  const handleCreateGame = async (gameData) => {
+    try {
+      let res;
+      if (gameData.gameType === 'bot') {
+        // Send complete gameData to include boardSize, customCones, etc.
+        res = await axios.post(`${backendUrl}/game-requests/bot`, gameData, { withCredentials: true });
+      } else {
+        res = await axios.post(`${backendUrl}/game-requests`, gameData, { withCredentials: true });
+      }
+      navigate(`/game/${res.data.id}`);
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to create game');
     }
   };
 
@@ -80,6 +92,13 @@ const Home = () => {
 
   return (
     <div className="modern-home">
+      {/* Create Game Modal */}
+      <CreateGameModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={handleCreateGame}
+      />
+
       {/* Hero Section */}
       <section className="hero-section">
         <Container maxWidth="lg">
@@ -98,7 +117,7 @@ const Home = () => {
               <Button
                 variant="contained"
                 className="btn-primary btn-large"
-                onClick={createBotGame}
+                onClick={handleOpenCreateModal}
                 startIcon={<AndroidIcon />}
               >
                 Play vs AI
@@ -250,7 +269,7 @@ const Home = () => {
                             variant="contained"
                             fullWidth
                             className="btn-ai-challenge"
-                            onClick={createBotGame}
+                            onClick={handleOpenCreateModal}
                           >
                             Try Now!
                           </Button>
@@ -265,47 +284,54 @@ const Home = () => {
         </Container>
       </section>
 
-      {/* How to Play Section */}
+      {/* Game Variants Section */}
       <section className="how-to-play-section">
         <Container maxWidth="lg">
           <Typography variant="h4" className="section-title" align="center" gutterBottom>
-            How to Play
+            Game Modes
           </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
-              <Card className="feature-card">
-                <CardContent>
-                  <Typography variant="h3" className="feature-number">1</Typography>
-                  <Typography variant="h6" gutterBottom>Choose Your C one</Typography>
-                  <Typography variant="body2">
-                    Each player has cones of 3 different sizes. Select wisely based on your strategy!
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Card className="feature-card">
-                <CardContent>
-                  <Typography variant="h3" className="feature-number">2</Typography>
-                  <Typography variant="h6" gutterBottom>Strategic Placement</Typography>
-                  <Typography variant="body2">
-                    Place cones on the board. You can cover opponent's cones with larger ones!
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Card className="feature-card">
-                <CardContent>
-                  <Typography variant="h3" className="feature-number">3</Typography>
-                  <Typography variant="h6" gutterBottom>Win the Game</Typography>
-                  <Typography variant="body2">
-                    Get three of your cones in a row (horizontal, vertical, or diagonal) to win!
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+          <Typography variant="h6" align="center" style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '40px' }}>
+            Click on a card to learn the rules!
+          </Typography>
+
+          <Grid container spacing={3} justifyContent="center">
+            {[
+              { title: "Classic Tic-Tac-Toe", desc: "The traditional 3x3 game. Simple and timeless.", id: "classic" },
+              { title: "5-in-Line (Gomoku)", desc: "Strategy on a large board. Connect 5 to win.", id: "gomoku" },
+              { title: "Conquer Classic", desc: "3x3 with cone sizes. Larger covers smaller!", id: "conquer-classic" },
+              { title: "Conquer Same-Size", desc: "Aggressive play! Equal sizes can overwrite.", id: "conquer-same" },
+              { title: "Conquer Custom", desc: "Build your own loadout of cones.", id: "conquer-custom" }
+            ].map((variant, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <Card
+                  className="feature-card variant-card"
+                  onClick={() => navigate('/rules')}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <CardContent>
+                    <Typography variant="h5" gutterBottom style={{ color: '#FFB74D', fontWeight: 'bold' }}>
+                      {variant.title}
+                    </Typography>
+                    <Typography variant="body2">
+                      {variant.desc}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
+
+          <Box textAlign="center" mt={6}>
+            <Button
+              variant="outlined"
+              color="primary"
+              size="large"
+              onClick={() => navigate('/rules')}
+              className="btn-secondary"
+            >
+              View Detailed Rules & Examples
+            </Button>
+          </Box>
         </Container>
       </section>
     </div>
