@@ -323,11 +323,10 @@ const Home = () => {
 
           <Box textAlign="center" mt={6}>
             <Button
-              variant="outlined"
-              color="primary"
+              variant="contained"
               size="large"
               onClick={() => navigate('/rules')}
-              className="btn-secondary"
+              className="btn-rules"
             >
               View Detailed Rules & Examples
             </Button>

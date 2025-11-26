@@ -16,7 +16,7 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://conquertactoe_autop
 async function getBotMove(gameId, board, playerCones, botCones, difficulty = 'medium', variantId = 3, boardSize = 3) {
     try {
         const response = await axios.post(`${AI_SERVICE_URL}/move`, {
-            game_id: gameId,
+            game_id: String(gameId), // Convert to string for autoplayer
             board,
             player_cones: playerCones,
             bot_cones: botCones,

@@ -25,7 +25,7 @@ const CreateGameModal = ({ open, onClose, onCreate }) => {
     const dispatch = useDispatch();
     const { variants, selectedVariantId, loading } = useSelector(state => state.gameVariants);
 
-    const [gameType, setGameType] = useState('public');
+    const [gameType, setGameType] = useState('bot');
     const [boardSize, setBoardSize] = useState(15); // For Gomoku
     const [customCones, setCustomCones] = useState({ small: 3, medium: 3, large: 2 });
 

@@ -15,6 +15,12 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [selectedCone2, setSelectedCone2] = useState(2);
   const activePlayer = parseInt(game?.active_player) || 1;
 
+  // Randomization State
+  const [isRandomizing, setIsRandomizing] = useState(false);
+  const [randomizingName, setRandomizingName] = useState('');
+  const [showFinalName, setShowFinalName] = useState(false);
+  const [hasRandomized, setHasRandomized] = useState(false);
+
   // Consolidated initialization - single source of truth
   useEffect(() => {
     if (!game) return;
@@ -99,6 +105,66 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     console.log('Game Result:', gameResult, 'Winner:', winner);
     setError(null);
   }, [activePlayer, gameResult, winner, isDraw]);
+
+  // Randomization Effect
+  useEffect(() => {
+    // Only randomize if:
+    // 1. Game is active (joined/started)
+    // 2. Board is empty (no moves made yet)
+    // 3. We haven't randomized yet for this session
+    // 4. It's not a resume of an existing game (check if board has pieces)
+
+    if (!game || game.status !== 'joined') return;
+
+    const isBoardEmpty = (board) => {
+      if (!board || !Array.isArray(board)) return true;
+      return board.every(row => row.every(cell => cell === null));
+    };
+
+    if (isBoardEmpty(board) && !hasRandomized && !winner && !isDraw) {
+      console.log('Starting randomization animation...');
+      console.log('Creator name:', creatorName);
+      console.log('Joiner name:', joinerName);
+      console.log('Active player:', activePlayer);
+
+      setIsRandomizing(true);
+      setHasRandomized(true);
+
+      let interval;
+      let counter = 0;
+      // For bot games, player 2 is the bot, so use proper names
+      const player1Name = creatorName || 'Player 1';
+      const player2Name = joinerName || 'Bot';
+      const names = [player1Name, player2Name];
+      console.log('Names array:', names);
+      const duration = 2000; // 2 seconds total
+      const speed = 100; // Switch every 100ms
+
+      interval = setInterval(() => {
+        const currentName = names[counter % 2];
+        console.log('Setting name:', currentName);
+        setRandomizingName(currentName);
+        counter++;
+      }, speed);
+
+      // Stop animation and show winner
+      setTimeout(() => {
+        clearInterval(interval);
+        const finalName = activePlayer === 1 ? player1Name : player2Name;
+        console.log('Final name:', finalName);
+        setRandomizingName(finalName);
+        setShowFinalName(true);
+
+        // Hide overlay after showing result
+        setTimeout(() => {
+          setIsRandomizing(false);
+          setShowFinalName(false);
+        }, 1500);
+      }, duration);
+
+      return () => clearInterval(interval);
+    }
+  }, [game, board, hasRandomized, creatorName, joinerName, activePlayer, winner, isDraw]);
 
   const handleCellClick = async (row, col) => {
     // Ensure that the game isn't won or drawn before this move
@@ -339,6 +405,20 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
   return (
     <div className="game-container">
+      {/* Randomization Overlay */}
+      {isRandomizing && (
+        <div className="randomization-overlay">
+          <div className="randomization-content">
+            <div className="randomization-title">Randomizing Turn</div>
+            {!showFinalName && <div className="randomization-spinner"></div>}
+            <div className={`randomizing-name ${showFinalName ? 'final' : ''}`}>
+              {randomizingName}
+            </div>
+            {showFinalName && <div className="randomization-subtitle">Starts the game!</div>}
+          </div>
+        </div>
+      )}
+
       <div className="game-info">
         <div className={`player-info ${activePlayer === 1 ? 'active' : ''}`}>
           <strong>
@@ -378,7 +458,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         className={`game-board ${boardSize > 10 ? 'large-board' : ''}`}
         style={{
           gridTemplateColumns: `repeat(${boardSize}, 1fr)`,
-          maxWidth: boardSize >= 15 ? '800px' : '600px',
+          maxWidth: 'fit-content',
           gap: boardSize >= 15 ? '5px' : '10px'
         }}
       >

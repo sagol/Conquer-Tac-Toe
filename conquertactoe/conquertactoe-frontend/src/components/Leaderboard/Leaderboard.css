@@ -114,34 +114,34 @@
 
 /* Table Head */
 .table-head {
-  background: rgba(78, 205, 196, 0.3) !important;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.25) 0%, rgba(68, 160, 141, 0.2) 100%) !important;
 }
 
 .table-head .MuiTableCell-head {
-  color: white !important;
+  color: #2c3e50 !important;
   font-weight: 700 !important;
   font-size: 1rem !important;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2) !important;
+  border-bottom: 2px solid rgba(78, 205, 196, 0.4) !important;
   padding: 16px !important;
 }
 
 /* Table Body */
 .clickable-row {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   transition: all 0.2s ease;
   cursor: pointer;
 }
 
 .clickable-row:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
   transform: scale(1.01);
 }
 
 .clickable-row .MuiTableCell-root {
-  color: rgba(255, 255, 255, 0.9) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #2c3e50 !important;
+  border-bottom: 1px solid rgba(78, 205, 196, 0.2) !important;
   padding: 16px !important;
 }
 

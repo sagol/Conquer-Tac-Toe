@@ -28,6 +28,23 @@ const Lobby = () => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+    setPage(1); // Reset to page 1 when switching tabs
+  };
+
+  // Helper function to format timestamps
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
   };
 
   useEffect(() => {
@@ -44,8 +61,8 @@ const Lobby = () => {
       };
 
       fetchStats();
-      console.log(`Fetching game requests for page: ${page}`);
-      dispatch(fetchActiveGameRequests(page));
+      console.log('Fetching all game requests');
+      dispatch(fetchActiveGameRequests(1, 1000)); // Fetch all games (large limit)
       const newSocket = io(backendUrl);
       setSocket(newSocket);
 
@@ -63,12 +80,9 @@ const Lobby = () => {
 
       return () => newSocket.close();
     }
-  }, [dispatch, backendUrl, auth.user, page]);
+  }, [dispatch, backendUrl, auth.user]); // Removed 'page' dependency
 
-  const handlePageChange = (event, value) => {
-    setPage(value);
-    dispatch(fetchActiveGameRequests(value));
-  };
+
 
   const createGameRequest = async (gameData) => {
     try {
@@ -137,16 +151,24 @@ const Lobby = () => {
     return <div>Loading...</div>;
   }
 
-  // Filter games based on active tab
-  const filteredGames = gameRequests.filter(request => {
-    if (activeTab === 0) {
-      // Public Games: Pending games created by others
-      return request.status === 'pending' && request.creator_id !== auth.user?.user_id;
-    } else {
-      // My Games: Games created by me or joined by me
-      return request.creator_id === auth.user?.user_id || request.joiner_id === auth.user?.user_id;
-    }
-  });
+  // Filter and sort games based on active tab
+  const filteredGames = gameRequests
+    .filter(request => {
+      if (activeTab === 0) {
+        // My Games (index 0): Games created by me or joined by me
+        return request.creator_id === auth.user?.user_id || request.joiner_id === auth.user?.user_id;
+      } else {
+        // Public Games (index 1): Pending games created by others
+        return request.status === 'pending' && request.creator_id !== auth.user?.user_id;
+      }
+    })
+    .sort((a, b) => {
+      // Sort pending games first
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+      // Then sort by created_at descending (newest first)
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
 
   return (
     <div className="lobby-container">
@@ -165,10 +187,11 @@ const Lobby = () => {
           indicatorColor="primary"
           textColor="primary"
           centered
+          className="lobby-tabs"
           style={{ marginBottom: '20px' }}
         >
-          <Tab label="Public Games" />
           <Tab label="My Games" />
+          <Tab label="Public Games" />
         </Tabs>
 
         <div className="table-container">
@@ -176,8 +199,16 @@ const Lobby = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Creator</TableCell>
-                <TableCell>Game Type</TableCell>
+                {activeTab === 0 ? (
+                  <>
+                    <TableCell>Game Type</TableCell>
+                    <TableCell>Variant</TableCell>
+                  </>
+                ) : (
+                  <TableCell>Variant</TableCell>
+                )}
                 <TableCell>Status</TableCell>
+                <TableCell>Created</TableCell>
                 <TableCell>Action</TableCell>
               </TableRow>
             </TableHead>
@@ -189,10 +220,19 @@ const Lobby = () => {
                     hover
                     onClick={() => setSelectedRequest(request)}
                     style={{ cursor: 'pointer' }}
+                    className={request.status === 'pending' ? 'pending-game' : ''}
                   >
                     <TableCell>{request.creator_name}</TableCell>
-                    <TableCell>{request.game_type}</TableCell>
+                    {activeTab === 0 ? (
+                      <>
+                        <TableCell>{request.game_type}</TableCell>
+                        <TableCell>{request.variant_display_name || 'Unknown'}</TableCell>
+                      </>
+                    ) : (
+                      <TableCell>{request.variant_display_name || 'Unknown'}</TableCell>
+                    )}
                     <TableCell>{getUserGameStatus(request)}</TableCell>
+                    <TableCell>{formatTimestamp(request.created_at)}</TableCell>
                     <TableCell>
                       {canJoin(request) ? (
                         <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); joinGameRequest(request.id); }} className="lobby-button">Join</Button>
@@ -209,15 +249,15 @@ const Lobby = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} align="center">
-                    {activeTab === 0 ? "No public games available." : "You have no active games."}
+                  <TableCell colSpan={activeTab === 0 ? 6 : 5} align="center">
+                    {activeTab === 0 ? "You have no active games." : "No public games available."}
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
-        <Pagination count={totalPages} page={page} onChange={handlePageChange} />
+
 
         {/* Game Details Dialog */}
         <Dialog open={!!selectedRequest} onClose={() => setSelectedRequest(null)} maxWidth="sm" fullWidth>
@@ -227,6 +267,7 @@ const Lobby = () => {
               <Box>
                 <Typography variant="body1" gutterBottom><strong>Creator:</strong> {selectedRequest.creator_name}</Typography>
                 <Typography variant="body1" gutterBottom><strong>Game Type:</strong> {selectedRequest.game_type}</Typography>
+                <Typography variant="body1" gutterBottom><strong>Variant:</strong> {selectedRequest.variant_display_name || 'Unknown'}</Typography>
                 <Typography variant="body1" gutterBottom><strong>Status:</strong> {selectedRequest.status}</Typography>
                 <Typography variant="body1" gutterBottom><strong>Created At:</strong> {new Date(selectedRequest.created_at).toLocaleString()}</Typography>
               </Box>
