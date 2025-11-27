@@ -153,11 +153,10 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   useEffect(() => {
     // Only randomize if:
     // 1. Game is active (joined/started)
-    // 2. We haven't randomized yet for this session
+    // 2. We haven't randomized yet for this component instance
     // 3. Game is not won or drawn
     // 4. Board is completely empty (no moves have been made yet)
     // 5. Game was created very recently (< 10 seconds ago)
-    // This ensures animation only shows on FIRST game start, not on re-entry or hard refresh
 
     if (!game || game.status !== 'joined') return;
     if (hasRandomized || winner || isDraw) return;
@@ -209,8 +208,8 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     const player2Name = joinerName || 'Bot';
     const names = [player1Name, player2Name];
     console.log('Names array:', names);
-    const duration = 2000; // 2 seconds total
-    const speed = 100; // Switch every 100ms
+    const duration = 1500; // 1.5 seconds total (reduced from 2s)
+    const speed = 80; // Switch every 80ms (slightly faster)
 
     interval = setInterval(() => {
       const currentName = names[counter % 2];
@@ -232,11 +231,18 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         setIsRandomizing(false);
         setShowFinalName(false);
         setFrozenBoard(null); // Unfreeze board
-      }, 1500);
+      }, 1200); // Reduced from 1500ms
     }, duration);
 
     return () => clearInterval(interval);
   }, [game, hasRandomized, creatorName, joinerName, activePlayer, winner, isDraw, board, boardSize]);
+
+  // Reset hasRandomized when game changes (e.g., "Play Again")
+  useEffect(() => {
+    if (game?.id) {
+      setHasRandomized(false);
+    }
+  }, [game?.id]);
 
   const handleCellClick = async (row, col) => {
     // Ensure that the game isn't won or drawn before this move
@@ -403,6 +409,9 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     let cellClass = 'cell';
     let coneSizeClass = '';
 
+    // Check if this is Classic Tic-Tac-Toe (variant ID 1)
+    const isClassicTicTacToe = game?.variant_id === 1;
+
     if (cellValue) {
       const { player, size } = cellValue;
       if (player === 1) cellClass += ' player1';
@@ -423,13 +432,51 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       }
     }
 
+    // Determine who started first for X/O assignment
+    // Count moves for each player - whoever has more moves (or equal if even total) started first
+    let firstPlayer = 1; // default
+    if (isClassicTicTacToe && currentBoard) {
+      let player1Moves = 0;
+      let player2Moves = 0;
+
+      currentBoard.forEach(row => {
+        row.forEach(cell => {
+          if (cell && cell.player === 1) player1Moves++;
+          if (cell && cell.player === 2) player2Moves++;
+        });
+      });
+
+      // Whoever has more moves started first
+      // If equal, check active player (next to move means the other player started)
+      if (player1Moves > player2Moves) {
+        firstPlayer = 1;
+      } else if (player2Moves > player1Moves) {
+        firstPlayer = 2;
+      } else {
+        // Equal moves - check who's active (next to move)
+        // If player 1 is active, player 2 started (and they've alternated evenly)
+        firstPlayer = activePlayer === 1 ? 2 : 1;
+      }
+    }
+
     return (
       <div
         key={`${row}-${col}`}
         className={cellClass}
         onClick={winner || isDraw ? null : () => handleCellClick(row, col)}
       >
-        {cellValue && <div className={`circle ${coneSizeClass}`}></div>}
+        {cellValue && (
+          isClassicTicTacToe ? (
+            // Render X or O for Classic Tic-Tac-Toe
+            // First player (whoever started) = X, second player = O
+            <div className="xo-symbol">
+              {cellValue.player === firstPlayer ? 'X' : 'O'}
+            </div>
+          ) : (
+            // Render colored circles for other variants
+            <div className={`circle ${coneSizeClass}`}></div>
+          )
+        )}
       </div>
     );
   };

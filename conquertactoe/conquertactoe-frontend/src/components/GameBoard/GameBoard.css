@@ -223,6 +223,26 @@
   box-shadow: 0 4px 10px rgba(78, 205, 196, 0.4);
 }
 
+/* X and O Symbols for Classic Tic-Tac-Toe */
+.xo-symbol {
+  font-size: 3.5rem;
+  font-weight: 900;
+  font-family: 'Arial Black', sans-serif;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.cell.player1 .xo-symbol {
+  color: #ff7e5f;
+  text-shadow: 0 0 15px rgba(255, 126, 95, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.cell.player2 .xo-symbol {
+  color: #4ecdc4;
+  text-shadow: 0 0 15px rgba(78, 205, 196, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+
 /* Surrender Button */
 .surrender-button {
   margin-top: 20px;

@@ -329,20 +329,18 @@ exports.createBotGameRequest = async (req, res) => {
     const createdGame = gameRequest.rows[0];
 
     // If bot starts (active_player === 2), trigger bot move immediately
+    // The frontend handles animation timing by freezing the board during randomization
     if (createdGame.active_player === 2) {
-      console.log('Bot starts! Triggering initial move after randomization animation...');
+      console.log('Bot starts! Triggering bot move immediately (frontend handles animation timing)');
 
-      // Wait 4 seconds for the "Randomizing starting player" animation to complete
-      // Animation: 2s cycling + 1.5s showing final name + 0.5s buffer = 4s total
-      setTimeout(() => {
-        handleBotMove(
-          createdGame.id,
-          initialBoard,
-          player1Cones,
-          player2Cones,
-          variantId
-        ).catch(err => console.error('Error in initial bot move:', err));
-      }, 4000); // 4 second delay
+      // No delay needed - frontend will show frozen board during randomization overlay
+      handleBotMove(
+        createdGame.id,
+        initialBoard,
+        player1Cones,
+        player2Cones,
+        variantId
+      ).catch(err => console.error('Error in initial bot move:', err));
     }
 
     res.status(201).json(createdGame);
