@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Container, Box, TextField, Typography } from '@material-ui/core';
 import axios from 'axios';
 import { useDispatch } from 'react-redux';
@@ -9,9 +9,24 @@ import './Login.css';
 
 const Login = () => {
   const [username, setUsername] = useState('');
+  const [config, setConfig] = useState({});
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+
+  // Fetch public configs on component mount
+  useEffect(() => {
+    const fetchConfigs = async () => {
+      try {
+        const response = await axios.get(`${backendUrl}/api/config/public`);
+        setConfig(response.data);
+      } catch (error) {
+        console.error('Failed to fetch configs:', error);
+        setConfig({}); // Use empty config on error
+      }
+    };
+    fetchConfigs();
+  }, [backendUrl]);
 
   const handleGoogleLogin = () => {
     window.location.href = `${backendUrl}/auth/google`;
@@ -47,28 +62,33 @@ const Login = () => {
           Login with Google
         </Button>
 
-        <div className="auth-link">
-          <Typography variant="body1">
-            Or use developer login below
-          </Typography>
-        </div>
+        {/* Conditionally render Dev Login section */}
+        {config.ENABLE_DEV_LOGIN === 'true' && (
+          <>
+            <div className="auth-link">
+              <Typography variant="body1">
+                Or use developer login below
+              </Typography>
+            </div>
 
-        <Box mt={3}>
-          <TextField
-            placeholder="Enter your username"
-            variant="outlined"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleDevLogin}
-            fullWidth
-          >
-            Dev Login
-          </Button>
-        </Box>
+            <Box mt={3}>
+              <TextField
+                placeholder="Enter your username"
+                variant="outlined"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleDevLogin}
+                fullWidth
+              >
+                Dev Login
+              </Button>
+            </Box>
+          </>
+        )}
       </div>
     </div>
   );

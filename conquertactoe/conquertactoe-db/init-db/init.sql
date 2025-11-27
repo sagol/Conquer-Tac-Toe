@@ -93,6 +93,25 @@ CREATE TABLE GameRequests (
 CREATE INDEX idx_gamerequests_variant ON GameRequests(variant_id);
 
 -- ============================================
+-- Application Configuration Table
+-- ============================================
+CREATE TABLE AppConfig (
+    config_key VARCHAR(100) PRIMARY KEY,
+    config_value TEXT NOT NULL,
+    is_public BOOLEAN DEFAULT false,
+    description TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create index for public config lookups
+CREATE INDEX idx_appconfig_public ON AppConfig(is_public);
+
+-- Seed initial configuration
+INSERT INTO AppConfig (config_key, config_value, is_public, description)
+VALUES 
+    ('ENABLE_DEV_LOGIN', 'true', true, 'Show Dev Login option on login page for development');
+
+-- ============================================
 -- SEED DATA: Game Variants
 -- ============================================
 

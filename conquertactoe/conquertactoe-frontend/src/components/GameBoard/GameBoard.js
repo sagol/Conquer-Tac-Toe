@@ -447,15 +447,15 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       });
 
       // Whoever has more moves started first
-      // If equal, check active player (next to move means the other player started)
+      // If equal, check active player (next to move means they started the round)
       if (player1Moves > player2Moves) {
         firstPlayer = 1;
       } else if (player2Moves > player1Moves) {
         firstPlayer = 2;
       } else {
-        // Equal moves - check who's active (next to move)
-        // If player 1 is active, player 2 started (and they've alternated evenly)
-        firstPlayer = activePlayer === 1 ? 2 : 1;
+        // Equal moves - check who's active
+        // If moves are equal (e.g., 0-0, 1-1), the player whose turn it is MUST be the one who started
+        firstPlayer = activePlayer;
       }
     }
 
