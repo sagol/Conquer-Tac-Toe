@@ -65,12 +65,6 @@ class GameRules {
             return false;
         }
 
-        // Cannot overwrite your own pieces
-        if (cell.player === playerNumber) {
-            console.log('[Validation] REJECTED: Cannot overwrite own piece');
-            return false;
-        }
-
         // Check overwrite rules
         if (this.rules.overwriteRules === 'larger_cone_only') {
             const result = coneSize > cell.size;

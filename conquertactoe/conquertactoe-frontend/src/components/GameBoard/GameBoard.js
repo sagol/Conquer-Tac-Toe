@@ -155,11 +155,33 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     // 1. Game is active (joined/started)
     // 2. We haven't randomized yet for this session
     // 3. Game is not won or drawn
-    // NOTE: We check hasRandomized BEFORE checking board state to ensure
-    // the animation starts immediately on game creation, before any socket updates
+    // 4. Board is completely empty (no moves have been made yet)
+    // 5. Game was created very recently (< 10 seconds ago)
+    // This ensures animation only shows on FIRST game start, not on re-entry or hard refresh
 
     if (!game || game.status !== 'joined') return;
     if (hasRandomized || winner || isDraw) return;
+
+    // CHECK: Only show animation if board is completely empty (fresh game)
+    const isBoardEmpty = board.every(row => row.every(cell => cell === null));
+    if (!isBoardEmpty) {
+      console.log('Board has moves, skipping randomization animation');
+      return;
+    }
+
+    // CHECK: Only show animation if game was just created (< 10 seconds ago)
+    // This prevents animation on hard refresh of older games
+    if (game.created_at) {
+      const createdAt = new Date(game.created_at);
+      const now = new Date();
+      const ageInSeconds = (now - createdAt) / 1000;
+
+      if (ageInSeconds > 10) {
+        console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, skipping randomization animation`);
+        return;
+      }
+      console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, showing randomization animation`);
+    }
 
     // Start randomization immediately when game is joined
     console.log(`[${new Date().toISOString()}] Starting randomization animation...`);
@@ -214,7 +236,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     }, duration);
 
     return () => clearInterval(interval);
-  }, [game, hasRandomized, creatorName, joinerName, activePlayer, winner, isDraw, board]);
+  }, [game, hasRandomized, creatorName, joinerName, activePlayer, winner, isDraw, board, boardSize]);
 
   const handleCellClick = async (row, col) => {
     // Ensure that the game isn't won or drawn before this move
@@ -260,15 +282,32 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     // Check if variant uses unlimited markers (single element array with value >= 900)
     const isUnlimitedMarker = currentPlayerCones.length === 1 && currentPlayerCones[0] >= 900;
 
+
     if (!isUnlimitedMarker && (!currentPlayerCones || currentPlayerCones[selectedCone] <= 0)) {
       setError(`Invalid move: Player ${activePlayer} has no cones of size ${selectedCone + 1} left.`);
       return;
     }
 
+
+    console.log('[handleCellClick] About to validate move:', {
+      row,
+      col,
+      selectedCone,
+      selectedConeType: typeof selectedCone,
+      cellValue: board[row][col],
+      cellPlayer: board[row][col]?.player,
+      cellSize: board[row][col]?.size,
+      cellSizeType: typeof board[row][col]?.size,
+      activePlayer
+    });
+
+    // Check if cone size allows overwriting (for variants with size rules)
     if (board[row][col] !== null && !canPlaceCone(board[row][col], selectedCone)) {
-      setError('Invalid move: You cannot place a smaller cone over a larger one.');
+      setError('Invalid move: You can only place a larger cone over a smaller cone.');
       return;
     }
+
+
 
     const newBoard = board.map((r, rowIndex) =>
       r.map((cell, colIndex) => {
@@ -307,24 +346,39 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const canPlaceCone = (cell, selectedCone) => {
     if (!cell) return true; // Empty cell always valid
 
-    // CRITICAL: Cannot overwrite your own pieces
-    if (cell.player === activePlayer) {
-      return false;
-    }
+    // Ensure numeric comparison (convert to numbers explicitly)
+    const selectedSize = parseInt(selectedCone, 10);
+    const cellSize = parseInt(cell.size, 10);
+
+    console.log('[canPlaceCone] Checking move:', {
+      selectedCone: selectedSize,
+      cellSize: cellSize,
+      cellPlayer: cell.player,
+      activePlayer,
+      variantLoaded: !!variant,
+      allowOverwrite: variant?.rules?.allowOverwrite,
+      overwriteRules: variant?.rules?.overwriteRules
+    });
 
     // Check variant rules for overwrite
     if (variant?.rules?.allowOverwrite) {
       if (variant.rules.overwriteRules === 'larger_or_same_size') {
         // Conquer Same-Size: allow equal or larger
-        return selectedCone >= cell.size;
+        const result = selectedSize >= cellSize;
+        console.log('[canPlaceCone] larger_or_same_size rule:', result, `${selectedSize} >= ${cellSize}`);
+        return result;
       } else if (variant.rules.overwriteRules === 'larger_cone_only') {
         // Conquer Classic: only larger
-        return selectedCone > cell.size;
+        const result = selectedSize > cellSize;
+        console.log('[canPlaceCone] larger_cone_only rule:', result, `${selectedSize} > ${cellSize}`);
+        return result;
       }
     }
 
     // Default: only if larger (fallback)
-    return selectedCone > cell.size;
+    const result = selectedSize > cellSize;
+    console.log('[canPlaceCone] Fallback rule:', result, `${selectedSize} > ${cellSize}`);
+    return result;
   };
 
   const handleSurrender = async () => {
