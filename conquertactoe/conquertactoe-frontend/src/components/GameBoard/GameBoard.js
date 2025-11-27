@@ -20,12 +20,17 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [randomizingName, setRandomizingName] = useState('');
   const [showFinalName, setShowFinalName] = useState(false);
   const [hasRandomized, setHasRandomized] = useState(false);
+  const [frozenBoard, setFrozenBoard] = useState(null); // Holds empty board during randomization
 
   // Consolidated initialization - single source of truth
   useEffect(() => {
     if (!game) return;
 
-    console.log('[GameBoard] Initializing from game prop:', game);
+    console.log(`[${new Date().toISOString()}] [GameBoard] Initializing from game prop:`, game);
+    if (game && game.board) {
+      const isBoardEmpty = Array.isArray(game.board) ? game.board.every(r => r.every(c => c === null)) : 'unknown';
+      console.log(`[${new Date().toISOString()}] Game prop board empty?`, isBoardEmpty);
+    }
 
     // Parse board if it's a string
     let parsedBoard = game.board;
@@ -110,61 +115,68 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   useEffect(() => {
     // Only randomize if:
     // 1. Game is active (joined/started)
-    // 2. Board is empty (no moves made yet)
-    // 3. We haven't randomized yet for this session
-    // 4. It's not a resume of an existing game (check if board has pieces)
+    // 2. We haven't randomized yet for this session
+    // 3. Game is not won or drawn
+    // NOTE: We check hasRandomized BEFORE checking board state to ensure
+    // the animation starts immediately on game creation, before any socket updates
 
     if (!game || game.status !== 'joined') return;
+    if (hasRandomized || winner || isDraw) return;
 
-    const isBoardEmpty = (board) => {
-      if (!board || !Array.isArray(board)) return true;
-      return board.every(row => row.every(cell => cell === null));
-    };
+    // Start randomization immediately when game is joined
+    console.log(`[${new Date().toISOString()}] Starting randomization animation...`);
+    console.log('Creator name:', creatorName);
+    console.log('Joiner name:', joinerName);
+    console.log('Active player:', activePlayer);
+    console.log('Current Board State:', JSON.stringify(board));
 
-    if (isBoardEmpty(board) && !hasRandomized && !winner && !isDraw) {
-      console.log('Starting randomization animation...');
-      console.log('Creator name:', creatorName);
-      console.log('Joiner name:', joinerName);
-      console.log('Active player:', activePlayer);
+    // Freeze the current board state to prevent visual updates during animation
+    console.log(`[${new Date().toISOString()}] Freezing board state. Is board empty?`, board.every(row => row.every(c => c === null)));
 
-      setIsRandomizing(true);
-      setHasRandomized(true);
+    // CRITICAL FIX: Instead of freezing the current 'board' (which might already have the bot move due to race conditions),
+    // we explicitly create a fresh EMPTY board to show during the animation.
+    // This guarantees the user sees an empty board regardless of socket update timing.
+    const emptyBoard = Array(boardSize).fill(null).map(() => Array(boardSize).fill(null));
+    setFrozenBoard(emptyBoard);
 
-      let interval;
-      let counter = 0;
-      // For bot games, player 2 is the bot, so use proper names
-      const player1Name = creatorName || 'Player 1';
-      const player2Name = joinerName || 'Bot';
-      const names = [player1Name, player2Name];
-      console.log('Names array:', names);
-      const duration = 2000; // 2 seconds total
-      const speed = 100; // Switch every 100ms
+    setIsRandomizing(true);
+    setHasRandomized(true);
 
-      interval = setInterval(() => {
-        const currentName = names[counter % 2];
-        console.log('Setting name:', currentName);
-        setRandomizingName(currentName);
-        counter++;
-      }, speed);
+    let interval;
+    let counter = 0;
+    // For bot games, player 2 is the bot, so use proper names
+    const player1Name = creatorName || 'Player 1';
+    const player2Name = joinerName || 'Bot';
+    const names = [player1Name, player2Name];
+    console.log('Names array:', names);
+    const duration = 2000; // 2 seconds total
+    const speed = 100; // Switch every 100ms
 
-      // Stop animation and show winner
+    interval = setInterval(() => {
+      const currentName = names[counter % 2];
+      console.log('Setting name:', currentName);
+      setRandomizingName(currentName);
+      counter++;
+    }, speed);
+
+    // Stop animation and show winner
+    setTimeout(() => {
+      clearInterval(interval);
+      const finalName = activePlayer === 1 ? player1Name : player2Name;
+      console.log('Final name:', finalName);
+      setRandomizingName(finalName);
+      setShowFinalName(true);
+
+      // Hide overlay after showing result
       setTimeout(() => {
-        clearInterval(interval);
-        const finalName = activePlayer === 1 ? player1Name : player2Name;
-        console.log('Final name:', finalName);
-        setRandomizingName(finalName);
-        setShowFinalName(true);
+        setIsRandomizing(false);
+        setShowFinalName(false);
+        setFrozenBoard(null); // Unfreeze board
+      }, 1500);
+    }, duration);
 
-        // Hide overlay after showing result
-        setTimeout(() => {
-          setIsRandomizing(false);
-          setShowFinalName(false);
-        }, 1500);
-      }, duration);
-
-      return () => clearInterval(interval);
-    }
-  }, [game, board, hasRandomized, creatorName, joinerName, activePlayer, winner, isDraw]);
+    return () => clearInterval(interval);
+  }, [game, hasRandomized, creatorName, joinerName, activePlayer, winner, isDraw, board]);
 
   const handleCellClick = async (row, col) => {
     // Ensure that the game isn't won or drawn before this move
@@ -294,7 +306,8 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   };
 
   const renderCell = (row, col) => {
-    const cellValue = board[row][col];
+    const currentBoard = frozenBoard || board;
+    const cellValue = currentBoard[row][col];
     let cellClass = 'cell';
     let coneSizeClass = '';
 
@@ -330,9 +343,10 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   };
 
   const renderRow = (row) => {
+    const currentBoard = frozenBoard || board;
     return (
       <div key={row} className="row">
-        {board[row].map((cell, col) => renderCell(row, col))}
+        {currentBoard[row].map((cell, col) => renderCell(row, col))}
       </div>
     );
   };
@@ -462,7 +476,10 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
           gap: boardSize >= 15 ? '5px' : '10px'
         }}
       >
-        {board.map((row, rowIndex) => renderRow(rowIndex))}
+        {(frozenBoard || board).map((row, rowIndex) => {
+          if (rowIndex === 0) console.log(`[${new Date().toISOString()}] Rendering row 0. Using frozenBoard?`, !!frozenBoard);
+          return renderRow(rowIndex);
+        })}
       </div>
       <ErrorMessage message={error} />
       {renderGameResult()}

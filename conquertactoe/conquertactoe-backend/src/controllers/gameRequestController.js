@@ -154,13 +154,19 @@ exports.updateGameRequest = async (req, res) => {
     const newPlayer1Cones = activePlayer === 1 ? updatedPlayerCones : player1Cones;
     const newPlayer2Cones = activePlayer === 2 ? updatedPlayerCones : player2Cones;
 
-    // Emit gameUpdated event with the new board state before checking for a win
-    const updatedBoardState = await GameRequest.updateBoard(gameId, updatedBoard, activePlayer === 1 ? 2 : 1, newPlayer1Cones, newPlayer2Cones);
+    // CRITICAL FIX: Check for win/draw BEFORE switching active player
+    // This ensures the game state reflects the winning player correctly
+    const gameOverCondition = await checkGameOverCondition(updatedBoard, newPlayer1Cones, newPlayer2Cones, gameRequest.variant_id || 3);
+
+    // Determine next active player (only if game continues)
+    const nextActivePlayer = gameOverCondition ? activePlayer : (activePlayer === 1 ? 2 : 1);
+
+    // Update board with correct active player
+    const updatedBoardState = await GameRequest.updateBoard(gameId, updatedBoard, nextActivePlayer, newPlayer1Cones, newPlayer2Cones);
     socket.getIo().emit('gameUpdated', { ...updatedBoardState, id: gameId, gameId: parseInt(gameId) });
     console.log(`Emitting 'gameUpdated' event for gameId: ${gameId}`);
 
-    // Then check for a win or draw condition
-    const gameOverCondition = await checkGameOverCondition(updatedBoard, newPlayer1Cones, newPlayer2Cones, gameRequest.variant_id || 3);
+    // Handle win condition
     if (gameOverCondition?.winner) {
       let winnerId, loserId, winnerFieldValue;
       if (gameRequest.game_type === 'bot') {
@@ -324,26 +330,19 @@ exports.createBotGameRequest = async (req, res) => {
 
     // If bot starts (active_player === 2), trigger bot move immediately
     if (createdGame.active_player === 2) {
-      console.log('Bot starts! Triggering initial move...');
+      console.log('Bot starts! Triggering initial move after randomization animation...');
 
-      // We need to wait a bit or just trigger it. Since this is async, we can just call it.
-      // However, we want to return the game state *after* the bot moves if possible, 
-      // OR return the initial state and let the frontend receive the update via socket.
-      // Returning initial state is safer for the "Randomizing..." animation to play correctly.
-      // The frontend will see "Randomizing...", then receive "gameUpdated" with the bot's move.
-
-      // Fire and forget (or await but don't block response too long? No, await is better to ensure order)
-      // Actually, we should NOT await it if we want the frontend to show the empty board first for animation.
-      // BUT, if we don't await, the "gameUpdated" might arrive before the frontend processes the "create" response.
-      // Let's trigger it asynchronously.
-
-      handleBotMove(
-        createdGame.id,
-        initialBoard,
-        player1Cones,
-        player2Cones,
-        variantId
-      ).catch(err => console.error('Error in initial bot move:', err));
+      // Wait 4 seconds for the "Randomizing starting player" animation to complete
+      // Animation: 2s cycling + 1.5s showing final name + 0.5s buffer = 4s total
+      setTimeout(() => {
+        handleBotMove(
+          createdGame.id,
+          initialBoard,
+          player1Cones,
+          player2Cones,
+          variantId
+        ).catch(err => console.error('Error in initial bot move:', err));
+      }, 4000); // 4 second delay
     }
 
     res.status(201).json(createdGame);
