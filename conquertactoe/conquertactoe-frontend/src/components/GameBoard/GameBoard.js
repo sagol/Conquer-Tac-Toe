@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import '../Common/SharedModernStyles.css';
 import './GameBoard.css';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
 
 const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser }) => {
+  const navigate = useNavigate();
   const [board, setBoard] = useState([]);
   const [boardSize, setBoardSize] = useState(3); // Default to 3x3
   const [error, setError] = useState(null);
@@ -21,6 +23,42 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [showFinalName, setShowFinalName] = useState(false);
   const [hasRandomized, setHasRandomized] = useState(false);
   const [frozenBoard, setFrozenBoard] = useState(null); // Holds empty board during randomization
+
+  const handlePlayAgain = async () => {
+    try {
+      if (!game) return;
+
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+
+      // Determine game type
+      // If current game is 'bot' type, play again as bot.
+      // If current game is 'public', create new public game.
+      // If current game type is missing, infer from joiner (if joiner is null or bot, assume bot?)
+      // Safer to default to 'public' if unknown, but try to preserve 'bot'.
+
+      const gameType = game.game_type || (game.joiner_id === null ? 'bot' : 'public');
+
+      const gameData = {
+        gameType: gameType,
+        variantId: game.variant_id,
+        boardSize: game.board_size,
+        // Add other necessary fields if any (e.g. custom cones if supported)
+      };
+
+      const endpoint = gameType === 'bot' ? `${backendUrl}/game-requests/bot` : `${backendUrl}/game-requests`;
+
+      console.log('Creating new game:', { endpoint, gameData });
+
+      const res = await axios.post(endpoint, gameData, { withCredentials: true });
+
+      // Navigate to the new game
+      navigate(`/game/${res.data.id}`);
+
+    } catch (err) {
+      console.error('Error creating new game:', err);
+      setError(err.response?.data?.error || 'Failed to start a new game. Please try again from the lobby.');
+    }
+  };
 
   // Consolidated initialization - single source of truth
   useEffect(() => {
@@ -404,12 +442,22 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       return (
         <div className="winner-banner">
           {message}
+          <div className="play-again-container">
+            <button className="play-again-button" onClick={handlePlayAgain}>
+              Play Again
+            </button>
+          </div>
         </div>
       );
     } else if (isDraw) {
       return (
         <div className="draw-banner">
           The game has ended in a draw.
+          <div className="play-again-container">
+            <button className="play-again-button" onClick={handlePlayAgain}>
+              Play Again
+            </button>
+          </div>
         </div>
       );
     }

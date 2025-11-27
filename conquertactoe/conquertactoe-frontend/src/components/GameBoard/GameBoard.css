@@ -488,3 +488,36 @@
     opacity: 1;
   }
 }
+
+/* Play Again Button */
+.play-again-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.play-again-button {
+  background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255, 94, 98, 0.4);
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.play-again-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 94, 98, 0.6);
+  background: linear-gradient(135deg, #ff9966 20%, #ff5e62 100%);
+}
+
+.play-again-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 10px rgba(255, 94, 98, 0.3);
+}

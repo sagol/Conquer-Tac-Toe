@@ -487,15 +487,21 @@ const updateUserStats = async (winnerId, loserId, isDraw = false) => {
         [winnerIdInt, loserIdInt]
       );
     } else {
-      console.log(`Updating stats: User ${winnerIdInt} won, User ${loserIdInt} lost`);
-      await pool.query(
-        'UPDATE Users SET wins = wins + 1 WHERE user_id = CAST($1 AS INTEGER)',
-        [winnerIdInt]
-      );
-      await pool.query(
-        'UPDATE Users SET losses = losses + 1 WHERE user_id = CAST($1 AS INTEGER)',
-        [loserIdInt]
-      );
+      if (!isNaN(winnerIdInt)) {
+        console.log(`Updating stats: User ${winnerIdInt} won`);
+        await pool.query(
+          'UPDATE Users SET wins = wins + 1 WHERE user_id = CAST($1 AS INTEGER)',
+          [winnerIdInt]
+        );
+      }
+
+      if (!isNaN(loserIdInt)) {
+        console.log(`Updating stats: User ${loserIdInt} lost`);
+        await pool.query(
+          'UPDATE Users SET losses = losses + 1 WHERE user_id = CAST($1 AS INTEGER)',
+          [loserIdInt]
+        );
+      }
     }
     console.log('User stats updated successfully');
   } catch (error) {
