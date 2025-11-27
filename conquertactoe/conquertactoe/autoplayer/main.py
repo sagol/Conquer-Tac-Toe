@@ -1,14 +1,16 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from bot_logic import HeuristicBot, ClassicTicTacToeBot, GomokuBot
 from db import init_db, log_move
 import uuid
 
+# Import new architecture components
+from core.bot_factory import BotFactory
+from bots.classic.minimax_bot import ClassicTicTacToeBot
+from bots.gomoku.advanced_bot import GomokuBot
+from bots.conquer.heuristic_bot import HeuristicBot
+
 app = FastAPI()
-conquer_bot = HeuristicBot()
-classic_bot = ClassicTicTacToeBot()
-gomoku_bot = GomokuBot()
 
 @app.on_event("startup")
 def startup_event():
@@ -17,6 +19,19 @@ def startup_event():
     except Exception as e:
         print(f"Warning: Failed to initialize ClickHouse: {e}")
         print("Continuing without database logging...")
+    
+    # Register bots
+    # Variant 1: Classic Tic-Tac-Toe
+    BotFactory.register_bot(1, ClassicTicTacToeBot())
+    
+    # Variant 2: Gomoku
+    BotFactory.register_bot(2, GomokuBot())
+    
+    # Variants 3-5: Conquer variants (using same heuristic bot for now)
+    conquer_bot = HeuristicBot()
+    BotFactory.register_bot(3, conquer_bot)
+    BotFactory.register_bot(4, conquer_bot)
+    BotFactory.register_bot(5, conquer_bot)
 
 class MoveRequest(BaseModel):
     game_id: Optional[str] = None
@@ -29,7 +44,7 @@ class MoveRequest(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"message": "Autoplayer Service is running"}
+    return {"message": "Autoplayer Service is running", "bots": BotFactory.list_bots()}
 
 @app.get("/health")
 def health_check():
@@ -38,28 +53,30 @@ def health_check():
 @app.post("/move")
 def get_move(request: MoveRequest):
     try:
-        # Select bot based on variant
-        # Variant 1: Classic Tic-Tac-Toe
-        # Variant 2: Gomoku
-        # Variants 3-5: Conquer variants
-        
         print(f"[Autoplayer] Received move request for variant {request.variant_id}")
         print(f"[Autoplayer] Board size: {len(request.board)}x{len(request.board[0]) if request.board else 0}")
-        print(f"[Autoplayer] Bot cones: {request.bot_cones}")
         
-        move = None
+        # Get appropriate bot from factory
+        bot = BotFactory.get_bot(request.variant_id)
+        
+        if not bot:
+            print(f"[Autoplayer] No bot registered for variant {request.variant_id}")
+            raise HTTPException(status_code=400, detail=f"No bot available for variant {request.variant_id}")
+            
+        print(f"[Autoplayer] Using bot: {bot.name}")
+        
+        # Prepare game state dictionary
+        game_state = {
+            "board": request.board,
+            "player_cones": request.player_cones,
+            "bot_cones": request.bot_cones,
+            "difficulty": request.difficulty,
+            "variant_id": request.variant_id,
+            "board_size": request.board_size
+        }
         
         try:
-            if request.variant_id == 1:
-                # Classic Tic-Tac-Toe
-                move = classic_bot.get_move(request.board, player=2)
-            elif request.variant_id == 2:
-                # Gomoku
-                board_size = request.board_size or 15
-                move = gomoku_bot.get_move(request.board, player=2, board_size=board_size)
-            else:
-                # Conquer-Tac-Toe variants (3, 4, 5)
-                move = conquer_bot.get_move(request.board, request.player_cones, request.bot_cones, request.difficulty)
+            move = bot.get_move(game_state)
         except Exception as bot_error:
             print(f"[Autoplayer] Bot logic error: {type(bot_error).__name__}: {bot_error}")
             import traceback
