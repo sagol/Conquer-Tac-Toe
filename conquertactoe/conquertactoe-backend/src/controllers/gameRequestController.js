@@ -17,7 +17,7 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
     const variant = await GameVariant.getById(variantId || 3);
     const boardSize = variant ? variant.board_size : 3;
 
-    const botMove = await getBotMove(
+    let botMove = await getBotMove(
       gameId,
       board,
       player1Cones,
