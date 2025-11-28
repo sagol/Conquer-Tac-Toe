@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Box, Typography, TextField, Button, Snackbar } from '@material-ui/core';
+import { Box, Typography, TextField, Button, Snackbar, Grid, Card, CardContent } from '@material-ui/core';
 import axios from 'axios';
+import '../Common/SharedModernStyles.css';
 import './Profile.css';
 
 const Profile = () => {
@@ -14,9 +15,17 @@ const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await axios.get(`${backendUrl}/current_user`, { withCredentials: true });
-        setUser(res.data);
-        setName(res.data.username);
+        // First get current user to get user_id and email
+        const userRes = await axios.get(`${backendUrl}/current_user`, { withCredentials: true });
+        const userId = userRes.data.user_id;
+        const userEmail = userRes.data.email;
+        setName(userRes.data.username);
+
+        // Then fetch detailed stats
+        const statsRes = await axios.get(`${backendUrl}/leaderboard/player/${userId}`, { withCredentials: true });
+
+        // Merge user data with stats data (stats API doesn't return email)
+        setUser({ ...statsRes.data, email: userEmail });
       } catch (error) {
         console.error('Error fetching profile:', error.response?.data || error.message);
       }
@@ -50,10 +59,11 @@ const Profile = () => {
   }
 
   return (
-    <Container className="profile-container">
-      <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" mt={5}>
-        <Box className="profile-box">
-          <Box className="profile-info">
+    <div className="profile-container">
+      <div className="profile-box">
+        <div className="profile-info">
+          <h3 className="modern-title">Your Stats</h3>
+          <div className="username-display" style={{ flexDirection: 'column', gap: '5px' }}>
             {editing ? (
               <Box className="edit-name">
                 <TextField
@@ -81,35 +91,65 @@ const Profile = () => {
                 </Box>
               </Box>
             ) : (
-              <Box className="profile-details">
-                <Typography variant="h5" className="username-display">{user.username}</Typography>
+              <Box className="profile-details" style={{ flexDirection: 'row', gap: '15px', marginBottom: '0' }}>
+                <Typography variant="h4" style={{ fontWeight: 'bold', color: 'white', margin: 0 }}>{user.username}</Typography>
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={() => setEditing(true)}
                   className="profile-button"
+                  size="small"
+                  style={{ minWidth: 'auto', padding: '5px 15px' }}
                 >
                   Edit
                 </Button>
               </Box>
             )}
-            <Typography variant="h6">{user.email}</Typography>
+            <Typography variant="subtitle1" style={{ color: 'rgba(255,255,255,0.8)', marginTop: '5px' }}>{user.email}</Typography>
+          </div>
+
+          <Box className="game-stats" mt={4}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Card className="stat-card" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', color: 'white' }}>
+                  <CardContent>
+                    <Typography variant="h5" gutterBottom style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', textAlign: 'center' }}>PvP Stats</Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}><Typography align="center">Games: {user.pvp_total_games || 0}</Typography></Grid>
+                      <Grid item xs={6}><Typography align="center">Wins: {user.pvp_wins || 0}</Typography></Grid>
+                      <Grid item xs={6}><Typography align="center">Losses: {user.pvp_losses || 0}</Typography></Grid>
+                      <Grid item xs={6}><Typography align="center">Draws: {user.pvp_draws || 0}</Typography></Grid>
+                      <Grid item xs={12}><Typography variant="h6" align="center" style={{ marginTop: '10px', color: '#a8e6cf', fontWeight: 'bold' }}>Win Rate: {((user.pvp_win_rate || 0) * 100).toFixed(1)}%</Typography></Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card className="stat-card" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', color: 'white' }}>
+                  <CardContent>
+                    <Typography variant="h5" gutterBottom style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', textAlign: 'center' }}>Bot Stats</Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}><Typography align="center">Games: {user.bot_total_games || 0}</Typography></Grid>
+                      <Grid item xs={6}><Typography align="center">Wins: {user.bot_wins || 0}</Typography></Grid>
+                      <Grid item xs={6}><Typography align="center">Losses: {user.bot_losses || 0}</Typography></Grid>
+                      <Grid item xs={6}><Typography align="center">Draws: {user.bot_draws || 0}</Typography></Grid>
+                      <Grid item xs={12}><Typography variant="h6" align="center" style={{ marginTop: '10px', color: '#ffaaa5', fontWeight: 'bold' }}>Win Rate: {((user.bot_win_rate || 0) * 100).toFixed(1)}%</Typography></Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
           </Box>
-          <Box className="game-stats">
-            <Typography variant="h6"><strong>Games Played:</strong> {user.games_played}</Typography>
-            <Typography variant="h6"><strong>Wins:</strong> {user.wins}</Typography>
-            <Typography variant="h6"><strong>Losses:</strong> {user.losses}</Typography>
-            <Typography variant="h6"><strong>Draws:</strong> {user.draws}</Typography>
-          </Box>
-        </Box>
-      </Box>
+        </div>
+      </div>
       <Snackbar
         open={open}
         autoHideDuration={6000}
         onClose={handleClose}
         message={error}
       />
-    </Container>
+    </div>
   );
 };
 

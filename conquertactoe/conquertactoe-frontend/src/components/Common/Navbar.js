@@ -21,6 +21,7 @@ const Navbar = () => {
           Conquer-Tac-Toe
         </Typography>
         <Button color="inherit" component={Link} to="/">Home</Button>
+        <Button color="inherit" component={Link} to="/rules">Rules</Button>
         <Button color="inherit" component={Link} to="/leaderboard">Leaderboard</Button>
         {user ? (
           <>

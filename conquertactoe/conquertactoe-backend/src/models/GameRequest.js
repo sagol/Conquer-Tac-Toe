@@ -50,10 +50,25 @@ class GameRequest {
     return result.rows;
   }
 
-  static async join(requestId, joinerId) {
+  static async getLobbyGames(userId, page = 1, limit = 50) {
+    const offset = (page - 1) * limit;
     const result = await pool.query(
-      'UPDATE GameRequests SET joiner_id = $1, status = $2 WHERE id = $3 RETURNING *',
-      [joinerId, 'joined', requestId]
+      `SELECT gr.*, u.username as creator_name, gv.name as variant_name, gv.display_name as variant_display_name
+       FROM GameRequests gr
+       JOIN Users u ON gr.creator_id = u.user_id
+       LEFT JOIN GameVariants gv ON gr.variant_id = gv.variant_id
+       WHERE (gr.creator_id = $1 OR gr.joiner_id = $1) OR (gr.status = 'pending')
+       ORDER BY gr.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
+    return result.rows;
+  }
+
+  static async join(requestId, joinerId, activePlayer) {
+    const result = await pool.query(
+      'UPDATE GameRequests SET joiner_id = $1, status = $2, active_player = $3 WHERE id = $4 RETURNING *',
+      [joinerId, 'joined', activePlayer, requestId]
     );
     return result.rows[0];
   }
@@ -75,10 +90,12 @@ class GameRequest {
   }
 
   static async updateBoard(gameId, board, activePlayer, player1Cones, player2Cones) {
+    console.log(`[GameRequest] updateBoard called. ID:${gameId} Active:${activePlayer}`);
     const result = await pool.query(
       'UPDATE GameRequests SET board = $1, active_player = $2, player1_cones = $3, player2_cones = $4 WHERE id = $5 RETURNING *',
       [JSON.stringify(board), activePlayer, JSON.stringify(player1Cones), JSON.stringify(player2Cones), gameId]
     );
+    console.log(`[GameRequest] updateBoard result Active:${result.rows[0]?.active_player}`);
     return result.rows[0];
   }
 
@@ -92,11 +109,11 @@ class GameRequest {
 
   static async getTotalGameCount(userId) {
     const result = await pool.query(
-      `SELECT COUNT(*) FROM GameRequests WHERE (creator_id = $1 OR joiner_id = $1)`,
+      `SELECT COUNT(*) FROM GameRequests WHERE (creator_id = $1 OR joiner_id = $1) OR (status = 'pending')`,
       [userId]
     );
     return parseInt(result.rows[0].count, 10);
-  }  
+  }
 }
 
 module.exports = GameRequest;

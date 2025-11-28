@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <users>
+        <default>
+            <!-- Network access configuration -->
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <!-- Password (set via environment variable CLICKHOUSE_PASSWORD) -->
+            <!-- If CLICKHOUSE_PASSWORD is empty, passwordless access is allowed -->
+            <password></password>
+            <!-- Default profile and quota -->
+            <profile>default</profile>
+            <quota>default</quota>
+        </default>
+    </users>
+</clickhouse>

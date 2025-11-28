@@ -1,229 +1,659 @@
-# Conquer-Tac-Toe
+# Conquer-Tac-Toe 🎮
+
+A modern, strategic multiplayer game platform featuring multiple tic-tac-toe variants with real-time gameplay, AI opponents, and competitive leaderboards.
+
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## 🚀 Overview
-Conquer-Tac-Toe is a strategic twist on the classic tic-tac-toe game, where players use cones of different sizes to outmaneuver their opponents. This project combines real-time multiplayer gaming with a modern tech stack to create an engaging and competitive experience.
 
-### Key Features
-- Real-time multiplayer gaming with Socket.io
-- OAuth-based authentication with Google
-- Leaderboard to track player performance
-- Responsive and user-friendly frontend with Material-UI
-- Backend with Express.js and PostgreSQL for data storage
-
-### Who This Project Is For
-- Gamers who enjoy strategic games
-- Developers interested in real-time multiplayer games
-- Anyone looking to contribute to an open-source project
+Conquer-Tac-Toe is a strategic evolution of classic tic-tac-toe, featuring:
+- **Multiple Game Variants**: Classic Tic-Tac-Toe, Gomoku (15x15), and Conquer variants with sized cones
+- **Real-time Multiplayer**: Play against friends or random opponents with Socket.io
+- **AI Opponents**: Advanced bot system with variant-specific strategies
+- **Competitive Leaderboards**: Track your performance across PvP and bot games
+- **Modern UI**: Responsive glassmorphism design with smooth animations
 
 ## ✨ Features
-- 🎮 Real-time multiplayer gaming
-- 🔒 OAuth-based authentication
-- 🏆 Leaderboard to track player performance
-- 🌐 Responsive and user-friendly frontend
-- 💻 Modern tech stack with Node.js, Express.js, and PostgreSQL
+
+- 🎯 **5 Game Variants**
+  - Classic Tic-Tac-Toe (3x3)
+  - Gomoku / Five-in-a-Row (15x15)
+  - Conquer Classic, Conquer Chaos, and Conquer Custom
+- 🤖 **Advanced AI System**
+  - Minimax algorithm for Classic and Gomoku
+  - Pattern recognition and heuristic evaluation
+  - Variant-specific bot strategies
+- 🔒 **Authentication**
+  - Google OAuth integration
+  - Dev login for testing
+- � **Player Statistics**
+  - Separate PvP and Bot leaderboards
+  - Detailed player profiles
+  - Win rate tracking
+- 🌐 **Real-time Gameplay**
+  - Socket.io for instant updates
+  - Live game requests and moves
+- � **Game Analytics**
+  - ClickHouse for move logging
+  - Performance metrics
 
 ## 🛠️ Tech Stack
-- **Programming Language:** JavaScript
-- **Frontend:** React, Material-UI, Redux, Socket.io-client
-- **Backend:** Node.js, Express.js, Socket.io, Passport.js, PostgreSQL
-- **Database:** PostgreSQL
-- **Authentication:** OAuth with Google
-- **Build Tools:** Docker, Nodemon, Webpack
 
-## 📦 Installation
+### Frontend
+- React 18 with Hooks
+- Redux for state management
+- Material-UI for components
+- Socket.io-client for real-time updates
+- Axios for API calls
 
-### Prerequisites
-- Node.js (v14 or later)
-- Docker (if using Docker setup)
-- PostgreSQL (if using Docker setup)
+### Backend
+- Node.js with Express.js
+- PostgreSQL for game data
+- Socket.io for real-time communication
+- Passport.js for OAuth authentication
 
-### Quick Start
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/conquertactoe.git
-   cd conquertactoe
-   ```
+### AI System
+- Python 3.11 with FastAPI
+- ClickHouse for move analytics
+- Variant-specific bot implementations
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+### Infrastructure
+- Docker & Docker Compose
+- Multi-container architecture
+- Network isolation
 
-3. Start the backend:
-   ```bash
-   npm run dev
-   ```
+## 📦 Prerequisites
 
-4. Start the frontend:
-   ```bash
-   npm start
-   ```
+Before installation, ensure you have:
 
-### Alternative Installation Methods
-- **Using Docker:**
-  ```bash
-  docker-compose up --build
-  ```
+- **Docker Desktop** (v20.10 or later)
+- **Docker Compose** (v2.0 or later)
+- **Git** for cloning the repository
+- **Google OAuth Credentials** (for production)
 
-## 🎯 Usage
+### System Requirements
+- **OS**: macOS, Linux, or Windows with WSL2
+- **RAM**: Minimum 4GB, recommended 8GB
+- **Disk Space**: ~2GB for Docker images
 
-### Basic Usage
-```javascript
-// Example of making a game request
-axios.post('/game-requests', {
-  gameType: 'classic'
-})
-.then(response => {
-  console.log('Game request created:', response.data);
-})
-.catch(error => {
-  console.error('Error creating game request:', error);
-});
+## 🚀 Installation & Setup
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/yourusername/Conquer-Tac-Toe.git
+cd Conquer-Tac-Toe/conquertactoe
 ```
 
-### Advanced Usage
-- **Joining a Game:**
-  ```javascript
-  axios.post('/game-requests/:requestId/join', {
-    gameType: 'classic'
-  })
-  .then(response => {
-    console.log('Joined game:', response.data);
-  })
-  .catch(error => {
-    console.error('Error joining game:', error);
-  });
-  ```
+### 2. Set Up Docker Network
+
+Create a shared Docker network for all services:
+
+```bash
+docker network create conquer-network
+```
+
+### 3. Configure Environment Variables
+
+#### Backend Configuration
+
+Create `conquertactoe-backend/.env` from the example:
+
+```bash
+cd conquertactoe-backend
+cp .env-example .env
+```
+
+Edit `.env` with your settings:
+
+```env
+# Database Configuration
+POSTGRES_DB=conquertactoe
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password_here
+POSTGRES_HOST=conquertactoe_db
+POSTGRES_PORT=5432
+
+# Google OAuth (Get from Google Cloud Console)
+GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Session Security
+SESSION_SECRET=your_random_session_secret_min_32_chars
+
+# Server Configuration
+PORT=3000
+CLIENT_URL=http://localhost:3001
+```
+
+#### Frontend Configuration
+
+Create `conquertactoe-frontend/.env`:
+
+```bash
+cd ../conquertactoe-frontend
+cp .env-example .env
+```
+
+Edit `.env`:
+
+```env
+REACT_APP_BACKEND_URL=http://localhost:3000
+```
+
+#### Database Configuration
+
+Create `conquertactoe-db/.env`:
+
+```bash
+cd ../conquertactoe-db
+cp .env-example .env
+```
+
+Edit `.env` (must match backend POSTGRES_* values):
+
+```env
+POSTGRES_DB=conquertactoe
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password_here
+```
+
+#### Autoplayer (AI) Configuration
+
+Create `conquertactoe/autoplayer/.env`:
+
+```bash
+cd ../conquertactoe/autoplayer
+cp .env-example .env
+```
+
+Edit `.env`:
+
+```env
+# ClickHouse Configuration
+CLICKHOUSE_HOST=clickhouse
+CLICKHOUSE_PORT=9000
+CLICKHOUSE_DB=default
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=
+
+# Leave password empty for development
+# For production, set a strong password
+```
+
+#### ClickHouse User Configuration
+
+Create `conquertactoe/autoplayer/clickhouse-config/users.xml`:
+
+```bash
+cd clickhouse-config
+cp users-example.xml users.xml
+```
+
+For development, the default configuration in `users-example.xml` is sufficient.
+
+### 4. Start All Services
+
+From the `conquertactoe` directory, start each service:
+
+#### Start Database
+
+```bash
+cd conquertactoe-db
+docker-compose up --build -d
+cd ..
+```
+
+#### Start Backend
+
+```bash
+cd conquertactoe-backend
+docker-compose up --build -d
+cd ..
+```
+
+#### Start Frontend
+
+```bash
+cd conquertactoe-frontend
+docker-compose up --build -d
+cd ..
+```
+
+#### Start Autoplayer (AI System)
+
+```bash
+cd conquertactoe/autoplayer
+docker-compose up --build -d
+cd ../..
+```
+
+### 5. Verify All Containers
+
+Check that all 5 containers are running:
+
+```bash
+docker ps --filter "name=conquertactoe"
+```
+
+Expected output:
+```
+NAMES                      STATUS          PORTS
+conquertactoe_db           Up X seconds    0.0.0.0:5433->5432/tcp
+conquertactoe_backend      Up X seconds    0.0.0.0:3000->3000/tcp
+conquertactoe_frontend     Up X seconds    0.0.0.0:3001->3000/tcp
+conquertactoe_autoplayer   Up X seconds    0.0.0.0:8000->8000/tcp
+conquertactoe_clickhouse   Up X seconds    0.0.0.0:8123->8123/tcp, 0.0.0.0:9000->9000/tcp
+```
+
+### 6. Access the Application
+
+Open your browser and navigate to:
+
+**http://localhost:3001**
+
+You should see the Conquer-Tac-Toe login page!
+
+## 🔧 Container Details
+
+### Database (PostgreSQL)
+- **Container**: `conquertactoe_db`
+- **Port**: `5433:5432`
+- **Purpose**: Stores game data, user accounts, leaderboards
+- **Location**: `conquertactoe-db/`
+
+### Backend (Node.js/Express)
+- **Container**: `conquertactoe_backend`
+- **Port**: `3000:3000`
+- **Purpose**: REST API, authentication, game logic
+- **Location**: `conquertactoe-backend/`
+
+### Frontend (React)
+- **Container**: `conquertactoe_frontend`
+- **Port**: `3001:3000`
+- **Purpose**: User interface, client-side game board
+- **Location**: `conquertactoe-frontend/`
+
+### Autoplayer (Python/FastAPI)
+- **Container**: `conquertactoe_autoplayer`
+- **Port**: `8000:8000`
+- **Purpose**: AI bot system for all game variants
+- **Location**: `conquertactoe/autoplayer/`
+
+### ClickHouse
+- **Container**: `conquertactoe_clickhouse`
+- **Ports**: `8123:8123`, `9000:9000`
+- **Purpose**: Analytics database for game move logging
+- **Managed by**: Autoplayer service
+
+## 🔄 Redeployment After Updates
+
+### Update All Containers
+
+When you pull new code changes, rebuild and restart all services:
+
+```bash
+cd /path/to/Conquer-Tac-Toe/conquertactoe
+
+# Frontend
+cd conquertactoe-frontend
+docker-compose down && docker-compose up --build -d
+cd ..
+
+# Backend
+cd conquertactoe-backend
+docker-compose down && docker-compose up --build -d
+cd ..
+
+# Autoplayer
+cd conquertactoe/autoplayer
+docker-compose down && docker-compose up --build -d
+cd ../..
+
+# Database (only if schema changed)
+cd conquertactoe-db
+docker-compose down && docker-compose up --build -d
+cd ..
+```
+
+### Update Single Container
+
+To update only one service (e.g., frontend):
+
+```bash
+cd conquertactoe-frontend
+docker-compose down
+docker-compose up --build -d
+```
+
+### Database Migrations
+
+If database schema changes are included in the update:
+
+```bash
+cd conquertactoe-db
+docker-compose down -v  # Remove volumes
+docker-compose up --build -d
+```
+
+⚠️ **Warning**: This will delete all data! Backup first if needed.
 
 ## 📁 Project Structure
+
 ```
-conquertactoe/
-├── backend/
-│   ├── src/
-│   │   ├── controllers/
-│   │   ├── models/
-│   │   ├── routes/
-│   │   ├── config/
-│   │   ├── middleware/
-│   │   ├── app.js
-│   │   ├── server.js
-│   │   └── socket.js
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   └── package.json
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── redux/
-│   │   ├── App.js
-│   │   ├── index.js
-│   │   └── theme.js
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   └── package.json
-├── db/
-│   ├── init-db/
-│   │   ├── init-db.sh
-│   │   └── init.sql
-│   ├── Dockerfile
-│   └── docker-compose.yml
+Conquer-Tac-Toe/
+├── conquertactoe/
+│   ├── conquertactoe-backend/          # Node.js Backend
+│   │   ├── src/
+│   │   │   ├── controllers/            # API controllers
+│   │   │   ├── models/                 # Database models
+│   │   │   ├── routes/                 # Express routes
+│   │   │   ├── utils/                  # Game logic utilities
+│   │   │   ├── config/                 # Configuration
+│   │   │   └── middleware/             # Auth & validation
+│   │   ├── .env-example
+│   │   ├── Dockerfile
+│   │   ├── docker-compose.yml
+│   │   └── package.json
+│   │
+│   ├── conquertactoe-frontend/         # React Frontend
+│   │   ├── public/
+│   │   ├── src/
+│   │   │   ├── components/             # React components
+│   │   │   │   ├── Auth/               # Login components
+│   │   │   │   ├── GameBoard/          # Game UI
+│   │   │   │   ├── Lobby/              # Game lobby
+│   │   │   │   ├── Leaderboard/        # Rankings
+│   │   │   │   └── Profile/            # User profiles
+│   │   │   ├── redux/                  # State management
+│   │   │   ├── App.js
+│   │   │   └── index.js
+│   │   ├── .env-example
+│   │   ├── Dockerfile
+│   │   ├── docker-compose.yml
+│   │   └── package.json
+│   │
+│   ├── conquertactoe-db/               # PostgreSQL Database
+│   │   ├── init-db/
+│   │   │   ├── init.sql                # Schema & seed data
+│   │   │   └── init-db.sh              # Initialization script
+│   │   ├── .env-example
+│   │   ├── Dockerfile
+│   │   └── docker-compose.yml
+│   │
+│   └── conquertactoe/autoplayer/       # Python AI System
+│       ├── bots/                       # Bot implementations
+│       │   ├── classic/                # Classic TicTacToe bot
+│       │   ├── gomoku/                 # Gomoku bot
+│       │   └── conquer/                # Conquer variants bot
+│       ├── core/                       # Bot framework
+│       │   ├── bot_interface.py        # IBot interface
+│       │   └── bot_factory.py          # Bot registry
+│       ├── clickhouse-config/
+│       │   ├── users.xml               # ClickHouse config
+│       │   └── users-example.xml       # Example config
+│       ├── .env-example
+│       ├── main.py                     # FastAPI application
+│       ├── db.py                       # ClickHouse client
+│       ├── requirements.txt
+│       ├── Dockerfile
+│       └── docker-compose.yml
+│
 ├── README.md
-└── package.json
+└── TEST_SCENARIOS.md
 ```
 
-## 🔧 Configuration
-- **Environment Variables:**
-  - `.env` file in the root directory
-  - Example:
-    ```env
-    POSTGRES_DB=conquertactoe
-    POSTGRES_USER=youruser
-    POSTGRES_PASSWORD=yourpassword
-    POSTGRES_HOST=localhost
-    POSTGRES_PORT=5432
-    GOOGLE_CLIENT_ID=your_google_client_id
-    GOOGLE_CLIENT_SECRET=your_google_client_secret
-    SESSION_SECRET=your_session_secret
-    PORT=3000
-    CLIENT_URL=http://localhost:3001
-    ```
+## 🎮 Game Variants
+
+### 1. Classic Tic-Tac-Toe
+- **Board**: 3x3
+- **Win Condition**: 3 in a row
+- **Special Rules**: No overwriting
+
+### 2. Gomoku (Five-in-a-Row)
+- **Board**: 15x15 (customizable)
+- **Win Condition**: 5 in a row
+- **Special Rules**: No size mechanics
+
+### 3. Conquer Classic
+- **Board**: 3x3
+- **Win Condition**: 3 in a row
+- **Cones**: 3 small, 3 medium, 3 large per player
+- **Special Rules**: Larger cones can overwrite smaller ones
+
+### 4. Conquer Chaos
+- **Board**: 3x3
+- **Cones**: 3 small, 3 medium, 2 large per player
+- **Special Rules**: Asymmetric cone distribution
+
+### 5. Conquer Custom
+- **Board**: 3x3
+- **Cones**: Customizable (0-5 of each size)
+- **Special Rules**: Player-defined cone inventory
+
+## 🔐 Authentication Setup
+
+### Google OAuth Configuration
+
+1. **Create Google Cloud Project**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select existing
+
+2. **Enable OAuth2 API**
+   - Navigate to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "OAuth client ID"
+   - Choose "Web application"
+
+3. **Configure OAuth Consent Screen**
+   - Add app name, logo, and support email
+   - Add authorized domains: `localhost` (for dev)
+
+4. **Set Redirect URIs**
+   - Authorized JavaScript origins: `http://localhost:3001`
+   - Authorized redirect URIs: `http://localhost:3000/auth/google/callback`
+
+5. **Get Credentials**
+   - Copy Client ID and Client Secret
+   - Add to `conquertactoe-backend/.env`
+
+### Dev Login (For Testing)
+
+The app includes a dev login feature that bypasses OAuth. To enable/disable:
+
+1. Access the database:
+   ```bash
+   docker exec -it conquertactoe_db psql -U postgres -d conquertactoe
+   ```
+
+2. Toggle dev login:
+   ```sql
+   -- Enable
+   UPDATE "AppConfig" SET config_value = 'true' WHERE config_key = 'ENABLE_DEV_LOGIN';
+   
+   -- Disable
+   UPDATE "AppConfig" SET config_value = 'false' WHERE config_key = 'ENABLE_DEV_LOGIN';
+   ```
+
+3. Exit: `\q`
+
+## � Troubleshooting
+
+### Containers Won't Start
+
+**Check Docker network exists:**
+```bash
+docker network ls | grep conquer-network
+```
+
+If not found, create it:
+```bash
+docker network create conquer-network
+```
+
+**Check port conflicts:**
+```bash
+# Check if ports are already in use
+lsof -i :3000  # Backend
+lsof -i :3001  # Frontend
+lsof -i :5433  # Database
+lsof -i :8000  # Autoplayer
+```
+
+### Database Connection Errors
+
+**Verify database is running:**
+```bash
+docker logs conquertactoe_db
+```
+
+**Test connection:**
+```bash
+docker exec -it conquertactoe_db psql -U postgres -d conquertactoe -c "SELECT 1;"
+```
+
+### Frontend Can't Connect to Backend
+
+**Check CORS settings** in `conquertactoe-backend/src/config/corsConfig.js`
+
+**Verify environment variables:**
+```bash
+docker exec conquertactoe_frontend printenv | grep REACT_APP_BACKEND_URL
+```
+
+### AI Bot Not Responding
+
+**Check autoplayer logs:**
+```bash
+docker logs conquertactoe_autoplayer --tail 50
+```
+
+**Test autoplayer health:**
+```bash
+curl http://localhost:8000/health
+```
+
+Expected response: `{"status":"ok"}`
+
+### ClickHouse Connection Issues
+
+**Check ClickHouse is running:**
+```bash
+docker logs conquertactoe_clickhouse --tail 50
+```
+
+**Verify data is being logged:**
+```bash
+docker exec conquertactoe_clickhouse clickhouse-client --query "SELECT COUNT(*) FROM game_moves"
+```
+
+## 🧪 Testing
+
+### Manual Testing
+
+1. **Create a game**: Click "Create Game Request" in the Lobby
+2. **Play vs Bot**: Select any variant and "Play vs AI Bot"
+3. **Check Leaderboard**: Navigate to Leaderboard after playing games
+4. **View Profile**: Check your stats in the Profile section
+
+### API Testing
+
+Test backend endpoints:
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Public config
+curl http://localhost:3000/api/config/public
+
+# Active games (requires auth)
+curl http://localhost:3000/game-requests -H "Cookie: your_session_cookie"
+```
+
+### Bot Testing
+
+Test AI system directly:
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Get bot move (POST request with game state)
+curl -X POST http://localhost:8000/move \
+  -H "Content-Type: application/json" \
+  -d '{"variant_id": 1, "board": [[null,null,null],[null,null,null],[null,null,null]], "player_cones": [3,3,3], "bot_cones": [3,3,3]}'
+```
+
+## 📊 Monitoring & Logs
+
+### View Container Logs
+
+```bash
+# Backend
+docker logs -f conquertactoe_backend
+
+# Frontend
+docker logs -f conquertactoe_frontend
+
+# Autoplayer
+docker logs -f conquertactoe_autoplayer
+
+# Database
+docker logs -f conquertactoe_db
+
+# ClickHouse
+docker logs -f conquertactoe_clickhouse
+```
+
+### Check Container Status
+
+```bash
+docker ps --filter "name=conquertactoe" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+```
+
+### Resource Usage
+
+```bash
+docker stats --filter "name=conquertactoe"
+```
 
 ## 🤝 Contributing
-- Fork the repository
-- Create a new branch for your feature or bug fix
-- Make your changes and commit them
-- Push your changes to your fork
-- Create a pull request
 
-### Development Setup
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/conquertactoe.git
-   cd conquertactoe
-   ```
+Contributions are welcome! Please follow these guidelines:
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes**
+4. **Test thoroughly**
+5. **Commit**: `git commit -m 'Add amazing feature'`
+6. **Push**: `git push origin feature/amazing-feature`
+7. **Open a Pull Request**
 
-3. Start the backend:
-   ```bash
-   npm run dev
-   ```
+### Development Guidelines
 
-4. Start the frontend:
-   ```bash
-   npm start
-   ```
-
-### Code Style Guidelines
-- Follow the Airbnb JavaScript style guide
-- Use consistent indentation and spacing
-- Write clear and concise comments
-
-### Pull Request Process
-- Ensure your code is well-tested
-- Write clear and concise commit messages
-- Address any feedback from reviewers
+- Follow existing code style (ESLint/Prettier for JS, Black for Python)
+- Write clear commit messages
+- Add tests for new features
+- Update documentation
+- Ensure all containers build successfully
 
 ## 📝 License
+
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👥 Authors & Contributors
-- **Taras Baranyuk** - [@yourusername](https://github.com/yourusername)
-- **Contributors:** [List of contributors]
+## 👥 Authors
 
-## 🐛 Issues & Support
-- Report issues on the [GitHub Issues page](https://github.com/yourusername/conquertactoe/issues)
-- For support, contact [yourusername](mailto:yourusername@example.com)
+- **Taras Baranyuk** - Initial work
 
-## 🗺️ Roadmap
-- **Planned Features:**
-  - Implement more game types
-  - Add user profiles and customization
-  - Improve leaderboard UI
-- **Known Issues:**
-  - [Issue 1](https://github.com/yourusername/conquertactoe/issues/1)
-  - [Issue 2](https://github.com/yourusername/conquertactoe/issues/2)
-- **Future Improvements:**
-  - Add mobile support
-  - Improve performance and scalability
+## 🙏 Acknowledgments
+
+- Material-UI for the component library
+- Socket.io for real-time communication
+- FastAPI for the Python backend framework
+- All contributors and players!
 
 ---
 
-**Badges:**
-[![Build Status](https://travis-ci.com/yourusername/conquertactoe.svg?branch=main)](https://travis-ci.com/yourusername/conquertactoe)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![GitHub stars](https://img.shields.io/github/stars/yourusername/conquertactoe?style=social)](https://github.com/yourusername/conquertactoe)
-[![GitHub forks](https://img.shields.io/github/forks/yourusername/conquertactoe?style=social)](https://github.com/yourusername/conquertactoe)
+**Need Help?** Open an issue on [GitHub](https://github.com/yourusername/Conquer-Tac-Toe/issues)
 
-**Additional Guidelines:**
-- Use modern markdown features (badges, collapsible sections, etc.)
-- Include practical, working code examples
-- Make it visually appealing with appropriate emojis
-- Ensure all code snippets are syntactically correct for JavaScript
-- Include relevant badges (build status, version, license, etc.)
-- Make installation instructions copy-pasteable
-- Focus on clarity and developer experience
+**Questions?** Contact: yourusername@example.com

@@ -1,0 +1,12 @@
+{
+    "name": "ui-tests",
+    "version": "1.0.0",
+    "description": "UI automation tests for Conquer-Tac-Toe",
+    "devDependencies": {
+        "@playwright/test": "^1.40.0"
+    },
+    "scripts": {
+        "test:ui": "playwright test ui-dropdown-test.js --headed",
+        "test:ui:headless": "playwright test ui-dropdown-test.js"
+    }
+}

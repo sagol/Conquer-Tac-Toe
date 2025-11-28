@@ -1,0 +1,174 @@
+/* CreateGameModal Styling */
+
+.create-game-modal .MuiDialog-paper {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.create-game-modal .modal-title {
+    color: white;
+    font-weight: 700;
+    text-align: center;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    padding: 24px;
+}
+
+.create-game-modal .modal-content {
+    padding: 30px;
+    color: white;
+}
+
+.create-game-modal .form-control {
+    margin: 16px 0;
+}
+
+.create-game-modal .MuiInputLabel-root {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.create-game-modal .MuiInputLabel-root.Mui-focused {
+    color: rgba(78, 205, 196, 0.9);
+}
+
+.create-game-modal .MuiSelect-root,
+.create-game-modal .MuiInputBase-root {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    color: white;
+}
+
+.create-game-modal .MuiSelect-icon {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.create-game-modal .MuiMenuItem-root {
+    color: #2c3e50;
+}
+
+.create-game-modal .variant-description {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 16px 0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.create-game-modal .variant-description .MuiTypography-body2 {
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 8px;
+}
+
+.create-game-modal .variant-description .MuiTypography-caption {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.create-game-modal .custom-cones-container {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 16px 0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.create-game-modal .custom-cones-container .MuiTypography-subtitle2 {
+    color: white;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.create-game-modal .cone-input {
+    flex: 1;
+}
+
+.create-game-modal .cone-input .MuiInputBase-root {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.create-game-modal .cone-input .MuiInputLabel-root {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.create-game-modal .cone-input input {
+    color: white;
+    text-align: center;
+}
+
+.create-game-modal .game-type-control {
+    margin: 20px 0;
+}
+
+.create-game-modal .game-type-control .MuiTypography-subtitle1 {
+    color: white;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.create-game-modal .game-type-control .MuiFormControlLabel-label {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.create-game-modal .game-type-control .MuiRadio-root {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.create-game-modal .game-type-control .MuiRadio-root.Mui-checked {
+    color: rgba(78, 205, 196, 0.9);
+}
+
+.create-game-modal .modal-actions {
+    border-top: 2px solid rgba(255, 255, 255, 0.2);
+    padding: 20px 24px;
+}
+
+.create-game-modal .cancel-button {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.create-game-modal .cancel-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.create-game-modal .create-button {
+    background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
+    color: #2c3e50;
+    font-weight: 600;
+    padding: 10px 28px;
+    border-radius: 25px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(255, 126, 95, 0.4);
+    transition: all 0.3s ease;
+}
+
+.create-game-modal .create-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 126, 95, 0.6);
+}
+
+.create-game-modal .create-button:disabled {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.5);
+    box-shadow: none;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .create-game-modal .custom-cones-container {
+        padding: 12px;
+    }
+
+    .create-game-modal .custom-cones-container>div {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .create-game-modal .cone-input {
+        width: 100%;
+    }
+}

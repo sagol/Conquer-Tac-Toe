@@ -4,6 +4,7 @@ const gameRequestController = require('../controllers/gameRequestController');
 const { ensureAuthenticated } = require('../middleware/auth');
 
 router.post('/game-requests', ensureAuthenticated, gameRequestController.createGameRequest);
+router.post('/game-requests/bot', ensureAuthenticated, gameRequestController.createBotGameRequest);
 router.get('/game-requests', ensureAuthenticated, gameRequestController.getActiveGameRequests);
 router.post('/game-requests/:requestId/join', ensureAuthenticated, gameRequestController.joinGameRequest);
 router.delete('/game-requests/:requestId', ensureAuthenticated, gameRequestController.cancelGameRequest);

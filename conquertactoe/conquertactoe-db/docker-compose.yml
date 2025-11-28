@@ -19,7 +19,7 @@ services:
 
 networks:
   conquer-network:
-    name: conquer-network
+    external: true
   
 volumes:
   pgdata:
