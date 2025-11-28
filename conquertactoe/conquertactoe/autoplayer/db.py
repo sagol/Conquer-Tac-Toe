@@ -3,9 +3,19 @@ import os
 import time
 
 CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "clickhouse")
+CLICKHOUSE_PORT = int(os.getenv("CLICKHOUSE_PORT", "9000"))
+CLICKHOUSE_DB = os.getenv("CLICKHOUSE_DB", "default")
+CLICKHOUSE_USER = os.getenv("CLICKHOUSE_USER", "default")
+CLICKHOUSE_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "")
 
 def get_client():
-    return Client(host=CLICKHOUSE_HOST)
+    return Client(
+        host=CLICKHOUSE_HOST,
+        port=CLICKHOUSE_PORT,
+        database=CLICKHOUSE_DB,
+        user=CLICKHOUSE_USER,
+        password=CLICKHOUSE_PASSWORD
+    )
 
 def init_db():
     client = get_client()

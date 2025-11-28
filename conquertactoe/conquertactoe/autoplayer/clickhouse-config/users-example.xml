@@ -2,11 +2,12 @@
 <clickhouse>
     <users>
         <default>
-            <!-- Allow access from any network -->
+            <!-- Network access configuration -->
             <networks>
                 <ip>::/0</ip>
             </networks>
-            <!-- Empty password (allow passwordless access) -->
+            <!-- Password (set via environment variable CLICKHOUSE_PASSWORD) -->
+            <!-- If CLICKHOUSE_PASSWORD is empty, passwordless access is allowed -->
             <password></password>
             <!-- Default profile and quota -->
             <profile>default</profile>
