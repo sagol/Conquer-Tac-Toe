@@ -381,10 +381,10 @@ None currently tracked
 ## 📞 Support & Contact
 
 ### Issues
-Report bugs via [GitHub Issues](https://github.com/yourusername/Conquer-Tac-Toe/issues)
+Report bugs via [GitHub Issues](https://github.com/sagol/Conquer-Tac-Toe/issues)
 
 ### Questions
-Contact: yourusername@example.com
+Contact: support@gurudo.com
 
 ### Documentation
 - [README.md](README.md) - Installation & Setup
