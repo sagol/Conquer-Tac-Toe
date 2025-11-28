@@ -81,7 +81,7 @@ Before installation, ensure you have:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/Conquer-Tac-Toe.git
+git clone https://github.com/sagol/Conquer-Tac-Toe.git
 cd Conquer-Tac-Toe/conquertactoe
 ```
 
@@ -654,6 +654,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Need Help?** Open an issue on [GitHub](https://github.com/yourusername/Conquer-Tac-Toe/issues)
+**Need Help?** Open an issue on [GitHub](https://github.com/sagol/Conquer-Tac-Toe/issues)
 
-**Questions?** Contact: yourusername@example.com
+**Questions?** Contact: support@gurudo.com
