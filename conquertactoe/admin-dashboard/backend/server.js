@@ -74,6 +74,7 @@ app.use('/admin/users', require('./routes/users'));
 app.use('/admin/games', require('./routes/games'));
 app.use('/admin/analytics', require('./routes/analytics'));
 app.use('/admin/system', require('./routes/system'));
+app.use('/admin/settings', require('./routes/settings'));
 
 // Error Handling
 app.use((err, req, res, next) => {

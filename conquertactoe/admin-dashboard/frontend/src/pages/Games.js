@@ -19,12 +19,23 @@ const Games = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to cancel this game?')) {
+        if (window.confirm('Are you sure you want to delete this game? This action cannot be undone.')) {
             try {
                 await api.delete(`/games/${id}`);
                 fetchGames();
             } catch (error) {
                 console.error('Error deleting game:', error);
+            }
+        }
+    };
+
+    const handleReset = async (id) => {
+        if (window.confirm('Are you sure you want to reset this game? This will clear the board and restart the match.')) {
+            try {
+                await api.post(`/games/${id}/reset`);
+                fetchGames();
+            } catch (error) {
+                console.error('Error resetting game:', error);
             }
         }
     };
@@ -57,16 +68,30 @@ const Games = () => {
                     <TableBody>
                         {games.map((game) => (
                             <TableRow key={game.id}>
-                                <TableCell>{game.id.substring(0, 8)}...</TableCell>
+                                <TableCell>{String(game.id)}</TableCell>
                                 <TableCell>{game.creator_name}</TableCell>
                                 <TableCell>{game.joiner_name || '-'}</TableCell>
                                 <TableCell>
                                     <Chip label={game.status} color={getStatusColor(game.status)} size="small" />
                                 </TableCell>
                                 <TableCell>{game.variant_id}</TableCell>
-                                <TableCell>{new Date(game.updated_at).toLocaleString()}</TableCell>
+                                <TableCell>{new Date(game.created_at).toLocaleString()}</TableCell>
                                 <TableCell align="right">
-                                    <Button color="error" onClick={() => handleDelete(game.id)}>Cancel</Button>
+                                    <Button
+                                        color="warning"
+                                        size="small"
+                                        sx={{ mr: 1 }}
+                                        onClick={() => handleReset(game.id)}
+                                    >
+                                        Reset
+                                    </Button>
+                                    <Button
+                                        color="error"
+                                        size="small"
+                                        onClick={() => handleDelete(game.id)}
+                                    >
+                                        Delete
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}

@@ -19,12 +19,14 @@ router.get('/', async (req, res) => {
                 u.username, 
                 u.email, 
                 u.created_at,
-                u.last_login,
+                u.is_banned,
+                u.ban_expires_at,
+                u.ban_reason,
                 COALESCE(s.wins, 0) as wins,
                 COALESCE(s.losses, 0) as losses,
                 COALESCE(s.draws, 0) as draws
-            FROM "Users" u
-            LEFT JOIN "Leaderboards" s ON u.user_id = s.user_id
+            FROM users u
+            LEFT JOIN leaderboards s ON u.user_id = s.user_id
             ORDER BY u.created_at DESC
             LIMIT 100
         `);
@@ -39,10 +41,10 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const userRes = await pool.query('SELECT * FROM "Users" WHERE user_id = $1', [id]);
+        const userRes = await pool.query('SELECT * FROM users WHERE user_id = $1', [id]);
         if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
 
-        const statsRes = await pool.query('SELECT * FROM "Leaderboards" WHERE user_id = $1', [id]);
+        const statsRes = await pool.query('SELECT * FROM leaderboards WHERE user_id = $1', [id]);
 
         res.json({
             user: userRes.rows[0],
@@ -54,14 +56,79 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// DELETE /admin/users/:id - Delete/Ban user
+// PUT /admin/users/:id - Update user details
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { username, email } = req.body;
+
+        // Basic validation
+        if (!username || !email) {
+            return res.status(400).json({ error: 'Username and email are required' });
+        }
+
+        const result = await pool.query(
+            'UPDATE users SET username = $1, email = $2 WHERE user_id = $3 RETURNING *',
+            [username, email, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        if (err.code === '23505') { // Unique violation
+            return res.status(409).json({ error: 'Username or email already exists' });
+        }
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// POST /admin/users/:id/ban - Ban user
+router.post('/:id/ban', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { duration, reason, permanent } = req.body; // duration in hours
+
+        let expiresAt = null;
+        if (!permanent && duration) {
+            expiresAt = new Date(Date.now() + duration * 60 * 60 * 1000);
+        }
+
+        await pool.query(
+            'UPDATE users SET is_banned = TRUE, ban_expires_at = $1, ban_reason = $2 WHERE user_id = $3',
+            [expiresAt, reason, id]
+        );
+
+        res.json({ message: 'User banned successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// POST /admin/users/:id/unban - Unban user
+router.post('/:id/unban', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query(
+            'UPDATE users SET is_banned = FALSE, ban_expires_at = NULL, ban_reason = NULL WHERE user_id = $1',
+            [id]
+        );
+        res.json({ message: 'User unbanned successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// DELETE /admin/users/:id - Delete user (Hard delete)
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        // In a real app, we might just soft delete or set a 'banned' flag.
-        // For now, let's assume hard delete for simplicity, or we can add a banned column if it exists.
-        // Checking schema... assuming standard delete for now.
-        await pool.query('DELETE FROM "Users" WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM users WHERE user_id = $1', [id]);
         res.json({ message: 'User deleted successfully' });
     } catch (err) {
         console.error(err);

@@ -7,6 +7,7 @@ import store from './redux/store';
 import theme from './theme';
 import Navbar from './components/Common/Navbar';
 import Login from './components/Auth/Login';
+import Banned from './components/Auth/Banned';
 import Profile from './components/Profile/Profile';
 import Lobby from './components/Lobby/Lobby';
 import Leaderboard from './components/Leaderboard/Leaderboard';
@@ -31,6 +32,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/banned" element={<Banned />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/lobby" element={<Lobby />} />
             <Route path="/leaderboard" element={<Leaderboard />} />

@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const routes = require('./routes');
 const socket = require('./socket');
+const maintenanceMode = require('./middleware/maintenanceMode');
 require('dotenv').config();
 require('./config/passport');
 
@@ -20,6 +21,10 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
+
+// Check maintenance mode before processing requests
+app.use(maintenanceMode);
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,

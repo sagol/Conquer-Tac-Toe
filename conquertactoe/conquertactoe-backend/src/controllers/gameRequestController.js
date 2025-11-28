@@ -236,6 +236,14 @@ exports.createGameRequest = async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
+
+    // Check if game creation is allowed
+    const { getBooleanSetting } = require('../utils/settings');
+    const allowGameCreation = await getBooleanSetting('game_creation', true);
+    if (!allowGameCreation) {
+      return res.status(403).json({ error: 'Game creation is currently disabled' });
+    }
+
     const creatorId = req.user.user_id;
 
     // Check if the user already has an active game request or joined game

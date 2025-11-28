@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Drawer, AppBar, Toolbar, List, Typography, Divider, ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
-import { Dashboard as DashboardIcon, People, SportsEsports, Analytics } from '@mui/icons-material';
+import { Dashboard as DashboardIcon, People, SportsEsports, Analytics, Settings as SettingsIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const drawerWidth = 240;
@@ -14,6 +14,7 @@ const Layout = ({ children }) => {
         { text: 'Users', icon: <People />, path: '/users' },
         { text: 'Games', icon: <SportsEsports />, path: '/games' },
         { text: 'Analytics', icon: <Analytics />, path: '/analytics' },
+        { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
     ];
 
     return (
