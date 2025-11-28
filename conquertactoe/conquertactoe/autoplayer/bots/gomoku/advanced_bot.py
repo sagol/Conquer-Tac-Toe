@@ -28,14 +28,13 @@ class GomokuBot(IBot):
         Get move using minimax for complex positions, pattern-based for simple ones
         """
         board = game_state.get("board")
-        board_size = game_state.get("board_size", 15)
         # Assuming bot is player 2 for now, similar to classic
         player = 2
         
         if not board:
             return None
 
-        actual_board_size = len(board) if board else board_size
+        actual_board_size = len(board)
         opponent = 1 if player == 2 else 2
         
         # Priority 1: Win immediately

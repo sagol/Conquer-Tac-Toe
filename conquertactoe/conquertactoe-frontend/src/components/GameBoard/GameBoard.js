@@ -65,7 +65,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     if (!game) return;
 
     console.log(`[${new Date().toISOString()}] [GameBoard] Initializing from game prop:`, game);
-    if (game && game.board) {
+    if (game.board) {
       const isBoardEmpty = Array.isArray(game.board) ? game.board.every(r => r.every(c => c === null)) : 'unknown';
       console.log(`[${new Date().toISOString()}] Game prop board empty?`, isBoardEmpty);
     }

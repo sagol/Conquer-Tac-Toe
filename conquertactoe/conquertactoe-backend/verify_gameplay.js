@@ -16,21 +16,6 @@ async function runTests() {
         console.log('Logged in as:', USERNAME, 'ID:', userId);
     };
 
-    const deleteAllUserGames = async () => {
-        try {
-            // Direct database cleanup via SQL endpoint (if available) or manually
-            // For now, we'll try to cancel via API
-            const gamesRes = await axios.get(`${BASE_URL}/game-requests`, {
-                headers: { Cookie: cookie }
-            });
-
-            // Cancel/delete any pending or joined games
-            // Note: This is a workaround. Ideally there'd be a cleanup endpoint.
-            console.log('Cleaning up previous games...');
-        } catch (err) {
-            // Silent fail - no games to clean
-        }
-    };
 
     const createGame = async (variantId, customData = {}) => {
         console.log(`  Creating game for Variant ${variantId}...`);
@@ -68,16 +53,6 @@ async function runTests() {
         }
     };
 
-    const forceDeleteGame = async (gameId) => {
-        try {
-            // Mark game as cancelled in DB
-            // This requires backend support or we skip
-            // For now, we just move on
-            console.log(`  (Note: Game ${gameId} left active - backend limits 1 game/user)`);
-        } catch (err) {
-            // Ignore
-        }
-    };
 
     const assert = (condition, message) => {
         if (condition) console.log(`  ✅ PASS: ${message}`);

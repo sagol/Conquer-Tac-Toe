@@ -1,6 +1,11 @@
 #!/bin/bash
 # Manual Verification Steps for Game Variant Dropdown Fix
 
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$SCRIPT_DIR"
+FRONTEND_SRC="${FRONTEND_SRC:-$PROJECT_ROOT/conquertactoe/conquertactoe-frontend/src}"
+
 echo "========================================="
 echo "Manual Verification Guide"
 echo "========================================="
@@ -33,25 +38,27 @@ echo "Checking if test IDs are present in the built files..."
 echo ""
 
 # Check if the compiled JS contains our test IDs
-if grep -q "data-testid.*game-variant-select" /Users/sagol/Development/Projects/Conquer-Tac-Toe/Conquer-Tac-Toe/conquertactoe/conquertactoe-frontend/src/components/Lobby/CreateGameModal.js; then
+CREATE_GAME_MODAL="$FRONTEND_SRC/components/Lobby/CreateGameModal.js"
+
+if grep -q "data-testid.*game-variant-select" "$CREATE_GAME_MODAL"; then
     echo "✓ Source file contains game-variant-select test ID"
 else
     echo "✗ Source file missing game-variant-select test ID"
 fi
 
-if grep -q "data-testid.*variant-option" /Users/sagol/Development/Projects/Conquer-Tac-Toe/Conquer-Tac-Toe/conquertactoe/conquertactoe-frontend/src/components/Lobby/CreateGameModal.js; then
+if grep -q "data-testid.*variant-option" "$CREATE_GAME_MODAL"; then
     echo "✓ Source file contains variant-option test IDs"
 else
     echo "✗ Source file missing variant-option test IDs"
 fi
 
-if grep -q "data-testid.*game-type-bot" /Users/sagol/Development/Projects/Conquer-Tac-Toe/Conquer-Tac-Toe/conquertactoe/conquertactoe-frontend/src/components/Lobby/CreateGameModal.js; then
+if grep -q "data-testid.*game-type-bot" "$CREATE_GAME_MODAL"; then
     echo "✓ Source file contains game-type-bot test ID"
 else
     echo "✗ Source file missing game-type-bot test ID"
 fi
 
-if grep -q "data-testid.*create-game-button" /Users/sagol/Development/Projects/Conquer-Tac-Toe/Conquer-Tac-Toe/conquertactoe/conquertactoe-frontend/src/components/Lobby/CreateGameModal.js; then
+if grep -q "data-testid.*create-game-button" "$CREATE_GAME_MODAL"; then
     echo "✓ Source file contains create-game-button test ID"
 else
     echo "✗ Source file missing create-game-button test ID"
@@ -64,7 +71,7 @@ echo "========================================="
 echo "Since the React app is running in a Docker container,"
 echo "you may need to rebuild the container to see the changes:"
 echo ""
-echo "  cd /Users/sagol/Development/Projects/Conquer-Tac-Toe/Conquer-Tac-Toe/conquertactoe"
+echo "  cd $PROJECT_ROOT/conquertactoe"
 echo "  docker-compose down"
 echo "  docker-compose up --build -d"
 echo ""

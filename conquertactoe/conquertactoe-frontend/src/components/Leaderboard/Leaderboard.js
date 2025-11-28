@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Container,
   Box,
   Table,
   TableBody,
@@ -34,13 +33,10 @@ const Leaderboard = () => {
   const [activeTab, setActiveTab] = useState(0); // 0 = PvP, 1 = Bot
   const [pvpLeaderboard, setPvpLeaderboard] = useState([]);
   const [botLeaderboard, setBotLeaderboard] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [playerStats, setPlayerStats] = useState(null);
   const [statsDialogOpen, setStatsDialogOpen] = useState(false);
-  const [loadingStats, setLoadingStats] = useState(false);
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   // Fetch leaderboards
@@ -69,7 +65,6 @@ const Leaderboard = () => {
 
   //Search for players
   const handleSearchChange = async (event, value) => {
-    setSearchQuery(value);
 
     if (value && value.trim().length > 0) {
       setSearching(true);
@@ -91,7 +86,6 @@ const Leaderboard = () => {
 
   // Fetch player stats
   const fetchPlayerStats = async (userId) => {
-    setLoadingStats(true);
     try {
       const res = await axios.get(`${backendUrl}/leaderboard/player/${userId}`, { withCredentials: true });
       setPlayerStats(res.data);
@@ -99,13 +93,11 @@ const Leaderboard = () => {
     } catch (error) {
       console.error('Error fetching player stats:', error.response?.data || error.message);
     } finally {
-      setLoadingStats(false);
     }
   };
 
   const handlePlayerSelect = (event, player) => {
     if (player) {
-      setSelectedPlayer(player);
       fetchPlayerStats(player.user_id);
     }
   };
@@ -117,7 +109,6 @@ const Leaderboard = () => {
   const handleCloseStatsDialog = () => {
     setStatsDialogOpen(false);
     setPlayerStats(null);
-    setSelectedPlayer(null);
   };
 
   const renderLeaderboardTable = (data) => (

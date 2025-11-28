@@ -1,8 +1,6 @@
 const axios = require('axios');
 
 const BACKEND_URL = 'http://localhost:3000';
-const USER_EMAIL = `test_${Date.now()}@example.com`;
-const USER_PASSWORD = 'password123';
 
 async function runTest() {
     try {
@@ -30,7 +28,7 @@ async function runTest() {
 
         // Make a move
         console.log('   Making player move (0,0)...');
-        const classicMove = await axios.put(`${BACKEND_URL}/game-requests/${classicGame.data.id}`, {
+        await axios.put(`${BACKEND_URL}/game-requests/${classicGame.data.id}`, {
             board: classicGame.data.board, // Send current board
             activePlayer: 1,
             player1Cones: classicGame.data.player1_cones,
@@ -67,7 +65,7 @@ async function runTest() {
 
         // Make a move
         console.log('   Making player move (7,7)...');
-        const gomokuMove = await axios.put(`${BACKEND_URL}/game-requests/${gomokuGame.data.id}`, {
+        await axios.put(`${BACKEND_URL}/game-requests/${gomokuGame.data.id}`, {
             board: gomokuGame.data.board,
             activePlayer: 1,
             player1Cones: gomokuGame.data.player1_cones,
@@ -100,7 +98,7 @@ async function runTest() {
 
         // Make a move
         console.log('   Making player move (1,1) with Small Cone...');
-        const conquerMove = await axios.put(`${BACKEND_URL}/game-requests/${conquerGame.data.id}`, {
+        await axios.put(`${BACKEND_URL}/game-requests/${conquerGame.data.id}`, {
             board: conquerGame.data.board,
             activePlayer: 1,
             player1Cones: conquerGame.data.player1_cones,

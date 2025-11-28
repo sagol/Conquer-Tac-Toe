@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Container, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Snackbar, Typography, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
+import { Box, Button, Table, TableBody, TableCell, TableHead, TableRow, Snackbar, Typography, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
 import Pagination from '@material-ui/lab/Pagination';
 import axios from 'axios';
 import { io } from 'socket.io-client';
@@ -62,7 +62,7 @@ const Lobby = () => {
 
       fetchStats();
       console.log('Fetching all game requests');
-      dispatch(fetchActiveGameRequests(1, 1000)); // Fetch all games (large limit)
+      dispatch(fetchActiveGameRequests());
       const newSocket = io(backendUrl);
       setSocket(newSocket);
 
@@ -86,7 +86,7 @@ const Lobby = () => {
 
   const createGameRequest = async (gameData) => {
     try {
-      const { gameType, variantId } = gameData;
+      const { gameType } = gameData;
       const endpoint = gameType === 'bot' ? `${backendUrl}/bot-game` : `${backendUrl}/game-requests`;
 
       const res = await axios.post(endpoint, gameData, { withCredentials: true });

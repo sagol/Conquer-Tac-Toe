@@ -5,7 +5,6 @@ Tests game creation, move-making, and win conditions for each variant
 """
 
 import requests
-import json
 import time
 
 BACKEND_URL = "http://localhost:3000"

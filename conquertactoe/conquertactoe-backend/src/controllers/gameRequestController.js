@@ -37,14 +37,12 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
       // Fallback: Try to find ANY valid move (simple random search)
       let foundValid = false;
       for (let r = 0; r < boardSize && !foundValid; r++) {
-        for (let c = 0; c < boardSize && !foundValid; c++) {
-          for (let s = 0; s < 3; s++) {
+        for (let c = 0; c < boardSize; c++) {
+          for (let s = player2Cones.length - 1; s >= 0; s--) {
             if (player2Cones[s] > 0 && rules.isValidMove(r, c, s, board, player2Cones, 2)) {
-              botMove.row = r;
-              botMove.col = c;
-              botMove.cone_size = s;
+              botMove = { row: r, col: c, cone_size: s };
               foundValid = true;
-              console.log('Fallback to valid random move:', botMove);
+              console.log('Fallback move found:', botMove);
               break;
             }
           }
@@ -52,6 +50,7 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
         }
         if (foundValid) break;
       }
+
       if (!foundValid) {
         console.error('Bot has NO valid moves!');
         return null;

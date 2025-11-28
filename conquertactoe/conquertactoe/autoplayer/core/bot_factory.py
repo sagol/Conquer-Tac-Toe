@@ -1,4 +1,4 @@
-from typing import Dict, Type, Optional
+from typing import Dict, Optional
 from .bot_interface import IBot
 
 class BotFactory:
