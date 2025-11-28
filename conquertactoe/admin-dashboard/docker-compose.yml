@@ -5,9 +5,9 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/conquertactoe
-      - CLICKHOUSE_HOST=clickhouse
-      - CLICKHOUSE_PORT=9000
+      - DATABASE_URL=postgresql://youruser:yourpassword@conquertactoe_db:5432/conquertactoe
+      - CLICKHOUSE_HOST=conquertactoe_clickhouse
+      - CLICKHOUSE_PORT=8123
       - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET:-your-super-secret-admin-key-change-in-production}
       - ADMIN_JWT_REFRESH_SECRET=${ADMIN_JWT_REFRESH_SECRET:-your-super-secret-refresh-key}
       - ACCESS_TOKEN_EXPIRY=1h
@@ -20,9 +20,7 @@ services:
       - LOG_LEVEL=info
     networks:
       - conquer-network
-    depends_on:
-      - postgres
-      - clickhouse
+
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
@@ -37,9 +35,7 @@ services:
       - REACT_APP_WEBSOCKET_URL=ws://localhost:4000
     networks:
       - conquer-network
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+
     depends_on:
       - admin-backend
 

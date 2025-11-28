@@ -280,6 +280,13 @@ You should see the Conquer-Tac-Toe login page!
 - **Purpose**: AI bot system for all game variants
 - **Location**: `conquertactoe/autoplayer/`
 
+### Admin Dashboard
+- **Frontend**: `http://localhost:3002`
+- **Backend**: `http://localhost:4000`
+- **Purpose**: System monitoring, user management, game analytics
+- **Location**: `conquertactoe/admin-dashboard/`
+- **Start Script**: `./start-admin.sh`
+
 ### ClickHouse
 - **Container**: `conquertactoe_clickhouse`
 - **Ports**: `8123:8123`, `9000:9000`
