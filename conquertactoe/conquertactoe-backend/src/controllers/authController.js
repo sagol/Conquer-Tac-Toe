@@ -128,9 +128,10 @@ exports.devLogin = async (req, res, next) => {
         user.is_banned = false;
       } else {
         return res.status(403).json({
+          banned: true,
           error: 'Account banned',
-          reason: user.ban_reason,
-          expires: user.ban_expires_at
+          reason: user.ban_reason || 'Violation of terms of service',
+          expiresAt: user.ban_expires_at || 'Permanent'
         });
       }
     }

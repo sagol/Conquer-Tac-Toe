@@ -1,4 +1,3 @@
-```
 import React, { useEffect, useState } from 'react';
 import {
     Box,
@@ -50,50 +49,50 @@ const Settings = () => {
     const handleToggle = async (key) => {
         const currentValue = settings[key].value === 'true';
         const newValue = !currentValue;
-        console.log(`[Settings] Toggling ${ key }: ${ currentValue } -> ${ newValue } `);
+        console.log(`[Settings] Toggling ${key}: ${currentValue} -> ${newValue}`);
 
         try {
-            await api.put(`/ settings / ${ key } `, { value: String(newValue) });
+            await api.put(`/settings/${key}`, { value: String(newValue) });
             setSettings({
                 ...settings,
                 [key]: { ...settings[key], value: String(newValue) }
             });
-            console.log(`[Settings] Successfully toggled ${ key } `);
+            console.log(`[Settings] Successfully toggled ${key}`);
             showSaveMessage('Setting updated successfully', 'success');
         } catch (error) {
-            console.error(`[Settings] Error updating ${ key }: `, error);
+            console.error(`[Settings] Error updating ${key}:`, error);
             showSaveMessage('Failed to update setting', 'error');
         }
     };
 
     const handleNumberChange = async (key, value) => {
-        console.log(`[Settings] Updating number setting ${ key } to ${ value } `);
+        console.log(`[Settings] Updating number setting ${key} to ${value}`);
         try {
-            await api.put(`/ settings / ${ key } `, { value });
+            await api.put(`/settings/${key}`, { value });
             setSettings({
                 ...settings,
                 [key]: { ...settings[key], value }
             });
-            console.log(`[Settings] Successfully updated ${ key } `);
+            console.log(`[Settings] Successfully updated ${key}`);
             showSaveMessage('Setting updated successfully', 'success');
         } catch (error) {
-            console.error(`[Settings] Error updating ${ key }: `, error);
+            console.error(`[Settings] Error updating ${key}:`, error);
             showSaveMessage('Failed to update setting', 'error');
         }
     };
 
     const handleSelectChange = async (key, value) => {
-        console.log(`[Settings] Updating select setting ${ key } to ${ value } `);
+        console.log(`[Settings] Updating select setting ${key} to ${value}`);
         try {
-            await api.put(`/ settings / ${ key } `, { value });
+            await api.put(`/settings/${key}`, { value });
             setSettings({
                 ...settings,
                 [key]: { ...settings[key], value }
             });
-            console.log(`[Settings] Successfully updated ${ key } `);
+            console.log(`[Settings] Successfully updated ${key}`);
             showSaveMessage('Setting updated successfully', 'success');
         } catch (error) {
-            console.error(`[Settings] Error updating ${ key }: `, error);
+            console.error(`[Settings] Error updating ${key}:`, error);
             showSaveMessage('Failed to update setting', 'error');
         }
     };

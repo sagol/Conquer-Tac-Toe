@@ -39,7 +39,16 @@ const Login = () => {
       navigate('/'); // Navigate to home
     } catch (error) {
       console.error('Dev login failed:', error);
-      alert('Dev login failed');
+
+      // Check if user is banned
+      if (error.response?.status === 403 && error.response?.data?.banned) {
+        const { reason, expiresAt } = error.response.data;
+        const encodedReason = encodeURIComponent(reason || 'Violation of terms of service');
+        const encodedExpires = encodeURIComponent(expiresAt || 'Permanent');
+        navigate(`/banned?reason=${encodedReason}&expires=${encodedExpires}`);
+      } else {
+        alert(error.response?.data?.error || 'Dev login failed. Please try again.');
+      }
     }
   };
 
