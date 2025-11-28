@@ -514,3 +514,91 @@ const updateUserStats = async (winnerId, loserId, isDraw = false) => {
   }
 };
 
+// Internal function to reset a game (called by Admin Dashboard)
+exports.resetGame = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    console.log(`[Internal] Resetting game ${gameId}`);
+
+    const gameRequest = await GameRequest.getById(gameId);
+    if (!gameRequest) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    // Fetch variant configuration to reset cones
+    const GameVariant = require('../models/GameVariant');
+    const variant = await GameVariant.getById(gameRequest.variant_id);
+
+    // Determine board size (handle custom size for Gomoku if applicable)
+    // For reset, we should probably keep the existing board size if possible, 
+    // but the board is stored as JSON. We can check the current board size.
+    let boardSize = variant.board_size;
+    if (gameRequest.board) {
+      const currentBoard = typeof gameRequest.board === 'string' ? JSON.parse(gameRequest.board) : gameRequest.board;
+      if (currentBoard && currentBoard.length > 0) {
+        boardSize = currentBoard.length;
+      }
+    }
+
+    const initialBoard = Array(boardSize).fill().map(() => Array(boardSize).fill(null));
+
+    // Reset cones
+    // Note: If it was a custom cone game, we might lose that info unless we stored it.
+    // For now, reset to variant defaults.
+    const player1Cones = variant.player1_cones;
+    const player2Cones = variant.player2_cones;
+
+    // Randomize starting player
+    const startingPlayer = Math.random() < 0.5 ? 1 : 2;
+    console.log(`[Reset] Game ${gameId} reset. Starting player: ${startingPlayer}`);
+
+    const newStatus = (gameRequest.joiner_id || gameRequest.game_type === 'bot') ? 'joined' : 'pending';
+
+    // Update DB
+    const updatedGame = await pool.query(`
+        UPDATE gamerequests 
+        SET 
+            board = $1, 
+            status = $2, 
+            active_player = $3, 
+            winner = NULL, 
+            player1_cones = $4, 
+            player2_cones = $5,
+            created_at = NOW()
+        WHERE id = $6
+        RETURNING *
+    `, [
+      JSON.stringify(initialBoard),
+      newStatus,
+      startingPlayer,
+      JSON.stringify(player1Cones),
+      JSON.stringify(player2Cones),
+      gameId
+    ]);
+
+    const resetGame = updatedGame.rows[0];
+
+    // Emit update to clients
+    socket.getIo().emit('gameUpdated', { ...resetGame, id: gameId, gameId: parseInt(gameId) });
+
+    // If it's a bot game and bot starts, trigger move
+    if (gameRequest.game_type === 'bot' && startingPlayer === 2) {
+      console.log('[Reset] Bot starts! Triggering move...');
+      // We can't await this if we want to return quickly, but for internal API it's fine to wait or not.
+      // Better to not await to avoid timeout if bot takes long, but handleBotMove is async.
+      handleBotMove(
+        gameId,
+        initialBoard,
+        player1Cones,
+        player2Cones,
+        gameRequest.variant_id
+      ).catch(err => console.error('Error in reset bot move:', err));
+    }
+
+    res.json({ message: 'Game reset successfully', game: resetGame });
+
+  } catch (err) {
+    console.error('Error resetting game:', err);
+    res.status(500).json({ error: err.message });
+  }
+};

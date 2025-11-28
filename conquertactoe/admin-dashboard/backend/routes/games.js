@@ -33,36 +33,29 @@ router.get('/', async (req, res) => {
 });
 
 // POST /admin/games/:id/reset - Reset a game
+// POST /admin/games/:id/reset - Reset a game
 router.post('/:id/reset', async (req, res) => {
     try {
         const { id } = req.params;
+        const axios = require('axios');
 
-        // Get current game state to check joiner
-        const gameRes = await pool.query('SELECT joiner_id, creator_id FROM gamerequests WHERE id = $1', [id]);
-        if (gameRes.rows.length === 0) {
-            return res.status(404).json({ error: 'Game not found' });
-        }
+        // Call Main Backend internal API
+        // Assuming main backend is at http://conquertactoe_backend:3000 (docker service name)
+        // Or use process.env.BACKEND_INTERNAL_URL if defined
+        const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://conquertactoe_backend:3000';
 
-        const game = gameRes.rows[0];
-        const newStatus = game.joiner_id ? 'joined' : 'pending';
+        console.log(`Calling reset on main backend: ${backendUrl}/internal/games/${id}/reset`);
 
-        await pool.query(`
-            UPDATE gamerequests 
-            SET 
-                board = NULL, 
-                status = $1, 
-                active_player = $2, 
-                winner = NULL, 
-                player1_cones = NULL, 
-                player2_cones = NULL,
-                created_at = NOW() -- Optional: update timestamp to show it's fresh
-            WHERE id = $3
-        `, [newStatus, game.creator_id, id]);
+        await axios.post(`${backendUrl}/internal/games/${id}/reset`);
 
         res.json({ message: 'Game reset successfully' });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Database error' });
+        console.error('Error resetting game via main backend:', err.message);
+        if (err.response) {
+            console.error('Backend response:', err.response.data);
+            return res.status(err.response.status).json(err.response.data);
+        }
+        res.status(500).json({ error: 'Failed to reset game' });
     }
 });
 

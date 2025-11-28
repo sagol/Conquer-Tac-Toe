@@ -21,7 +21,8 @@
         "winston": "^3.11.0",
         "express-rate-limit": "^7.1.5",
         "clickhouse": "^2.6.0",
-        "ws": "^8.16.0"
+        "ws": "^8.16.0",
+        "axios": "^1.6.2"
     },
     "devDependencies": {
         "nodemon": "^3.0.2",

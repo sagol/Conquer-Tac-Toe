@@ -40,6 +40,9 @@ app.use((req, res, next) => {
   next();
 });
 
+const internalRoutes = require('./routes/internalRoutes');
+
+app.use('/internal', internalRoutes);
 app.use(routes);
 
 module.exports = { app, server };
