@@ -15,10 +15,10 @@ services:
       - ./init-db:/docker-entrypoint-initdb.d
     user: "999:999" # Ensure the container uses the same UID and GID as the postgres user on the host
     networks:
-      - conquer-network
+      - ${NETWORK_NAME}
 
 networks:
-  conquer-network:
+  ${NETWORK_NAME}:
     external: true
 
 volumes:
