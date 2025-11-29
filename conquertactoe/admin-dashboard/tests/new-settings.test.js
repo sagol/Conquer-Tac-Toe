@@ -1,7 +1,7 @@
 const axios = require('axios');
 // Use IPs for internal network access
 const API_URL = process.env.REACT_APP_ADMIN_API_URL || 'http://172.18.0.5:4000/admin';
-const MAIN_API_URL = 'http://172.18.0.8:3000/api'; // Main backend URL
+const MAIN_API_URL = process.env.REACT_APP_MAIN_API_URL || 'http://172.18.0.8:3000/api'; // Main backend URL
 
 describe('Admin Settings Enforcement', () => {
     let adminToken;
