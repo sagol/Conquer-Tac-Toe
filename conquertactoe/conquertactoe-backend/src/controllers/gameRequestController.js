@@ -293,6 +293,14 @@ exports.createBotGameRequest = async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
+
+    // Check if game creation is allowed
+    const { getBooleanSetting, getNumberSetting, getSetting } = require('../utils/settings');
+    const allowGameCreation = await getBooleanSetting('game_creation', true);
+    if (!allowGameCreation) {
+      return res.status(403).json({ error: 'Game creation is currently disabled' });
+    }
+
     const creatorId = req.user.user_id;
 
     // Fetch variant configuration

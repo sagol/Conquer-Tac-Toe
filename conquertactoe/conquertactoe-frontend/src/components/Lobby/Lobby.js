@@ -87,12 +87,23 @@ const Lobby = () => {
   const createGameRequest = async (gameData) => {
     try {
       const { gameType } = gameData;
-      const endpoint = gameType === 'bot' ? `${backendUrl}/bot-game` : `${backendUrl}/game-requests`;
+      const endpoint = gameType === 'bot' ? `${backendUrl}/game-requests/bot` : `${backendUrl}/game-requests`;
 
       const res = await axios.post(endpoint, gameData, { withCredentials: true });
       navigate(`/game/${res.data.id}`);
     } catch (error) {
-      setError(error.response?.data.error || error.message);
+      // Extract user-friendly error message
+      let errorMessage = 'Failed to create game. Please try again.';
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Game creation is currently disabled by the administrator.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Unable to create game. Please try again.';
+      }
+
+      setError(errorMessage);
       setOpen(true);
     }
   };
@@ -102,7 +113,15 @@ const Lobby = () => {
       const res = await axios.post(`${backendUrl}/game-requests/${requestId}/join`, {}, { withCredentials: true });
       navigate(`/game/${res.data.id}`);
     } catch (error) {
-      setError(error.response?.data.error || error.message);
+      let errorMessage = 'Failed to join game. Please try again.';
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Unable to join this game.';
+      }
+
+      setError(errorMessage);
       setOpen(true);
     }
   };
@@ -112,7 +131,13 @@ const Lobby = () => {
       await axios.delete(`${backendUrl}/game-requests/${requestId}`, { withCredentials: true });
       dispatch({ type: 'REMOVE_GAME_REQUEST', payload: requestId });
     } catch (error) {
-      setError(error.response?.data.error || error.message);
+      let errorMessage = 'Failed to delete game. Please try again.';
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
+      setError(errorMessage);
       setOpen(true);
     }
   };
