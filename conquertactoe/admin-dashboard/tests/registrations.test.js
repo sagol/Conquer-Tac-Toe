@@ -41,7 +41,7 @@ describe('New Registrations Enforcement', () => {
             await axios.post(`${BACKEND_URL}/auth/dev-login`, {
                 username: newUsername
             });
-            fail('Should have returned 403');
+            throw new Error('Should have returned 403');
         } catch (error) {
             expect(error.response.status).toBe(403);
             expect(error.response.data.error).toContain('disabled');
