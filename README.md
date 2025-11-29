@@ -244,10 +244,10 @@ POSTGRES_PASSWORD=your_secure_password_here
 
 #### Autoplayer (AI) Configuration
 
-Create `conquertactoe/autoplayer/.env`:
+Create `conquertactoe-autoplayer/.env`:
 
 ```bash
-cd ../conquertactoe/autoplayer
+cd ../conquertactoe-autoplayer
 cp .env-example .env
 ```
 
@@ -267,7 +267,7 @@ CLICKHOUSE_PASSWORD=
 
 #### ClickHouse User Configuration
 
-Create `conquertactoe/autoplayer/clickhouse-config/users.xml`:
+Create `conquertactoe-autoplayer/clickhouse-config/users.xml`:
 
 ```bash
 cd clickhouse-config
@@ -293,7 +293,7 @@ For direct filesystem access and easier backups:
 1. **Create data directories**:
 ```bash
 mkdir -p conquertactoe-db/data/postgres
-mkdir -p conquertactoe/autoplayer/data/clickhouse
+mkdir -p conquertactoe-autoplayer/data/clickhouse
 ```
 
 2. **Update `conquertactoe-db/docker-compose.yml`**:
@@ -302,7 +302,7 @@ volumes:
   - ./data/postgres:/var/lib/postgresql/data  # Instead of pgdata:/var/lib/postgresql/data
 ```
 
-3. **Update `conquertactoe/autoplayer/docker-compose.yml`**:
+3. **Update `conquertactoe-autoplayer/docker-compose.yml`**:
 ```yaml
 volumes:
   - ./data/clickhouse:/var/lib/clickhouse  # Instead of clickhouse_data:/var/lib/clickhouse
@@ -353,7 +353,7 @@ cd ..
 #### Start Autoplayer (AI System)
 
 ```bash
-cd conquertactoe/autoplayer
+cd conquertactoe-autoplayer
 docker-compose up --build -d
 cd ../..
 ```
@@ -408,7 +408,7 @@ You should see the Conquer-Tac-Toe login page!
 - **Container**: `conquertactoe_autoplayer`
 - **Port**: `8000:8000`
 - **Purpose**: AI bot system for all game variants
-- **Location**: `conquertactoe/autoplayer/`
+- **Location**: `conquertactoe-autoplayer/`
 
 ### Admin Dashboard
 - **Frontend**: `http://localhost:3002`
@@ -443,7 +443,7 @@ docker-compose down && docker-compose up --build -d
 cd ..
 
 # Autoplayer
-cd conquertactoe/autoplayer
+cd conquertactoe-autoplayer
 docker-compose down && docker-compose up --build -d
 cd ../..
 
@@ -518,7 +518,7 @@ Conquer-Tac-Toe/
 │   │   ├── Dockerfile
 │   │   └── docker-compose.yml
 │   │
-│   └── conquertactoe/autoplayer/       # Python AI System
+│   └── conquertactoe-autoplayer/       # Python AI System
 │       ├── bots/                       # Bot implementations
 │       │   ├── classic/                # Classic TicTacToe bot
 │       │   ├── gomoku/                 # Gomoku bot

@@ -56,7 +56,7 @@ log_info "All containers stopped"
 # ============================================
 log_step "2/6: Creating host directories..."
 mkdir -p "$PROJECT_ROOT/conquertactoe/conquertactoe-db/data/postgres"
-mkdir -p "$PROJECT_ROOT/conquertactoe/conquertactoe/autoplayer/data/clickhouse"
+mkdir -p "$PROJECT_ROOT/conquertactoe/conquertactoe-autoplayer/data/clickhouse"
 log_info "Directories created"
 
 # ============================================
@@ -87,12 +87,12 @@ log_step "4/6: Migrating ClickHouse data..."
 
 docker run --rm \
     -v autoplayer_clickhouse_data:/source:ro \
-    -v "$PROJECT_ROOT/conquertactoe/conquertactoe/autoplayer/data/clickhouse":/dest \
+    -v "$PROJECT_ROOT/conquertactoe/conquertactoe-autoplayer/data/clickhouse":/dest \
     alpine \
     sh -c "cp -a /source/. /dest/"
 
 if [ $? -eq 0 ]; then
-    CH_SIZE=$(du -sh "$PROJECT_ROOT/conquertactoe/conquertactoe/autoplayer/data/clickhouse" | cut -f1)
+    CH_SIZE=$(du -sh "$PROJECT_ROOT/conquertactoe/conquertactoe-autoplayer/data/clickhouse" | cut -f1)
     log_info "ClickHouse data migrated successfully ($CH_SIZE)"
 else
     log_error "ClickHouse migration failed!"
@@ -114,11 +114,11 @@ sed -i.bak '/^volumes:$/,/^[^ ]/ { /^volumes:$/d; /^  pgdata:$/d; }' \
 
 # Update ClickHouse docker-compose.yml
 sed -i.bak 's|- clickhouse_data:/var/lib/clickhouse|- ./data/clickhouse:/var/lib/clickhouse|' \
-    "$PROJECT_ROOT/conquertactoe/conquertactoe/autoplayer/docker-compose.yml"
+    "$PROJECT_ROOT/conquertactoe/conquertactoe-autoplayer/docker-compose.yml"
 
 # Remove volumes section from ClickHouse docker-compose.yml  
 sed -i.bak '/^volumes:$/,/^[^ ]/ { /^volumes:$/d; /^  clickhouse_data:$/d; }' \
-    "$PROJECT_ROOT/conquertactoe/conquertactoe/autoplayer/docker-compose.yml"
+    "$PROJECT_ROOT/conquertactoe/conquertactoe-autoplayer/docker-compose.yml"
 
 log_info "docker-compose.yml files updated (backups saved as .bak)"
 
@@ -128,7 +128,7 @@ log_info "docker-compose.yml files updated (backups saved as .bak)"
 log_step "6/6: Restarting containers..."
 
 cd "$PROJECT_ROOT/conquertactoe/conquertactoe-db" && docker-compose up -d
-cd "$PROJECT_ROOT/conquertactoe/conquertactoe/autoplayer" && docker-compose up -d
+cd "$PROJECT_ROOT/conquertactoe/conquertactoe-autoplayer" && docker-compose up -d
 cd "$PROJECT_ROOT/conquertactoe/conquertactoe-backend" && docker-compose up -d
 cd "$PROJECT_ROOT/conquertactoe/conquertactoe-frontend" && docker-compose up -d
 cd "$PROJECT_ROOT/conquertactoe/admin-dashboard" && docker-compose up -d

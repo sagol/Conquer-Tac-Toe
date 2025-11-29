@@ -169,7 +169,7 @@ docker volume rm autoplayer_clickhouse_data
 cd conquertactoe/conquertactoe-db
 rm docker-compose.yml.bak
 
-cd ../conquertactoe/autoplayer  
+cd ../conquertactoe-autoplayer  
 rm docker-compose.yml.bak
 ```
 

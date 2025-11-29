@@ -388,7 +388,7 @@ Contact: support@gurudo.com
 
 ### Documentation
 - [README.md](README.md) - Installation & Setup
-- [BOT_DEVELOPMENT.md](conquertactoe/conquertactoe/autoplayer/BOT_DEVELOPMENT.md) - Bot Development Guide
+- [BOT_DEVELOPMENT.md](conquertactoe/conquertactoe-autoplayer/BOT_DEVELOPMENT.md) - Bot Development Guide
 - [TEST_SCENARIOS.md](TEST_SCENARIOS.md) - Testing Documentation
 
 ---

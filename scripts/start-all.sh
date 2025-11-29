@@ -70,9 +70,7 @@ start_service "conquertactoe-backend" "Node.js Backend"
 start_service "conquertactoe-frontend" "React Frontend"
 
 # 5. Start AI & Analytics
-# Note: Based on your log, verify if 'autoplayer' is inside a nested 'conquertactoe' folder
-# or directly in the root. If this fails, try changing the path below to just "autoplayer"
-start_service "conquertactoe/autoplayer" "AI & ClickHouse Analytics"
+start_service "conquertactoe-autoplayer" "AI & ClickHouse Analytics"
 
 # 6. Start Admin Dashboard
 start_service "admin-dashboard" "Admin Dashboard"
