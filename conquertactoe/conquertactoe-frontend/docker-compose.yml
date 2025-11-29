@@ -6,10 +6,10 @@ services:
       context: .
     container_name: conquertactoe_frontend
     ports:
-      - "${PORT1}:${PORT2}"
+      - "${FRONTEND_HOST_PORT}:${FRONTEND_CONTAINER_PORT}"
     networks:
-      - conquer-network
+      - ${NETWORK_NAME}
 
 networks:
-  conquer-network:
+  ${NETWORK_NAME}:
     external: true
