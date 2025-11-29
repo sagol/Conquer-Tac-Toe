@@ -5,7 +5,7 @@ services:
     build: .
     container_name: ${AUTOPLAYER_CONTAINER_NAME}
     ports:
-      - "${AUTOPLAYER_PORT}:${AUTOPLAYER_PORT}"
+      - "${AUTOPLAYER_PORT}:8000"
     environment:
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
       - CLICKHOUSE_PORT=${CLICKHOUSE_NATIVE_PORT} # Internal port 9000
