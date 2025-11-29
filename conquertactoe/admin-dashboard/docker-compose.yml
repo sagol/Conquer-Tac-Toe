@@ -1,48 +1,47 @@
+version: '3.8'
+
 services:
   admin-backend:
     build: ./backend
-    container_name: conquertactoe_admin_backend
+    container_name: ${ADMIN_BACKEND_CONTAINER_NAME}
     ports:
-      - "4000:4000"
+      - "${ADMIN_BACKEND_PORT}:${ADMIN_BACKEND_INTERNAL_PORT}"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/conquertactoe
-      - CLICKHOUSE_HOST=clickhouse
-      - CLICKHOUSE_PORT=9000
-      - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET:-your-super-secret-admin-key-change-in-production}
-      - ADMIN_JWT_REFRESH_SECRET=${ADMIN_JWT_REFRESH_SECRET:-your-super-secret-refresh-key}
-      - ACCESS_TOKEN_EXPIRY=1h
-      - REFRESH_TOKEN_EXPIRY=7d
-      - PORT=4000
-      - NODE_ENV=${NODE_ENV:-development}
-      - ALLOWED_ORIGINS=http://localhost:3002
-      - RATE_LIMIT_WINDOW_MS=900000
-      - RATE_LIMIT_MAX_REQUESTS=100
-      - LOG_LEVEL=info
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_NATIVE_PORT}
+      - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET}
+      - ADMIN_JWT_REFRESH_SECRET=${ADMIN_JWT_REFRESH_SECRET}
+      - ACCESS_TOKEN_EXPIRY=${ACCESS_TOKEN_EXPIRY}
+      - REFRESH_TOKEN_EXPIRY=${REFRESH_TOKEN_EXPIRY}
+      - PORT=${ADMIN_BACKEND_INTERNAL_PORT}
+      - NODE_ENV=${NODE_ENV}
+      - ALLOWED_ORIGINS=${ADMIN_ALLOWED_ORIGINS}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
+      - LOG_LEVEL=${LOG_LEVEL}
     networks:
-      - conquer-network
-    depends_on:
-      - postgres
-      - clickhouse
+      - ${NETWORK_NAME}
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
 
   admin-frontend:
     build: ./frontend
-    container_name: conquertactoe_admin_frontend
+    container_name: ${ADMIN_FRONTEND_CONTAINER_NAME}
     ports:
-      - "3002:3000"
+      - "${ADMIN_FRONTEND_PORT}:${ADMIN_FRONTEND_INTERNAL_PORT}"
     environment:
-      - REACT_APP_ADMIN_API_URL=http://localhost:4000/admin
-      - REACT_APP_WEBSOCKET_URL=ws://localhost:4000
+      - REACT_APP_ADMIN_API_URL=${REACT_APP_ADMIN_API_URL}
+      - REACT_APP_WEBSOCKET_URL=${REACT_APP_WEBSOCKET_URL}
     networks:
-      - conquer-network
+      - ${NETWORK_NAME}
+    depends_on:
+      - admin-backend
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    depends_on:
-      - admin-backend
 
 networks:
-  conquer-network:
+  ${NETWORK_NAME}:
     external: true

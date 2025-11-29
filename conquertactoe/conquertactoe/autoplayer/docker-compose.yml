@@ -1,31 +1,33 @@
+version: '3.8'
+
 services:
   autoplayer:
     build: .
-    container_name: conquertactoe_autoplayer
+    container_name: ${AUTOPLAYER_CONTAINER_NAME}
     ports:
-      - "8000:8000"
+      - "${AUTOPLAYER_PORT}:${AUTOPLAYER_PORT}"
     environment:
-      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
-      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-9000}
-      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-default}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_NATIVE_PORT} # Internal port 9000
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
     networks:
-      - conquer-network
+      - ${NETWORK_NAME}
     depends_on:
       - clickhouse
 
   clickhouse:
     image: clickhouse/clickhouse-server
-    container_name: conquertactoe_clickhouse
+    container_name: ${CLICKHOUSE_CONTAINER_NAME}
     environment:
-      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-default}
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB}
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
     ports:
-      - "8123:8123"
-      - "9000:9000"
+      - "${CLICKHOUSE_HTTP_PORT}:${CLICKHOUSE_HTTP_PORT}"
+      - "${CLICKHOUSE_NATIVE_PORT}:${CLICKHOUSE_NATIVE_PORT}"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse-config/users.xml:/etc/clickhouse-server/users.d/users.xml:ro
@@ -34,10 +36,10 @@ services:
         soft: 262144
         hard: 262144
     networks:
-      - conquer-network
+      - ${NETWORK_NAME}
 
 networks:
-  conquer-network:
+  ${NETWORK_NAME}:
     external: true
 
 volumes:

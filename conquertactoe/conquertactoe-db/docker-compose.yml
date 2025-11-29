@@ -9,17 +9,17 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5433:5432"
+      - "${PORT1}:${PORT2}"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
-    user: "999:999"  # Ensure the container uses the same UID and GID as the postgres user on the host
+    user: "999:999" # Ensure the container uses the same UID and GID as the postgres user on the host
     networks:
       - conquer-network
 
 networks:
   conquer-network:
     external: true
-  
+
 volumes:
   pgdata:
