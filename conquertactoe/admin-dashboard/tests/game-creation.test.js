@@ -49,7 +49,7 @@ describe('Game Creation Enforcement', () => {
                 { gameType: 'player', variantId: 3 },
                 { headers: { Cookie: userCookie } }
             );
-            fail('Should have returned 403');
+            throw new Error('Should have returned 403');
         } catch (error) {
             expect(error.response.status).toBe(403);
             expect(error.response.data.error).toContain('disabled');
