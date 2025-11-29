@@ -17,12 +17,16 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
     const variant = await GameVariant.getById(variantId || 3);
     const boardSize = variant ? variant.board_size : 3;
 
+    // Fetch default bot difficulty from settings
+    const { getSetting } = require('../utils/settings');
+    const defaultDifficulty = await getSetting('default_bot_difficulty', 'medium');
+
     let botMove = await getBotMove(
       gameId,
       board,
       player1Cones,
       player2Cones,
-      'medium',
+      defaultDifficulty, // Use setting value
       variantId || 3,
       boardSize
     );
@@ -246,11 +250,15 @@ exports.createGameRequest = async (req, res) => {
 
     const creatorId = req.user.user_id;
 
-    // Check if the user already has an active game request or joined game
+    // Check max active games limit
+    const { getNumberSetting, getSetting } = require('../utils/settings');
+    const maxActiveGames = await getNumberSetting('max_active_games_per_user', 5);
+
     const existingRequests = await GameRequest.getPendingByUser(creatorId);
     const existingJoinedGames = await GameRequest.getJoinedByUser(creatorId);
-    if (existingRequests.length > 0 || existingJoinedGames.length > 0) {
-      return res.status(400).json({ error: 'User already has an active game request or joined game' });
+
+    if ((existingRequests.length + existingJoinedGames.length) >= maxActiveGames) {
+      return res.status(400).json({ error: `You have reached the maximum limit of ${maxActiveGames} active games.` });
     }
 
     // Fetch variant configuration
@@ -394,13 +402,17 @@ exports.joinGameRequest = async (req, res) => {
     console.log(`Player ${joinerId} attempting to join game request ${requestId}`);
 
     // Additional checks and logs
+    // Check max active games limit for joiner
+    const { getNumberSetting } = require('../utils/settings');
+    const maxActiveGames = await getNumberSetting('max_active_games_per_user', 5);
+
     const existingRequests = await GameRequest.getPendingByUser(joinerId);
     const existingJoinedGames = await GameRequest.getJoinedByUser(joinerId);
     console.log(`Existing requests: ${JSON.stringify(existingRequests)}`);
     console.log(`Existing joined games: ${JSON.stringify(existingJoinedGames)}`);
 
-    if (existingRequests.length > 0 || existingJoinedGames.length > 0) {
-      return res.status(400).json({ error: 'User already has an active game request or joined game' });
+    if ((existingRequests.length + existingJoinedGames.length) >= maxActiveGames) {
+      return res.status(400).json({ error: `You have reached the maximum limit of ${maxActiveGames} active games.` });
     }
 
     // Randomize starting player (1 or 2)

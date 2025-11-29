@@ -61,6 +61,90 @@ Conquer-Tac-Toe is a strategic evolution of classic tic-tac-toe, featuring:
 - Docker & Docker Compose
 - Multi-container architecture
 - Network isolation
+- **Persistent Data Storage**: Host-based volumes for databases
+
+## 🏗️ Architecture
+
+### System Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Docker Environment                        │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │                    conquer-network                      │   │
+│  │                                                         │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐             │   │
+│  │  │ Frontend │  │ Backend  │  │Autoplayer│             │   │
+│  │  │ (React)  │──│(Node.js) │──│ (Python) │             │   │
+│  │  └──────────┘  └──────────┘  └──────────┘             │   │
+│  │       │              │              │                   │   │
+│  │       └──────────────┼──────────────┘                   │   │
+│  │                      │                                   │   │
+│  │         ┌────────────┴────────────┐                     │   │
+│  │         │                         │                     │   │
+│  │  ┌──────▼─────┐          ┌───────▼────┐                │   │
+│  │  │ PostgreSQL │          │ ClickHouse │                │   │
+│  │  │ Container  │          │ Container  │                │   │
+│  │  └──────┬─────┘          └───────┬────┘                │   │
+│  └─────────┼────────────────────────┼─────────────────────┘   │
+│            │                        │                          │
+│      bind mount                bind mount                      │
+│            │                        │                          │
+└────────────┼────────────────────────┼──────────────────────────┘
+             ▼                        ▼
+        ┌─────────┐              ┌─────────┐
+        │  Host   │              │  Host   │
+        │ Volume  │              │ Volume  │
+        │/postgres│              │/clickhouse│
+        └─────────┘              └─────────┘
+     (Physical Server)       (Physical Server)
+```
+
+### Database Architecture
+
+#### PostgreSQL (Main Database)
+- **Container**: `conquertactoe_db`
+- **Storage**: Host directory `./conquertactoe-db/data/postgres`
+- **Port**: 5433 (host) → 5432 (container)
+- **Purpose**: Application data (users, games, settings, leaderboards)
+
+**Why Host Storage?**
+- ✅ Data persists independently of containers
+- ✅ Easy access for backups without Docker commands
+- ✅ Direct file-level recovery possible
+- ✅ Survives `docker-compose down -v`
+- ✅ Can be backed up by standard filesystem tools
+
+#### ClickHouse (Analytics Database)
+- **Container**: `conquertactoe_clickhouse`
+- **Storage**: Host directory `./autoplayer/data/clickhouse`
+- **Ports**: 8123 (HTTP), 9000 (Native)
+- **Purpose**: Move logging and analytics
+
+### Data Flow
+
+1. **Write Path**: 
+   ```
+   Frontend → Backend API → PostgreSQL Container → Host Volume
+   ```
+
+2. **Read Path**:
+   ```
+   Host Volume → PostgreSQL Container → Backend API → Frontend
+   ```
+
+3. **Analytics Path**:
+   ```
+   Autoplayer → ClickHouse Container → Host Volume
+   ```
+
+### Backup System
+
+- **Frequency**: Every 24 hours (2 AM)
+- **Retention**: Last 7 backups
+- **Location**: `./backups/`
+- **Format**: `.sql.gz` (PostgreSQL), `.tar.gz` (ClickHouse)
+- **Automation**: Cron job or Docker scheduler
 
 ## 📦 Prerequisites
 

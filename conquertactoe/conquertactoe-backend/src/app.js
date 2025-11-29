@@ -34,9 +34,24 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
-  console.log('User:', req.user);
+const dynamicRateLimiter = require('./middleware/rateLimiter');
+const { getBooleanSetting } = require('./utils/settings');
+
+// Apply dynamic rate limiter
+app.use(dynamicRateLimiter);
+
+app.use(async (req, res, next) => {
+  const devLogging = await getBooleanSetting('dev_logging', false);
+  if (devLogging) {
+    console.log(`${req.method} ${req.url}`);
+    console.log('User:', req.user ? req.user.username : 'Guest');
+  }
+  next();
+});
+
+// Debug mode middleware to attach to response for error handling
+app.use(async (req, res, next) => {
+  req.debugMode = await getBooleanSetting('debug_mode', false);
   next();
 });
 

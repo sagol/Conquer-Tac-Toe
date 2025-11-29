@@ -138,12 +138,18 @@ exports.devLogin = async (req, res, next) => {
 
     console.log('Logging in user:', user);
     // Log the user in
-    req.logIn(user, (err) => {
+    req.logIn(user, async (err) => {
       if (err) {
         console.error('req.logIn error:', err);
         return next(err);
       }
-      console.log('Login successful');
+
+      // Set session timeout based on setting
+      const { getNumberSetting } = require('../utils/settings');
+      const timeoutMinutes = await getNumberSetting('session_timeout_minutes', 60);
+      req.session.cookie.maxAge = timeoutMinutes * 60 * 1000;
+
+      console.log(`Login successful. Session timeout set to ${timeoutMinutes} minutes.`);
       return res.json(user);
     });
   } catch (err) {
