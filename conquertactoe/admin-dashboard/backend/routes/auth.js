@@ -13,15 +13,22 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const result = await pool.query('SELECT * FROM "AdminUsers" WHERE email = $1', [email]);
+        const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
         if (result.rows.length === 0) {
             logger.warn(`Failed login attempt for email: ${email}`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        const admin = result.rows[0];
-        const validPassword = await bcrypt.compare(password, admin.password_hash);
+        const user = result.rows[0];
+
+        // Check if user has admin role
+        if (user.role !== 'admin' && user.role !== 'super_admin') {
+            logger.warn(`Unauthorized login attempt for email: ${email} (role: ${user.role})`);
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const validPassword = await bcrypt.compare(password, user.password);
 
         if (!validPassword) {
             logger.warn(`Failed login attempt for email: ${email} (invalid password)`);
@@ -29,23 +36,23 @@ router.post('/login', async (req, res) => {
         }
 
         // Update last login
-        await pool.query('UPDATE "AdminUsers" SET last_login = NOW() WHERE id = $1', [admin.id]);
+        await pool.query('UPDATE users SET last_login_at = NOW(), login_count = login_count + 1 WHERE user_id = $1', [user.user_id]);
 
         const token = jwt.sign(
-            { id: admin.id, role: admin.role, email: admin.email },
+            { id: user.user_id, role: user.role, email: user.email },
             process.env.ADMIN_JWT_SECRET || 'secret',
             { expiresIn: '1h' }
         );
 
-        logger.info(`Admin logged in: ${admin.username}`);
+        logger.info(`Admin logged in: ${user.username}`);
 
         res.json({
             token,
             admin: {
-                id: admin.id,
-                username: admin.username,
-                email: admin.email,
-                role: admin.role
+                id: user.user_id,
+                username: user.username,
+                email: user.email,
+                role: user.role
             }
         });
 

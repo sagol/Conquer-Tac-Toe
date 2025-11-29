@@ -8,8 +8,8 @@ services:
     ports:
       - "${FRONTEND_HOST_PORT}:${FRONTEND_CONTAINER_PORT}"
     networks:
-      - ${NETWORK_NAME}
+      - conquer-network
 
 networks:
-  ${NETWORK_NAME}:
+  conquer-network:
     external: true

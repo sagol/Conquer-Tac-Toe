@@ -3,8 +3,8 @@ const router = express.Router();
 const { ClickHouse } = require('clickhouse');
 
 const clickhouse = new ClickHouse({
-    url: process.env.CLICKHOUSE_HOST,
-    port: process.env.CLICKHOUSE_PORT,
+    url: `http://${process.env.CLICKHOUSE_HOST}`,
+    port: 8123, // Use HTTP port, not native protocol port
     debug: false,
     basicAuth: null,
     isUseGzip: false,
@@ -43,10 +43,16 @@ router.get('/stats', async (req, res) => {
             FROM game_moves
         `;
         const rows = await clickhouse.query(query).toPromise();
-        res.json(rows[0]);
+        res.json(rows[0] || { total_moves: 0, total_games_analyzed: 0, last_move_time: null });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'ClickHouse error' });
+        console.error('ClickHouse error:', err);
+        // Return default values if ClickHouse is unavailable
+        res.json({
+            total_moves: 0,
+            total_games_analyzed: 0,
+            last_move_time: null,
+            error: 'Analytics data unavailable'
+        });
     }
 });
 

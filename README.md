@@ -276,7 +276,53 @@ cp users-example.xml users.xml
 
 For development, the default configuration in `users-example.xml` is sufficient.
 
-### 4. Start All Services
+### 4. Database Storage Configuration
+
+**Important**: By default, databases use Docker volumes. For production or easier backups, it's recommended to use host-based storage.
+
+#### Option A: Docker Volumes (Default)
+
+No additional configuration needed. Data is stored in Docker-managed volumes:
+- PostgreSQL: `conquertactoe-db_pgdata`
+- ClickHouse: `autoplayer_clickhouse_data`
+
+#### Option B: Host-Based Volumes (Recommended)
+
+For direct filesystem access and easier backups:
+
+1. **Create data directories**:
+```bash
+mkdir -p conquertactoe-db/data/postgres
+mkdir -p conquertactoe/autoplayer/data/clickhouse
+```
+
+2. **Update `conquertactoe-db/docker-compose.yml`**:
+```yaml
+volumes:
+  - ./data/postgres:/var/lib/postgresql/data  # Instead of pgdata:/var/lib/postgresql/data
+```
+
+3. **Update `conquertactoe/autoplayer/docker-compose.yml`**:
+```yaml
+volumes:
+  - ./data/clickhouse:/var/lib/clickhouse  # Instead of clickhouse_data:/var/lib/clickhouse
+```
+
+4. **Remove volume definitions** from both docker-compose files:
+```yaml
+# Remove these lines:
+volumes:
+  pgdata:
+  # or
+  clickhouse_data:
+```
+
+**Or use the migration script** (if already running with Docker volumes):
+```bash
+./scripts/migrate-to-host-volumes.sh
+```
+
+### 5. Start All Services
 
 From the `conquertactoe` directory, start each service:
 

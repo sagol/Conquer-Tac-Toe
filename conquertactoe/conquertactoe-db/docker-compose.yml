@@ -11,15 +11,12 @@ services:
     ports:
       - "${POSTGRES_HOST_PORT}:${POSTGRES_CONTAINER_PORT}"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./pgdata:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
     user: "999:999" # Ensure the container uses the same UID and GID as the postgres user on the host
     networks:
-      - ${NETWORK_NAME}
+      - conquer-network
 
 networks:
-  ${NETWORK_NAME}:
+  conquer-network:
     external: true
-
-volumes:
-  pgdata:

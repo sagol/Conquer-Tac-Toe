@@ -33,8 +33,8 @@ const pool = new Pool({
 });
 
 const clickhouse = new ClickHouse({
-    url: process.env.CLICKHOUSE_HOST,
-    port: process.env.CLICKHOUSE_PORT,
+    url: `http://${process.env.CLICKHOUSE_HOST || 'conquertactoe_clickhouse'}`,
+    port: 8123, // Use HTTP port
     debug: false,
     basicAuth: null,
     isUseGzip: false,
