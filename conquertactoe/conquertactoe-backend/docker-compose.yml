@@ -18,8 +18,8 @@ services:
     ports:
       - "${PORT}:${PORT}"
     networks:
-      - conquer-network
+      - ${NETWORK_NAME}
 
 networks:
-  conquer-network:
+  ${NETWORK_NAME}:
     external: true
