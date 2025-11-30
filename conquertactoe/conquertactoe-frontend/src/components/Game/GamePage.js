@@ -217,20 +217,22 @@ const GamePage = () => {
   }
 
   return (
-    <Container>
-      <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" mt={5}>
-        <GameBoard
-          game={game}
-          updateGame={updateGame}
-          creatorName={creatorName}
-          joinerName={joinerName}
-          winner={game.winner}
-          isDraw={isDraw}
-          gameResult={game.status}
-          currentUser={auth.user}
-        />
-      </Box>
-    </Container>
+    <main>
+      <Container>
+        <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" mt={5}>
+          <GameBoard
+            game={game}
+            updateGame={updateGame}
+            creatorName={creatorName}
+            joinerName={joinerName}
+            winner={game.winner}
+            isDraw={isDraw}
+            gameResult={game.status}
+            currentUser={auth.user}
+          />
+        </Box>
+      </Container>
+    </main>
   );
 };
 

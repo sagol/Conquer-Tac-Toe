@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { ThemeProvider } from '@material-ui/core/styles';
@@ -7,16 +7,19 @@ import store from './redux/store';
 import theme from './theme';
 import axios from 'axios';
 import Navbar from './components/Common/Navbar';
-import Login from './components/Auth/Login';
-import Banned from './components/Auth/Banned';
-import Maintenance from './components/Maintenance/Maintenance';
-import Profile from './components/Profile/Profile';
-import Lobby from './components/Lobby/Lobby';
-import Leaderboard from './components/Leaderboard/Leaderboard';
-import Home from './components/Home/Home';
-import Rules from './components/Rules/Rules';
-import GamePage from './components/Game/GamePage';
+import { CircularProgress, Box } from '@material-ui/core';
 import { fetchCurrentUser } from './redux/actions/authActions';
+
+// Lazy load components for performance
+const Login = lazy(() => import('./components/Auth/Login'));
+const Banned = lazy(() => import('./components/Auth/Banned'));
+const Maintenance = lazy(() => import('./components/Maintenance/Maintenance'));
+const Profile = lazy(() => import('./components/Profile/Profile'));
+const Lobby = lazy(() => import('./components/Lobby/Lobby'));
+const Leaderboard = lazy(() => import('./components/Leaderboard/Leaderboard'));
+const Home = lazy(() => import('./components/Home/Home'));
+const Rules = lazy(() => import('./components/Rules/Rules'));
+const GamePage = lazy(() => import('./components/Game/GamePage'));
 
 
 const App = () => {
@@ -47,16 +50,22 @@ const App = () => {
       <ThemeProvider theme={theme}>
         <Router>
           <Navbar />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/banned" element={<Banned />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/lobby" element={<Lobby />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/rules" element={<Rules />} />
-            <Route path="/game/:gameId" element={<GamePage />} />
-          </Routes>
+          <Suspense fallback={
+            <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+              <CircularProgress />
+            </Box>
+          }>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/banned" element={<Banned />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/lobby" element={<Lobby />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/rules" element={<Rules />} />
+              <Route path="/game/:gameId" element={<GamePage />} />
+            </Routes>
+          </Suspense>
         </Router>
       </ThemeProvider>
     </Provider>

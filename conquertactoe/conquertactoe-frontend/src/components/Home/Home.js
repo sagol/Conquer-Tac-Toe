@@ -108,7 +108,7 @@ const Home = () => {
   };
 
   return (
-    <div className="modern-home">
+    <main className="modern-home">
       {/* Create Game Modal */}
       <CreateGameModal
         open={showCreateModal}
@@ -117,10 +117,10 @@ const Home = () => {
       />
 
       {/* Hero Section */}
-      <section className="hero-section">
+      <section className="hero-section" aria-label="Hero">
         <Container maxWidth="lg">
           <Box className="hero-content">
-            <Typography variant="h2" className="hero-title" gutterBottom>
+            <Typography variant="h1" className="hero-title" gutterBottom>
               Conquer Tac-Toe
             </Typography>
             <Typography variant="h5" className="hero-subtitle" gutterBottom>
@@ -362,7 +362,7 @@ const Home = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </div>
+    </main>
   );
 };
 

@@ -15,22 +15,22 @@ const Navbar = () => {
   };
 
   return (
-    <AppBar position="static">
+    <AppBar position="static" component="nav" aria-label="Main Navigation">
       <Toolbar>
-        <Typography variant="h6" style={{ flexGrow: 1 }}>
+        <Typography variant="h6" component="h1" style={{ flexGrow: 1 }}>
           Conquer-Tac-Toe
         </Typography>
-        <Button color="inherit" component={Link} to="/">Home</Button>
-        <Button color="inherit" component={Link} to="/rules">Rules</Button>
-        <Button color="inherit" component={Link} to="/leaderboard">Leaderboard</Button>
+        <Button color="inherit" component={Link} to="/" aria-label="Home">Home</Button>
+        <Button color="inherit" component={Link} to="/rules" aria-label="Rules">Rules</Button>
+        <Button color="inherit" component={Link} to="/leaderboard" aria-label="Leaderboard">Leaderboard</Button>
         {user ? (
           <>
-            <Button color="inherit" component={Link} to="/profile">Profile</Button>
-            <Button color="inherit" component={Link} to="/lobby">Lobby</Button>
-            <Button color="inherit" onClick={handleLogout}>Logout</Button>
+            <Button color="inherit" component={Link} to="/profile" aria-label="Profile">Profile</Button>
+            <Button color="inherit" component={Link} to="/lobby" aria-label="Lobby">Lobby</Button>
+            <Button color="inherit" onClick={handleLogout} aria-label="Logout">Logout</Button>
           </>
         ) : (
-          <Button color="inherit" component={Link} to="/login">Login</Button>
+          <Button color="inherit" component={Link} to="/login" aria-label="Login">Login</Button>
         )}
       </Toolbar>
     </AppBar>
