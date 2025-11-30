@@ -169,7 +169,7 @@ Conquer-Tac-Toe is a feature-complete multiplayer strategy game platform offerin
 - [x] **TEST_SCENARIOS.md**
   - Manual testing checklist
   - Expected behaviors
-- [x] **.env-example Files**
+- [x] **.env.example Files**
   - Backend configuration template
   - Frontend configuration template
   - Database configuration template

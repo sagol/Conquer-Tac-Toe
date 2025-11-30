@@ -185,7 +185,7 @@ Create `conquertactoe-backend/.env` from the example:
 
 ```bash
 cd conquertactoe-backend
-cp .env-example .env
+cp .env.example .env
 ```
 
 Edit `.env` with your settings:
@@ -216,7 +216,7 @@ Create `conquertactoe-frontend/.env`:
 
 ```bash
 cd ../conquertactoe-frontend
-cp .env-example .env
+cp .env.example .env
 ```
 
 Edit `.env`:
@@ -231,7 +231,7 @@ Create `conquertactoe-db/.env`:
 
 ```bash
 cd ../conquertactoe-db
-cp .env-example .env
+cp .env.example .env
 ```
 
 Edit `.env` (must match backend POSTGRES_* values):
@@ -248,7 +248,7 @@ Create `conquertactoe-autoplayer/.env`:
 
 ```bash
 cd ../conquertactoe-autoplayer
-cp .env-example .env
+cp .env.example .env
 ```
 
 Edit `.env`:
@@ -279,6 +279,27 @@ For development, the default configuration in `users-example.xml` is sufficient.
 ### 4. Database Storage Configuration
 
 **Important**: By default, databases use Docker volumes. For production or easier backups, it's recommended to use host-based storage.
+
+#### ClickHouse Configuration & Security
+
+The ClickHouse configuration is managed via XML files in `conquertactoe-autoplayer/clickhouse-config/`.
+
+*   **`users.xml`**: This is the **active** configuration file used by the ClickHouse container. It contains sensitive information like users, passwords, and network access rules. **This file is gitignored** to prevent accidental credential leaks.
+*   **`users-example.xml`**: This is a **template** file. It contains safe default settings (e.g., allowing access from Docker network).
+
+**To set up ClickHouse security:**
+
+1.  **Copy the template**:
+    ```bash
+    cp conquertactoe-autoplayer/clickhouse-config/users-example.xml conquertactoe-autoplayer/clickhouse-config/users.xml
+    ```
+
+2.  **Set the Password**:
+    *   **Option A (Environment Variable)**: Set `CLICKHOUSE_PASSWORD` in `conquertactoe-autoplayer/.env`. The `users.xml` is configured to read this variable.
+    *   **Option B (Direct Edit)**: Edit `users.xml` and replace `<password></password>` with `<password>YOUR_STRONG_PASSWORD</password>` (or use `<password_sha256_hex>`).
+
+3.  **Network Access**:
+    *   The default `<ip>::/0</ip>` allows access from anywhere (needed for Docker networking). For production, you may want to restrict this to specific IP ranges or the Docker subnet.
 
 #### Option A: Docker Volumes (Default)
 
@@ -488,7 +509,7 @@ Conquer-Tac-Toe/
 │   │   │   ├── utils/                  # Game logic utilities
 │   │   │   ├── config/                 # Configuration
 │   │   │   └── middleware/             # Auth & validation
-│   │   ├── .env-example
+│   │   ├── .env.example
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   └── package.json
@@ -505,7 +526,7 @@ Conquer-Tac-Toe/
 │   │   │   ├── redux/                  # State management
 │   │   │   ├── App.js
 │   │   │   └── index.js
-│   │   ├── .env-example
+│   │   ├── .env.example
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   └── package.json
@@ -514,7 +535,7 @@ Conquer-Tac-Toe/
 │   │   ├── init-db/
 │   │   │   ├── init.sql                # Schema & seed data
 │   │   │   └── init-db.sh              # Initialization script
-│   │   ├── .env-example
+│   │   ├── .env.example
 │   │   ├── Dockerfile
 │   │   └── docker-compose.yml
 │   │
@@ -529,7 +550,7 @@ Conquer-Tac-Toe/
 │       ├── clickhouse-config/
 │       │   ├── users.xml               # ClickHouse config
 │       │   └── users-example.xml       # Example config
-│       ├── .env-example
+│       ├── .env.example
 │       ├── main.py                     # FastAPI application
 │       ├── db.py                       # ClickHouse client
 │       ├── requirements.txt
