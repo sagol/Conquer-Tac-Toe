@@ -31,15 +31,26 @@ describe('Admin Settings Enforcement', () => {
         });
 
         // 3. Create another game (should fail)
+        let error;
         try {
             await axios.post(`${MAIN_API_URL}/game-requests`, { gameType: 'pvp', variantId: 3 }, {
                 headers: { Authorization: `Bearer ${userToken}` }
             });
-            fail('Should have failed due to limit');
-        } catch (err) {
-            expect(err.response.status).toBe(400);
-            expect(err.response.data.error).toContain('maximum limit');
+        } catch (e) {
+            error = e;
         }
+
+        if (!error) {
+            throw new Error('Should have failed due to limit');
+        }
+
+        const result = {
+            status: error.response?.status,
+            errorMsg: error.response?.data?.error
+        };
+
+        expect(result.status).toBe(400);
+        expect(result.errorMsg).toContain('maximum limit');
 
         // Reset limit
         await axios.put(`${API_URL}/settings/max_active_games_per_user`, { value: 5 }, {

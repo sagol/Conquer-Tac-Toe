@@ -37,15 +37,26 @@ describe('New Registrations Enforcement', () => {
 
         // Try to register new user via dev login
         const newUsername = `testuser_${Date.now()}`;
+        let error;
         try {
             await axios.post(`${BACKEND_URL}/auth/dev-login`, {
                 username: newUsername
             });
-            throw new Error('Should have returned 403');
-        } catch (error) {
-            expect(error.response.status).toBe(403);
-            expect(error.response.data.error).toContain('disabled');
+        } catch (e) {
+            error = e;
         }
+
+        if (!error) {
+            throw new Error('Should have returned 403');
+        }
+
+        const result = {
+            status: error.response?.status,
+            errorMsg: error.response?.data?.error
+        };
+
+        expect(result.status).toBe(403);
+        expect(result.errorMsg).toContain('disabled');
     });
 
     test('should allow existing users to login when registrations disabled', async () => {

@@ -1,5 +1,5 @@
 const request = require('supertest');
-const { app } = require('../backend/server');
+const { app } = require('../server');
 
 describe('Admin Settings API', () => {
     let authToken;

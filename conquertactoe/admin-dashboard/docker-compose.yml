@@ -42,6 +42,22 @@ services:
     #   - ./frontend:/app
     #   - /app/node_modules
 
+  admin-tests:
+    build: ./backend
+    container_name: conquertactoe_admin_tests
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      - BACKEND_URL=http://conquertactoe_backend:3000
+      - ADMIN_URL=http://admin-backend:4000
+      - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET}
+    networks:
+      - conquer-network
+    depends_on:
+      - admin-backend
+    command: [ "npm", "test", "--", "--runInBand" ]
+    profiles:
+      - test
+
 networks:
   conquer-network:
     external: true

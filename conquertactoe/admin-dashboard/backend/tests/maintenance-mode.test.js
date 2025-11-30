@@ -36,13 +36,24 @@ describe('Maintenance Mode Enforcement', () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Try to access main site
+        let error;
         try {
-            await axios.get(`${BACKEND_URL}/api/game-requests`);
-            fail('Should have returned 503');
-        } catch (error) {
-            expect(error.response.status).toBe(503);
-            expect(error.response.data.error).toContain('maintenance');
+            await axios.get(`${BACKEND_URL}/game-requests`);
+        } catch (e) {
+            error = e;
         }
+
+        if (!error) {
+            throw new Error('Should have returned 503');
+        }
+
+        const result = {
+            status: error.response?.status,
+            errorMsg: error.response?.data?.error
+        };
+
+        expect(result.status).toBe(503);
+        expect(result.errorMsg).toContain('maintenance');
     });
 
     test('should allow admin endpoints when maintenance mode is enabled', async () => {

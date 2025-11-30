@@ -43,17 +43,28 @@ describe('Game Creation Enforcement', () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Try to create a game
+        let error;
         try {
             await axios.post(
-                `${BACKEND_URL}/api/game-requests`,
+                `${BACKEND_URL}/game-requests`,
                 { gameType: 'player', variantId: 3 },
                 { headers: { Cookie: userCookie } }
             );
-            throw new Error('Should have returned 403');
-        } catch (error) {
-            expect(error.response.status).toBe(403);
-            expect(error.response.data.error).toContain('disabled');
+        } catch (e) {
+            error = e;
         }
+
+        if (!error) {
+            throw new Error('Should have returned 403');
+        }
+
+        const result = {
+            status: error.response?.status,
+            errorMsg: error.response?.data?.error
+        };
+
+        expect(result.status).toBe(403);
+        expect(result.errorMsg).toContain('disabled');
     });
 
     test('should allow game creation when enabled', async () => {
@@ -69,7 +80,7 @@ describe('Game Creation Enforcement', () => {
 
         // Create a game
         const res = await axios.post(
-            `${BACKEND_URL}/api/game-requests`,
+            `${BACKEND_URL}/game-requests`,
             { gameType: 'player', variantId: 3 },
             { headers: { Cookie: userCookie } }
         );
@@ -80,7 +91,7 @@ describe('Game Creation Enforcement', () => {
         // Clean up - delete the created game
         if (res.data.id) {
             await axios.delete(
-                `${BACKEND_URL}/api/game-requests/${res.data.id}`,
+                `${BACKEND_URL}/game-requests/${res.data.id}`,
                 { headers: { Cookie: userCookie } }
             ).catch(() => { });
         }
