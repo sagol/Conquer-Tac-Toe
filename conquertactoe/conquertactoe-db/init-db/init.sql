@@ -21,6 +21,9 @@ CREATE TABLE Users (
     role VARCHAR(20) DEFAULT 'user',
     login_count INTEGER DEFAULT 0,
     last_login_at TIMESTAMP,
+    is_banned BOOLEAN DEFAULT false,
+    ban_expires_at TIMESTAMP,
+    ban_reason TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -121,7 +124,23 @@ VALUES
     ('bot_difficulty_variant_2', 'hard', true, 'Default bot difficulty for Gomoku (easy/medium/hard)'),
     ('bot_difficulty_variant_3', 'hard', true, 'Default bot difficulty for Conquer Classic (easy/medium/hard)'),
     ('bot_difficulty_variant_4', 'hard', true, 'Default bot difficulty for Conquer Same-Size (easy/medium/hard)'),
-    ('bot_difficulty_variant_5', 'hard', true, 'Default bot difficulty for Conquer Custom (easy/medium/hard)');
+    ('bot_difficulty_variant_5', 'hard', true, 'Default bot difficulty for Conquer Custom (easy/medium/hard)'),
+    
+    -- Development & Debugging
+    ('dev_logging', 'false', false, 'Enable detailed logging for development'),
+    ('debug_mode', 'false', false, 'Enable debug mode for troubleshooting'),
+    
+    -- Site Operations
+    ('maintenance_mode', 'false', true, 'Put site in maintenance mode (blocks normal access)'),
+    ('new_registrations', 'true', true, 'Allow new user registrations'),
+    ('game_creation', 'true', true, 'Allow users to create new games'),
+    
+    -- Gameplay Settings
+    ('max_active_games_per_user', '10', true, 'Maximum number of active games per user'),
+    
+    -- Performance & Security
+    ('rate_limit_per_min', '60', false, 'Rate limit for API requests per minute'),
+    ('session_timeout_minutes', '60', false, 'Session timeout duration in minutes');
 
 -- ============================================
 -- SEED DATA: Game Variants
