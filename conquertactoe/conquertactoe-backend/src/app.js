@@ -11,6 +11,7 @@ require('dotenv').config();
 require('./config/passport');
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = socket.init(server); // Initialize Socket.io
 
@@ -29,7 +30,8 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false } // Set secure to true in production
+  secure: process.env.NODE_ENV === 'production', // Should be true for HTTPS
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // or 'lax'
 }));
 app.use(passport.initialize());
 app.use(passport.session());
