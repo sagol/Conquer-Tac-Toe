@@ -14,8 +14,12 @@ const defaultSettings = [
     { key: 'new_registrations', value: 'true', description: 'Enable/disable new user signups' },
     { key: 'game_creation', value: 'true', description: 'Enable/disable new game creation' },
 
-    // Gameplay Settings
-    { key: 'default_bot_difficulty', value: 'medium', description: 'Default AI difficulty (easy/medium/hard)' },
+    // Gameplay Settings - Bot Difficulty (per variant, all default to 'hard')
+    { key: 'bot_difficulty_variant_1', value: 'hard', description: 'Default bot difficulty for Classic Tic-Tac-Toe (easy/medium/hard)' },
+    { key: 'bot_difficulty_variant_2', value: 'hard', description: 'Default bot difficulty for Gomoku (easy/medium/hard)' },
+    { key: 'bot_difficulty_variant_3', value: 'hard', description: 'Default bot difficulty for Conquer Classic (easy/medium/hard)' },
+    { key: 'bot_difficulty_variant_4', value: 'hard', description: 'Default bot difficulty for Conquer Same-Size (easy/medium/hard)' },
+    { key: 'bot_difficulty_variant_5', value: 'hard', description: 'Default bot difficulty for Conquer Custom (easy/medium/hard)' },
     { key: 'max_active_games_per_user', value: '10', description: 'Limit concurrent games per user' },
 
     // Performance & Security

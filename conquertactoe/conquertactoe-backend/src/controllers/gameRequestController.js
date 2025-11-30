@@ -17,16 +17,19 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
     const variant = await GameVariant.getById(variantId || 3);
     const boardSize = variant ? variant.board_size : 3;
 
-    // Fetch default bot difficulty from settings
+    // Fetch per-variant bot difficulty from settings
     const { getSetting } = require('../utils/settings');
-    const defaultDifficulty = await getSetting('default_bot_difficulty', 'medium');
+    const difficultyKey = `bot_difficulty_variant_${variantId || 3}`;
+    const defaultDifficulty = await getSetting(difficultyKey, 'hard');
+
+    console.log(`[Bot] Using difficulty: ${defaultDifficulty} for variant ${variantId}`);
 
     let botMove = await getBotMove(
       gameId,
       board,
       player1Cones,
       player2Cones,
-      defaultDifficulty, // Use setting value
+      defaultDifficulty,
       variantId || 3,
       boardSize
     );
@@ -289,7 +292,7 @@ exports.createGameRequest = async (req, res) => {
 
 exports.createBotGameRequest = async (req, res) => {
   try {
-    const { variantId = 3 } = req.body; // Default to Classic Conquer
+    const { variantId = 3, botDifficulty } = req.body; // Accept bot difficulty from frontend
     if (!req.user) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -326,6 +329,14 @@ exports.createBotGameRequest = async (req, res) => {
     console.log('DEBUG: req.body =', JSON.stringify(req.body));
     console.log('DEBUG: variantId =', variantId, typeof variantId);
 
+    // Get difficulty (user override or admin default)
+    let difficulty = botDifficulty;
+    if (!difficulty) {
+      const difficultyKey = `bot_difficulty_variant_${variantId}`;
+      difficulty = await getSetting(difficultyKey, 'hard');
+    }
+    console.log(`[Bot Game] Using difficulty: ${difficulty} for variant ${variantId}`);
+
     // Handle custom cones for Conquer Custom variant (ID 5)
     const { customCones } = req.body;
     console.log('DEBUG: customCones =', customCones);
@@ -345,8 +356,8 @@ exports.createBotGameRequest = async (req, res) => {
     console.log(`[Randomization] Random value: ${randomValue.toFixed(4)}, Starting player: ${startingPlayer}`);
 
     const gameRequest = await pool.query(
-      'INSERT INTO GameRequests (creator_id, game_type, variant_id, status, board, active_player, player1_cones, player2_cones, joiner_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [creatorId, 'bot', variantId, 'joined', JSON.stringify(initialBoard), startingPlayer, JSON.stringify(player1Cones), JSON.stringify(player2Cones), null]
+      'INSERT INTO GameRequests (creator_id, game_type, variant_id, status, board, active_player, player1_cones, player2_cones, joiner_id, bot_difficulty) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [creatorId, 'bot', variantId, 'joined', JSON.stringify(initialBoard), startingPlayer, JSON.stringify(player1Cones), JSON.stringify(player2Cones), null, difficulty]
     );
 
     const createdGame = gameRequest.rows[0];

@@ -2,12 +2,12 @@ import random
 from typing import Dict, Any, Optional
 from core.bot_interface import IBot
 
-class HeuristicBot(IBot):
-    """Existing bot for Conquer-Tac-Toe variants"""
+class ConquerEasyBot(IBot):
+    """Easy difficulty bot for Conquer variants (current implementation)"""
     
     @property
     def name(self) -> str:
-        return "Conquer Heuristic Bot"
+        return "Conquer Easy Bot"
 
     def get_move(self, game_state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """

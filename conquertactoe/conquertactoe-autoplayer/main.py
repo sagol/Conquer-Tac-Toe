@@ -4,11 +4,23 @@ from typing import List, Optional, Dict, Any
 from db import init_db, log_move
 import uuid
 
-# Import new architecture components
+# Import all bot implementations
 from core.bot_factory import BotFactory
-from bots.classic.minimax_bot import ClassicTicTacToeBot
-from bots.gomoku.advanced_bot import GomokuBot
-from bots.conquer.heuristic_bot import HeuristicBot
+
+# Classic Tic-Tac-Toe bots
+from bots.classic.easy_bot import ClassicEasyBot
+from bots.classic.medium_bot import ClassicMediumBot
+from bots.classic.hard_bot import ClassicHardBot
+
+# Gomoku bots
+from bots.gomoku.easy_bot import GomokuEasyBot
+from bots.gomoku.medium_bot import GomokuMediumBot
+from bots.gomoku.hard_bot import GomokuHardBot
+
+# Conquer bots
+from bots.conquer.easy_bot import ConquerEasyBot
+from bots.conquer.medium_bot import ConquerMediumBot
+from bots.conquer.hard_bot import ConquerHardBot
 
 app = FastAPI()
 
@@ -16,22 +28,35 @@ app = FastAPI()
 def startup_event():
     try:
         init_db()
+        print("[Database] ClickHouse initialized successfully")
     except Exception as e:
         print(f"Warning: Failed to initialize ClickHouse: {e}")
         print("Continuing without database logging...")
     
-    # Register bots
+    print("[BotFactory] Registering all bots (5 variants × 3 difficulties = 15 bots)")
+    
     # Variant 1: Classic Tic-Tac-Toe
-    BotFactory.register_bot(1, ClassicTicTacToeBot())
+    BotFactory.register_bot(1, 'easy', ClassicEasyBot())
+    BotFactory.register_bot(1, 'medium', ClassicMediumBot())
+    BotFactory.register_bot(1, 'hard', ClassicHardBot())
     
-    # Variant 2: Gomoku
-    BotFactory.register_bot(2, GomokuBot())
+    # Variant 2: Gomoku (5-in-Line)
+    BotFactory.register_bot(2, 'easy', GomokuEasyBot())
+    BotFactory.register_bot(2, 'medium', GomokuMediumBot())
+    BotFactory.register_bot(2, 'hard', GomokuHardBot())
     
-    # Variants 3-5: Conquer variants (using same heuristic bot for now)
-    conquer_bot = HeuristicBot()
-    BotFactory.register_bot(3, conquer_bot)
-    BotFactory.register_bot(4, conquer_bot)
-    BotFactory.register_bot(5, conquer_bot)
+    # Variants 3-5: Conquer variants (all use same bots)
+    conquer_easy = ConquerEasyBot()
+    conquer_medium = ConquerMediumBot()
+    conquer_hard = ConquerHardBot()
+    
+    for variant_id in [3, 4, 5]:
+        BotFactory.register_bot(variant_id, 'easy', conquer_easy)
+        BotFactory.register_bot(variant_id, 'medium', conquer_medium)
+        BotFactory.register_bot(variant_id, 'hard', conquer_hard)
+    
+    print("[BotFactory] ✓ All 15 bots registered successfully")
+    print("[BotFactory] Registered bots:", BotFactory.list_bots())
 
 class MoveRequest(BaseModel):
     game_id: Optional[str] = None
@@ -56,12 +81,12 @@ def get_move(request: MoveRequest):
         print(f"[Autoplayer] Received move request for variant {request.variant_id}")
         print(f"[Autoplayer] Board size: {len(request.board)}x{len(request.board[0]) if request.board else 0}")
         
-        # Get appropriate bot from factory
-        bot = BotFactory.get_bot(request.variant_id)
+        # Get appropriate bot from factory (with difficulty)
+        bot = BotFactory.get_bot(request.variant_id, request.difficulty)
         
         if not bot:
-            print(f"[Autoplayer] No bot registered for variant {request.variant_id}")
-            raise HTTPException(status_code=400, detail=f"No bot available for variant {request.variant_id}")
+            print(f"[Autoplayer] No bot registered for variant {request.variant_id}, difficulty '{request.difficulty}'")
+            raise HTTPException(status_code=400, detail=f"No bot available for variant {request.variant_id} with difficulty '{request.difficulty}'")
             
         print(f"[Autoplayer] Using bot: {bot.name}")
         

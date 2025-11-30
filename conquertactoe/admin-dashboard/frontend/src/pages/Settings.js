@@ -208,7 +208,18 @@ const Settings = () => {
                     <Paper sx={{ p: 3 }}>
                         <Typography variant="h6" gutterBottom>Gameplay Settings</Typography>
                         <Divider sx={{ mb: 2 }} />
-                        {renderSelectSetting('default_bot_difficulty', 'Default Bot Difficulty', ['easy', 'medium', 'hard'])}
+
+                        {/* Bot Difficulty by Game Type */}
+                        <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
+                            Bot Difficulty by Game Type
+                        </Typography>
+                        {renderSelectSetting('bot_difficulty_variant_1', 'Classic Tic-Tac-Toe', ['easy', 'medium', 'hard'])}
+                        {renderSelectSetting('bot_difficulty_variant_2', 'Gomoku (5-in-Line)', ['easy', 'medium', 'hard'])}
+                        {renderSelectSetting('bot_difficulty_variant_3', 'Conquer Classic', ['easy', 'medium', 'hard'])}
+                        {renderSelectSetting('bot_difficulty_variant_4', 'Conquer Same-Size', ['easy', 'medium', 'hard'])}
+                        {renderSelectSetting('bot_difficulty_variant_5', 'Conquer Custom', ['easy', 'medium', 'hard'])}
+
+                        <Divider sx={{ my: 2 }} />
                         {renderNumberSetting('max_active_games_per_user', 'Max Active Games Per User')}
                     </Paper>
                 </Grid>

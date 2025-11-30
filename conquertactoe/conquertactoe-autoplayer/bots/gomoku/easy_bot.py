@@ -3,8 +3,8 @@ import time
 from typing import Dict, Any, Optional
 from core.bot_interface import IBot
 
-class GomokuBot(IBot):
-    """Advanced Gomoku bot with minimax search and pattern recognition"""
+class GomokuEasyBot(IBot):
+    """Easy difficulty bot for Gomoku (current implementation)"""
     
     def __init__(self):
         self.max_depth = 4  # Start with depth 4 for performance
@@ -21,7 +21,7 @@ class GomokuBot(IBot):
 
     @property
     def name(self) -> str:
-        return "Advanced Gomoku Bot"
+        return "Gomoku Easy Bot"
     
     def get_move(self, game_state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """

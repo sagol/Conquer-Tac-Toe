@@ -2,12 +2,12 @@ import random
 from typing import Dict, Any, Optional
 from core.bot_interface import IBot
 
-class ClassicTicTacToeBot(IBot):
-    """Simple Minimax-based bot for Classic Tic-Tac-Toe"""
+class ClassicEasyBot(IBot):
+    """Easy difficulty bot for Classic Tic-Tac-Toe (current implementation)"""
     
     @property
     def name(self) -> str:
-        return "Classic Minimax Bot"
+        return "Classic Easy Bot"
 
     def get_move(self, game_state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """

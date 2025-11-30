@@ -18,6 +18,9 @@ CREATE TABLE Users (
     losses INTEGER DEFAULT 0,
     draws INTEGER DEFAULT 0,
     token VARCHAR(255),
+    role VARCHAR(20) DEFAULT 'user',
+    login_count INTEGER DEFAULT 0,
+    last_login_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -86,11 +89,13 @@ CREATE TABLE GameRequests (
     active_player INTEGER,
     player1_cones JSONB,
     player2_cones JSONB,
-    winner INTEGER
+    winner INTEGER,
+    bot_difficulty VARCHAR(20) DEFAULT 'hard'
 );
 
--- Create index for GameRequests variant filtering
+-- Create indexes for GameRequests
 CREATE INDEX idx_gamerequests_variant ON GameRequests(variant_id);
+CREATE INDEX idx_gamerequests_difficulty ON GameRequests(bot_difficulty);
 
 -- ============================================
 -- Application Configuration Table
@@ -109,7 +114,14 @@ CREATE INDEX idx_appconfig_public ON AppConfig(is_public);
 -- Seed initial configuration
 INSERT INTO AppConfig (config_key, config_value, is_public, description)
 VALUES 
-    ('ENABLE_DEV_LOGIN', 'true', true, 'Show Dev Login option on login page for development');
+    ('ENABLE_DEV_LOGIN', 'true', true, 'Show Dev Login option on login page for development'),
+    
+    -- Bot Difficulty Settings (per variant, default: hard)
+    ('bot_difficulty_variant_1', 'hard', true, 'Default bot difficulty for Classic Tic-Tac-Toe (easy/medium/hard)'),
+    ('bot_difficulty_variant_2', 'hard', true, 'Default bot difficulty for Gomoku (easy/medium/hard)'),
+    ('bot_difficulty_variant_3', 'hard', true, 'Default bot difficulty for Conquer Classic (easy/medium/hard)'),
+    ('bot_difficulty_variant_4', 'hard', true, 'Default bot difficulty for Conquer Same-Size (easy/medium/hard)'),
+    ('bot_difficulty_variant_5', 'hard', true, 'Default bot difficulty for Conquer Custom (easy/medium/hard)');
 
 -- ============================================
 -- SEED DATA: Game Variants
