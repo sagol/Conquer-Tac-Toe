@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# ----------------------------------------------------------------
-# FIX: Get the Absolute Path of the project root immediately.
-# This ensures that 'cd' commands work correctly even if the
-# script changes directories during execution.
-# ----------------------------------------------------------------
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Set Project Root to the 'conquertactoe' subdirectory which is a sibling of 'scripts'
@@ -47,6 +42,16 @@ start_service() {
 echo "================================================"
 echo "   Starting Conquer-Tac-Toe Environment"
 echo "================================================"
+
+# ------------------------------------------------
+# NEW: Cleanup Section
+# ------------------------------------------------
+echo "🧹 Cleaning up old Docker garbage..."
+# This removes stopped containers, unused networks, and dangling images.
+# It does NOT remove volumes (Data is safe).
+docker system prune -f
+echo "✅ Cleanup complete."
+echo "------------------------------------------------"
 
 # 1. Create Network (if it doesn't exist)
 if [ -z "$(docker network ls | grep conquer-network)" ]; then
