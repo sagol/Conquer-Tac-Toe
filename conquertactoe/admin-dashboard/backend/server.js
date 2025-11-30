@@ -20,12 +20,29 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Rate Limiting
 const limiter = rateLimit({
     windowMs: process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000, // 15 minutes
     max: process.env.RATE_LIMIT_MAX_REQUESTS || 100
 });
 app.use(limiter);
+
+// Session Management (required for OAuth)
+const session = require('express-session');
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'default-admin-session-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+// Passport Initialization (for OAuth)
+const passport = require('./config/passport-admin');
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Database Connections
 const pool = new Pool({

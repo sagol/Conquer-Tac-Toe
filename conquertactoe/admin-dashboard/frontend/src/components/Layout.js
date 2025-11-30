@@ -1,7 +1,8 @@
 import React from 'react';
-import { Box, Drawer, AppBar, Toolbar, List, Typography, Divider, ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
-import { Dashboard as DashboardIcon, People, SportsEsports, Analytics, Settings as SettingsIcon } from '@mui/icons-material';
+import { Box, Drawer, AppBar, Toolbar, List, Typography, Divider, ListItem, ListItemButton, ListItemIcon, ListItemText, IconButton } from '@mui/material';
+import { Dashboard as DashboardIcon, People, SportsEsports, Analytics, Settings as SettingsIcon, Logout as LogoutIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import api from '../api';
 
 const drawerWidth = 240;
 
@@ -17,13 +18,27 @@ const Layout = ({ children }) => {
         { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
     ];
 
+    const handleLogout = async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (err) {
+            console.error('Logout error:', err);
+        } finally {
+            localStorage.removeItem('adminToken');
+            navigate('/login');
+        }
+    };
+
     return (
         <Box sx={{ display: 'flex' }}>
             <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
                 <Toolbar>
-                    <Typography variant="h6" noWrap component="div">
+                    <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
                         Conquer-Tac-Toe Admin
                     </Typography>
+                    <IconButton color="inherit" onClick={handleLogout} title="Logout">
+                        <LogoutIcon />
+                    </IconButton>
                 </Toolbar>
             </AppBar>
             <Drawer
