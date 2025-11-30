@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 from core.bot_interface import IBot
 
 class GomokuEasyBot(IBot):
-    """Easy difficulty bot for Gomoku (current implementation)"""
+    """Advanced Gomoku bot with minimax search and pattern recognition"""
     
     def __init__(self):
         self.max_depth = 4  # Start with depth 4 for performance
@@ -21,7 +21,7 @@ class GomokuEasyBot(IBot):
 
     @property
     def name(self) -> str:
-        return "Gomoku Easy Bot"
+        return "Advanced Gomoku Bot"
     
     def get_move(self, game_state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
@@ -36,6 +36,22 @@ class GomokuEasyBot(IBot):
 
         actual_board_size = len(board)
         opponent = 1 if player == 2 else 2
+        
+        # Check if it's an opening move (empty or near-empty board)
+        piece_count = sum(1 for r in range(actual_board_size) for c in range(actual_board_size)
+                         if r < len(board) and c < len(board[r]) and board[r][c] is not None)
+        
+        # Opening move: play near center
+        if piece_count == 0:
+            center = actual_board_size // 2
+            return {"row": center, "col": center, "cone_size": 0}
+        elif piece_count == 1:
+            # Second move: play near center with slight offset
+            center = actual_board_size // 2
+            offsets = [(0,1), (1,0), (1,1), (-1,1)]
+            offset = random.choice(offsets)
+            return {"row": center + offset[0], "col": center + offset[1], "cone_size": 0}
+        
         
         # Priority 1: Win immediately
         winning_move = self.find_winning_move(board, player, actual_board_size)

@@ -7,8 +7,9 @@ class GomokuHardBot(IBot):
     """Hard difficulty Gomoku bot with threat-space search - Expert level"""
     
     def __init__(self):
-        self.max_depth = 12  # Deep search
-        self.max_time = 4.0  # Allow more time for hard bot
+        self.max_depth = 16  # Very deep search for expert play
+        self.max_time = 5.0  # Maximum time for best moves
+        self.randomness = 0.02  # 2% chance of slight variation (minimal)
         # Professional-level pattern weights
         self.pattern_weights = {
             'five': 1000000,
@@ -38,6 +39,19 @@ class GomokuHardBot(IBot):
         actual_board_size = len(board)
         opponent = 1 if player == 2 else 2
         
+        # Opening move: play center
+        piece_count = sum(1 for r in range(actual_board_size) for c in range(actual_board_size)
+                         if r < len(board) and c < len(board[r]) and board[r][c] is not None)
+        if piece_count == 0:
+            center = actual_board_size // 2
+            return {"row": center, "col": center, "cone_size": 0}
+        elif piece_count == 1:
+            center = actual_board_size // 2
+            offsets = [(0,1), (1,0), (1,1), (-1,1)]
+            offset = random.choice(offsets)
+            return {"row": center + offset[0], "col": center + offset[1], "cone_size": 0}
+        
+        
         # Priority 1: Immediate win
         winning_move = self.find_winning_move(board, player, actual_board_size)
         if winning_move:
@@ -58,7 +72,12 @@ class GomokuHardBot(IBot):
         if threat_move:
             return threat_move
         
-        # Priority 5: Deep minimax with killer move heuristic
+        # Add tiny randomness: 5% chance for variety (prevents perfect determinism)
+        if random.random() < self.randomness:
+            # Still play strategically, just not the absolute best move
+            return self.strategic_move(board, player, actual_board_size)
+        
+        # Priority 5: Deep minimax with killer move heuristic  
         minimax_move = self.deep_minimax_search(board, player, actual_board_size)
         if minimax_move:
             return minimax_move

@@ -7,8 +7,9 @@ class GomokuMediumBot(IBot):
     """Medium difficulty Gomoku bot with VCF detection and deeper search"""
     
     def __init__(self):
-        self.max_depth = 8  # Increased from Easy's 4
-        self.max_time = 3.0  # seconds
+        self.max_depth = 10  # Significantly deeper than easy (4)
+        self.max_time = 4.0  # More time for deeper search
+        self.randomness = 0.05  # 5% chance for variety
         # Enhanced pattern weights for medium difficulty
         self.pattern_weights = {
             'five': 100000,
@@ -36,6 +37,19 @@ class GomokuMediumBot(IBot):
         actual_board_size = len(board)
         opponent = 1 if player == 2 else 2
         
+        # Opening move: play center
+        piece_count = sum(1 for r in range(actual_board_size) for c in range(actual_board_size)
+                         if r < len(board) and c < len(board[r]) and board[r][c] is not None)
+        if piece_count == 0:
+            center = actual_board_size // 2
+            return {"row": center, "col": center, "cone_size": 0}
+        elif piece_count == 1:
+            center = actual_board_size // 2
+            offsets = [(0,1), (1,0), (1,1), (-1,1)]
+            offset = random.choice(offsets)
+            return {"row": center + offset[0], "col": center + offset[1], "cone_size": 0}
+        
+        
         # Priority 1: Win immediately
         winning_move = self.find_winning_move(board, player, actual_board_size)
         if winning_move:
@@ -60,6 +74,10 @@ class GomokuMediumBot(IBot):
         vcf_move = self.find_vcf_sequence(board, player, actual_board_size)
         if vcf_move:
             return vcf_move
+        
+        # Add randomness: 15% chance to skip minimax and play tactically
+        if random.random() < self.randomness:
+            return self.pattern_based_move(board, player, actual_board_size)
         
         # Use minimax for complex positions
         minimax_move = self.minimax_search(board, player, actual_board_size)
