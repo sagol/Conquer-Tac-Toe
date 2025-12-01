@@ -1,16 +1,37 @@
 const passport = require('passport');
 const pool = require('../config/db');
+const { getBooleanSetting } = require('../utils/settings');
 
 exports.googleAuth = passport.authenticate('google', { scope: ['profile', 'email'] });
 
 exports.googleAuthCallback = (req, res, next) => {
-  passport.authenticate('google', (err, user, info) => {
+  passport.authenticate('google', async (err, user, info) => {
     if (err) {
       return next(err);
     }
     if (!user) {
       return res.redirect('/login');
     }
+
+    // Check for ban
+    if (user.is_banned) {
+      const now = new Date();
+      if (user.ban_expires_at && new Date(user.ban_expires_at) < now) {
+        // Ban expired, unban user
+        try {
+          await pool.query('UPDATE Users SET is_banned = FALSE, ban_expires_at = NULL, ban_reason = NULL WHERE user_id = $1', [user.user_id]);
+          user.is_banned = false;
+        } catch (dbErr) {
+          console.error('Error unbanning user:', dbErr);
+        }
+      } else {
+        // User is banned
+        const reason = encodeURIComponent(user.ban_reason || 'Violation of terms');
+        const expires = encodeURIComponent(user.ban_expires_at ? new Date(user.ban_expires_at).toISOString() : 'Permanent');
+        return res.redirect(`${process.env.CLIENT_URL}/banned?reason=${reason}&expires=${expires}`);
+      }
+    }
+
     req.logIn(user, (err) => {
       if (err) {
         return next(err);
@@ -29,8 +50,37 @@ exports.logout = (req, res, next) => {
   });
 };
 
-exports.currentUser = (req, res) => {
+exports.currentUser = async (req, res) => {
   console.log("Current User Endpoint Called");
+
+  if (!req.user) {
+    return res.json(null);
+  }
+
+  // Check if user is banned (in case they were banned while logged in)
+  if (req.user.is_banned) {
+    const now = new Date();
+    if (req.user.ban_expires_at && new Date(req.user.ban_expires_at) < now) {
+      // Ban expired, unban user
+      try {
+        await pool.query('UPDATE Users SET is_banned = FALSE, ban_expires_at = NULL, ban_reason = NULL WHERE user_id = $1', [req.user.user_id]);
+        req.user.is_banned = false;
+      } catch (dbErr) {
+        console.error('Error unbanning user:', dbErr);
+      }
+    } else {
+      // Still banned, log them out
+      req.logout(() => {
+        return res.status(403).json({
+          error: 'Account banned',
+          reason: req.user.ban_reason,
+          expires: req.user.ban_expires_at
+        });
+      });
+      return;
+    }
+  }
+
   console.log("User Info:", req.user);
   res.json(req.user);
 };
@@ -51,6 +101,14 @@ exports.devLogin = async (req, res, next) => {
 
     if (!user) {
       console.log('User not found, creating new user');
+
+      // Check if new registrations are allowed
+      const allowNewRegistrations = await getBooleanSetting('new_registrations', true);
+      if (!allowNewRegistrations) {
+        console.log('New registrations are currently disabled');
+        return res.status(403).json({ error: 'New registrations are currently disabled' });
+      }
+
       // Create new user if not exists
       const oauthId = `dev_${username}`;
       const email = `${username}@dev.com`;
@@ -61,14 +119,37 @@ exports.devLogin = async (req, res, next) => {
       user = newUserRes.rows[0];
     }
 
+    // Check for ban
+    if (user.is_banned) {
+      const now = new Date();
+      if (user.ban_expires_at && new Date(user.ban_expires_at) < now) {
+        // Ban expired, unban user
+        await pool.query('UPDATE Users SET is_banned = FALSE, ban_expires_at = NULL, ban_reason = NULL WHERE user_id = $1', [user.user_id]);
+        user.is_banned = false;
+      } else {
+        return res.status(403).json({
+          banned: true,
+          error: 'Account banned',
+          reason: user.ban_reason || 'Violation of terms of service',
+          expiresAt: user.ban_expires_at || 'Permanent'
+        });
+      }
+    }
+
     console.log('Logging in user:', user);
     // Log the user in
-    req.logIn(user, (err) => {
+    req.logIn(user, async (err) => {
       if (err) {
         console.error('req.logIn error:', err);
         return next(err);
       }
-      console.log('Login successful');
+
+      // Set session timeout based on setting
+      const { getNumberSetting } = require('../utils/settings');
+      const timeoutMinutes = await getNumberSetting('session_timeout_minutes', 60);
+      req.session.cookie.maxAge = timeoutMinutes * 60 * 1000;
+
+      console.log(`Login successful. Session timeout set to ${timeoutMinutes} minutes.`);
       return res.json(user);
     });
   } catch (err) {

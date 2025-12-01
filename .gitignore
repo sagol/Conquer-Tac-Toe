@@ -14,3 +14,7 @@ __pycache__/
 backups/
 *.sql.gz
 *.tar.gz
+
+# Postgres data
+pgdata/
+**/pgdata/

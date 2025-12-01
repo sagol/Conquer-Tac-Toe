@@ -25,6 +25,7 @@ const CreateGameModal = ({ open, onClose, onCreate }) => {
     const { variants, selectedVariantId, loading } = useSelector(state => state.gameVariants);
 
     const [gameType, setGameType] = useState('bot');
+    const [botDifficulty, setBotDifficulty] = useState('hard'); // Default to hard
     const [boardSize, setBoardSize] = useState(15); // For Gomoku
     const [customCones, setCustomCones] = useState({ small: 3, medium: 3, large: 2 });
 
@@ -39,7 +40,8 @@ const CreateGameModal = ({ open, onClose, onCreate }) => {
     const handleCreate = () => {
         const gameData = {
             gameType: gameType,
-            variantId: selectedVariantId
+            variantId: selectedVariantId,
+            botDifficulty: gameType === 'bot' ? botDifficulty : undefined
         };
 
         // Add custom data for specific variants
@@ -197,6 +199,25 @@ const CreateGameModal = ({ open, onClose, onCreate }) => {
                                 />
                             </RadioGroup>
                         </FormControl>
+
+                        {/* Bot Difficulty Selection */}
+                        {gameType === 'bot' && (
+                            <FormControl fullWidth margin="normal" className="form-control">
+                                <InputLabel id="bot-difficulty-label" shrink>Bot Difficulty</InputLabel>
+                                <Select
+                                    native
+                                    labelId="bot-difficulty-label"
+                                    id="bot-difficulty-select"
+                                    value={botDifficulty}
+                                    onChange={(e) => setBotDifficulty(e.target.value)}
+                                    label="Bot Difficulty"
+                                >
+                                    <option value="easy">Easy</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="hard">Hard</option>
+                                </Select>
+                            </FormControl>
+                        )}
                     </>
                 )}
             </DialogContent>

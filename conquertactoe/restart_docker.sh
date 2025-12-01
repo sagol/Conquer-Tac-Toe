@@ -5,7 +5,7 @@ ROOT_DIR=$(pwd)
 DB_DIR="$ROOT_DIR/conquertactoe-db"
 BACKEND_DIR="$ROOT_DIR/conquertactoe-backend"
 FRONTEND_DIR="$ROOT_DIR/conquertactoe-frontend"
-AUTOPLAYER_DIR="$ROOT_DIR/conquertactoe/autoplayer"
+AUTOPLAYER_DIR="$ROOT_DIR/conquertactoe-autoplayer"
 
 echo "=== Restarting Conquer-Tac-Toe Docker Containers ==="
 

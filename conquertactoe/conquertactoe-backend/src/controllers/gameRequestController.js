@@ -17,12 +17,19 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
     const variant = await GameVariant.getById(variantId || 3);
     const boardSize = variant ? variant.board_size : 3;
 
+    // Fetch per-variant bot difficulty from settings
+    const { getSetting } = require('../utils/settings');
+    const difficultyKey = `bot_difficulty_variant_${variantId || 3}`;
+    const defaultDifficulty = await getSetting(difficultyKey, 'hard');
+
+    console.log(`[Bot] Using difficulty: ${defaultDifficulty} for variant ${variantId}`);
+
     let botMove = await getBotMove(
       gameId,
       board,
       player1Cones,
       player2Cones,
-      'medium',
+      defaultDifficulty,
       variantId || 3,
       boardSize
     );
@@ -136,6 +143,27 @@ exports.updateGameRequest = async (req, res) => {
       return res.status(400).json({ error: 'Invalid move: Cannot place cone at this position.' });
     }
 
+    // Log move to ClickHouse
+    const clickhouseService = require('../services/clickhouseService');
+    // Determine difficulty label
+    let difficultyLabel = 'pvp';
+    if (gameRequest.game_type === 'bot') {
+      difficultyLabel = gameRequest.bot_difficulty || 'medium';
+    }
+
+    // In PvP: player1Cones is Player 1, player2Cones is Player 2
+    // We map player2Cones to 'bot_cones' field for schema compatibility
+    clickhouseService.logMove({
+      gameId,
+      board, // State BEFORE move
+      playerCones: player1Cones,
+      botCones: player2Cones,
+      move: { row, col, coneSize },
+      difficulty: difficultyLabel,
+      variantId: gameRequest.variant_id || 3,
+      boardSize: board.length
+    });
+
     // CRITICAL FIX: Apply the player's move to the board BEFORE updating
     const updatedBoard = board.map((r, rowIndex) =>
       r.map((cell, colIndex) => {
@@ -236,13 +264,25 @@ exports.createGameRequest = async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
+
+    // Check if game creation is allowed
+    const { getBooleanSetting } = require('../utils/settings');
+    const allowGameCreation = await getBooleanSetting('game_creation', true);
+    if (!allowGameCreation) {
+      return res.status(403).json({ error: 'Game creation is currently disabled' });
+    }
+
     const creatorId = req.user.user_id;
 
-    // Check if the user already has an active game request or joined game
+    // Check max active games limit
+    const { getNumberSetting, getSetting } = require('../utils/settings');
+    const maxActiveGames = await getNumberSetting('max_active_games_per_user', 5);
+
     const existingRequests = await GameRequest.getPendingByUser(creatorId);
     const existingJoinedGames = await GameRequest.getJoinedByUser(creatorId);
-    if (existingRequests.length > 0 || existingJoinedGames.length > 0) {
-      return res.status(400).json({ error: 'User already has an active game request or joined game' });
+
+    if ((existingRequests.length + existingJoinedGames.length) >= maxActiveGames) {
+      return res.status(400).json({ error: `You have reached the maximum limit of ${maxActiveGames} active games.` });
     }
 
     // Fetch variant configuration
@@ -273,10 +313,18 @@ exports.createGameRequest = async (req, res) => {
 
 exports.createBotGameRequest = async (req, res) => {
   try {
-    const { variantId = 3 } = req.body; // Default to Classic Conquer
+    const { variantId = 3, botDifficulty } = req.body; // Accept bot difficulty from frontend
     if (!req.user) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
+
+    // Check if game creation is allowed
+    const { getBooleanSetting, getNumberSetting, getSetting } = require('../utils/settings');
+    const allowGameCreation = await getBooleanSetting('game_creation', true);
+    if (!allowGameCreation) {
+      return res.status(403).json({ error: 'Game creation is currently disabled' });
+    }
+
     const creatorId = req.user.user_id;
 
     // Fetch variant configuration
@@ -302,6 +350,14 @@ exports.createBotGameRequest = async (req, res) => {
     console.log('DEBUG: req.body =', JSON.stringify(req.body));
     console.log('DEBUG: variantId =', variantId, typeof variantId);
 
+    // Get difficulty (user override or admin default)
+    let difficulty = botDifficulty;
+    if (!difficulty) {
+      const difficultyKey = `bot_difficulty_variant_${variantId}`;
+      difficulty = await getSetting(difficultyKey, 'hard');
+    }
+    console.log(`[Bot Game] Using difficulty: ${difficulty} for variant ${variantId}`);
+
     // Handle custom cones for Conquer Custom variant (ID 5)
     const { customCones } = req.body;
     console.log('DEBUG: customCones =', customCones);
@@ -321,8 +377,8 @@ exports.createBotGameRequest = async (req, res) => {
     console.log(`[Randomization] Random value: ${randomValue.toFixed(4)}, Starting player: ${startingPlayer}`);
 
     const gameRequest = await pool.query(
-      'INSERT INTO GameRequests (creator_id, game_type, variant_id, status, board, active_player, player1_cones, player2_cones, joiner_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [creatorId, 'bot', variantId, 'joined', JSON.stringify(initialBoard), startingPlayer, JSON.stringify(player1Cones), JSON.stringify(player2Cones), null]
+      'INSERT INTO GameRequests (creator_id, game_type, variant_id, status, board, active_player, player1_cones, player2_cones, joiner_id, bot_difficulty) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [creatorId, 'bot', variantId, 'joined', JSON.stringify(initialBoard), startingPlayer, JSON.stringify(player1Cones), JSON.stringify(player2Cones), null, difficulty]
     );
 
     const createdGame = gameRequest.rows[0];
@@ -386,13 +442,17 @@ exports.joinGameRequest = async (req, res) => {
     console.log(`Player ${joinerId} attempting to join game request ${requestId}`);
 
     // Additional checks and logs
+    // Check max active games limit for joiner
+    const { getNumberSetting } = require('../utils/settings');
+    const maxActiveGames = await getNumberSetting('max_active_games_per_user', 5);
+
     const existingRequests = await GameRequest.getPendingByUser(joinerId);
     const existingJoinedGames = await GameRequest.getJoinedByUser(joinerId);
     console.log(`Existing requests: ${JSON.stringify(existingRequests)}`);
     console.log(`Existing joined games: ${JSON.stringify(existingJoinedGames)}`);
 
-    if (existingRequests.length > 0 || existingJoinedGames.length > 0) {
-      return res.status(400).json({ error: 'User already has an active game request or joined game' });
+    if ((existingRequests.length + existingJoinedGames.length) >= maxActiveGames) {
+      return res.status(400).json({ error: `You have reached the maximum limit of ${maxActiveGames} active games.` });
     }
 
     // Randomize starting player (1 or 2)
@@ -436,6 +496,45 @@ exports.getGameRequestById = async (req, res) => {
     const userId = req.user.user_id;
     if (gameRequest.creator_id !== userId && gameRequest.joiner_id !== userId) {
       return res.status(403).json({ error: 'Access denied: You are not part of this game' });
+    }
+
+    // FIX: Auto-trigger bot move if it's a bot game and it's bot's turn
+    // This prevents bot from being stuck after page reload
+    if (gameRequest.game_type === 'bot' &&
+      gameRequest.active_player === 2 &&
+      gameRequest.status === 'joined') {
+
+      console.log(`[GET Game ${requestId}] Bot's turn detected, auto-triggering bot move...`);
+
+      try {
+        // Parse game state
+        const board = typeof gameRequest.board === 'string'
+          ? JSON.parse(gameRequest.board)
+          : gameRequest.board;
+        const player1Cones = typeof gameRequest.player1_cones === 'string'
+          ? JSON.parse(gameRequest.player1_cones)
+          : gameRequest.player1_cones;
+        const player2Cones = typeof gameRequest.player2_cones === 'string'
+          ? JSON.parse(gameRequest.player2_cones)
+          : gameRequest.player2_cones;
+
+        // Trigger bot move
+        const botResult = await handleBotMove(
+          requestId,
+          board,
+          player1Cones,
+          player2Cones,
+          gameRequest.variant_id
+        );
+
+        // Return updated game state after bot move
+        if (botResult) {
+          return res.json(botResult);
+        }
+      } catch (botError) {
+        console.error(`[GET Game ${requestId}] Bot move failed:`, botError);
+        // Continue to return current game state if bot move fails
+      }
     }
 
     res.json(gameRequest);
@@ -506,3 +605,91 @@ const updateUserStats = async (winnerId, loserId, isDraw = false) => {
   }
 };
 
+// Internal function to reset a game (called by Admin Dashboard)
+exports.resetGame = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    console.log(`[Internal] Resetting game ${gameId}`);
+
+    const gameRequest = await GameRequest.getById(gameId);
+    if (!gameRequest) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    // Fetch variant configuration to reset cones
+    const GameVariant = require('../models/GameVariant');
+    const variant = await GameVariant.getById(gameRequest.variant_id);
+
+    // Determine board size (handle custom size for Gomoku if applicable)
+    // For reset, we should probably keep the existing board size if possible, 
+    // but the board is stored as JSON. We can check the current board size.
+    let boardSize = variant.board_size;
+    if (gameRequest.board) {
+      const currentBoard = typeof gameRequest.board === 'string' ? JSON.parse(gameRequest.board) : gameRequest.board;
+      if (currentBoard && currentBoard.length > 0) {
+        boardSize = currentBoard.length;
+      }
+    }
+
+    const initialBoard = Array(boardSize).fill().map(() => Array(boardSize).fill(null));
+
+    // Reset cones
+    // Note: If it was a custom cone game, we might lose that info unless we stored it.
+    // For now, reset to variant defaults.
+    const player1Cones = variant.player1_cones;
+    const player2Cones = variant.player2_cones;
+
+    // Randomize starting player
+    const startingPlayer = Math.random() < 0.5 ? 1 : 2;
+    console.log(`[Reset] Game ${gameId} reset. Starting player: ${startingPlayer}`);
+
+    const newStatus = (gameRequest.joiner_id || gameRequest.game_type === 'bot') ? 'joined' : 'pending';
+
+    // Update DB
+    const updatedGame = await pool.query(`
+        UPDATE gamerequests 
+        SET 
+            board = $1, 
+            status = $2, 
+            active_player = $3, 
+            winner = NULL, 
+            player1_cones = $4, 
+            player2_cones = $5,
+            created_at = NOW()
+        WHERE id = $6
+        RETURNING *
+    `, [
+      JSON.stringify(initialBoard),
+      newStatus,
+      startingPlayer,
+      JSON.stringify(player1Cones),
+      JSON.stringify(player2Cones),
+      gameId
+    ]);
+
+    const resetGame = updatedGame.rows[0];
+
+    // Emit update to clients
+    socket.getIo().emit('gameUpdated', { ...resetGame, id: gameId, gameId: parseInt(gameId) });
+
+    // If it's a bot game and bot starts, trigger move
+    if (gameRequest.game_type === 'bot' && startingPlayer === 2) {
+      console.log('[Reset] Bot starts! Triggering move...');
+      // We can't await this if we want to return quickly, but for internal API it's fine to wait or not.
+      // Better to not await to avoid timeout if bot takes long, but handleBotMove is async.
+      handleBotMove(
+        gameId,
+        initialBoard,
+        player1Cones,
+        player2Cones,
+        gameRequest.variant_id
+      ).catch(err => console.error('Error in reset bot move:', err));
+    }
+
+    res.json({ message: 'Game reset successfully', game: resetGame });
+
+  } catch (err) {
+    console.error('Error resetting game:', err);
+    res.status(500).json({ error: err.message });
+  }
+};

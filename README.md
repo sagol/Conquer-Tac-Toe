@@ -61,6 +61,90 @@ Conquer-Tac-Toe is a strategic evolution of classic tic-tac-toe, featuring:
 - Docker & Docker Compose
 - Multi-container architecture
 - Network isolation
+- **Persistent Data Storage**: Host-based volumes for databases
+
+## 🏗️ Architecture
+
+### System Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Docker Environment                        │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │                    conquer-network                      │   │
+│  │                                                         │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐             │   │
+│  │  │ Frontend │  │ Backend  │  │Autoplayer│             │   │
+│  │  │ (React)  │──│(Node.js) │──│ (Python) │             │   │
+│  │  └──────────┘  └──────────┘  └──────────┘             │   │
+│  │       │              │              │                   │   │
+│  │       └──────────────┼──────────────┘                   │   │
+│  │                      │                                   │   │
+│  │         ┌────────────┴────────────┐                     │   │
+│  │         │                         │                     │   │
+│  │  ┌──────▼─────┐          ┌───────▼────┐                │   │
+│  │  │ PostgreSQL │          │ ClickHouse │                │   │
+│  │  │ Container  │          │ Container  │                │   │
+│  │  └──────┬─────┘          └───────┬────┘                │   │
+│  └─────────┼────────────────────────┼─────────────────────┘   │
+│            │                        │                          │
+│      bind mount                bind mount                      │
+│            │                        │                          │
+└────────────┼────────────────────────┼──────────────────────────┘
+             ▼                        ▼
+        ┌─────────┐              ┌─────────┐
+        │  Host   │              │  Host   │
+        │ Volume  │              │ Volume  │
+        │/postgres│              │/clickhouse│
+        └─────────┘              └─────────┘
+     (Physical Server)       (Physical Server)
+```
+
+### Database Architecture
+
+#### PostgreSQL (Main Database)
+- **Container**: `conquertactoe_db`
+- **Storage**: Host directory `./conquertactoe-db/data/postgres`
+- **Port**: 5433 (host) → 5432 (container)
+- **Purpose**: Application data (users, games, settings, leaderboards)
+
+**Why Host Storage?**
+- ✅ Data persists independently of containers
+- ✅ Easy access for backups without Docker commands
+- ✅ Direct file-level recovery possible
+- ✅ Survives `docker-compose down -v`
+- ✅ Can be backed up by standard filesystem tools
+
+#### ClickHouse (Analytics Database)
+- **Container**: `conquertactoe_clickhouse`
+- **Storage**: Host directory `./autoplayer/data/clickhouse`
+- **Ports**: 8123 (HTTP), 9000 (Native)
+- **Purpose**: Move logging and analytics
+
+### Data Flow
+
+1. **Write Path**: 
+   ```
+   Frontend → Backend API → PostgreSQL Container → Host Volume
+   ```
+
+2. **Read Path**:
+   ```
+   Host Volume → PostgreSQL Container → Backend API → Frontend
+   ```
+
+3. **Analytics Path**:
+   ```
+   Autoplayer → ClickHouse Container → Host Volume
+   ```
+
+### Backup System
+
+- **Frequency**: Every 24 hours (2 AM)
+- **Retention**: Last 7 backups
+- **Location**: `./backups/`
+- **Format**: `.sql.gz` (PostgreSQL), `.tar.gz` (ClickHouse)
+- **Automation**: Cron job or Docker scheduler
 
 ## 📦 Prerequisites
 
@@ -101,7 +185,7 @@ Create `conquertactoe-backend/.env` from the example:
 
 ```bash
 cd conquertactoe-backend
-cp .env-example .env
+cp .env.example .env
 ```
 
 Edit `.env` with your settings:
@@ -132,7 +216,7 @@ Create `conquertactoe-frontend/.env`:
 
 ```bash
 cd ../conquertactoe-frontend
-cp .env-example .env
+cp .env.example .env
 ```
 
 Edit `.env`:
@@ -147,7 +231,7 @@ Create `conquertactoe-db/.env`:
 
 ```bash
 cd ../conquertactoe-db
-cp .env-example .env
+cp .env.example .env
 ```
 
 Edit `.env` (must match backend POSTGRES_* values):
@@ -160,11 +244,11 @@ POSTGRES_PASSWORD=your_secure_password_here
 
 #### Autoplayer (AI) Configuration
 
-Create `conquertactoe/autoplayer/.env`:
+Create `conquertactoe-autoplayer/.env`:
 
 ```bash
-cd ../conquertactoe/autoplayer
-cp .env-example .env
+cd ../conquertactoe-autoplayer
+cp .env.example .env
 ```
 
 Edit `.env`:
@@ -183,7 +267,7 @@ CLICKHOUSE_PASSWORD=
 
 #### ClickHouse User Configuration
 
-Create `conquertactoe/autoplayer/clickhouse-config/users.xml`:
+Create `conquertactoe-autoplayer/clickhouse-config/users.xml`:
 
 ```bash
 cd clickhouse-config
@@ -192,7 +276,74 @@ cp users-example.xml users.xml
 
 For development, the default configuration in `users-example.xml` is sufficient.
 
-### 4. Start All Services
+### 4. Database Storage Configuration
+
+**Important**: By default, databases use Docker volumes. For production or easier backups, it's recommended to use host-based storage.
+
+#### ClickHouse Configuration & Security
+
+The ClickHouse configuration is managed via XML files in `conquertactoe-autoplayer/clickhouse-config/`.
+
+*   **`users.xml`**: This is the **active** configuration file used by the ClickHouse container. It contains sensitive information like users, passwords, and network access rules. **This file is gitignored** to prevent accidental credential leaks.
+*   **`users-example.xml`**: This is a **template** file. It contains safe default settings (e.g., allowing access from Docker network).
+
+**To set up ClickHouse security:**
+
+1.  **Copy the template**:
+    ```bash
+    cp conquertactoe-autoplayer/clickhouse-config/users-example.xml conquertactoe-autoplayer/clickhouse-config/users.xml
+    ```
+
+2.  **Set the Password**:
+    *   **Option A (Environment Variable)**: Set `CLICKHOUSE_PASSWORD` in `conquertactoe-autoplayer/.env`. The `users.xml` is configured to read this variable.
+    *   **Option B (Direct Edit)**: Edit `users.xml` and replace `<password></password>` with `<password>YOUR_STRONG_PASSWORD</password>` (or use `<password_sha256_hex>`).
+
+3.  **Network Access**:
+    *   The default `<ip>::/0</ip>` allows access from anywhere (needed for Docker networking). For production, you may want to restrict this to specific IP ranges or the Docker subnet.
+
+#### Option A: Docker Volumes (Default)
+
+No additional configuration needed. Data is stored in Docker-managed volumes:
+- PostgreSQL: `conquertactoe-db_pgdata`
+- ClickHouse: `autoplayer_clickhouse_data`
+
+#### Option B: Host-Based Volumes (Recommended)
+
+For direct filesystem access and easier backups:
+
+1. **Create data directories**:
+```bash
+mkdir -p conquertactoe-db/data/postgres
+mkdir -p conquertactoe-autoplayer/data/clickhouse
+```
+
+2. **Update `conquertactoe-db/docker-compose.yml`**:
+```yaml
+volumes:
+  - ./data/postgres:/var/lib/postgresql/data  # Instead of pgdata:/var/lib/postgresql/data
+```
+
+3. **Update `conquertactoe-autoplayer/docker-compose.yml`**:
+```yaml
+volumes:
+  - ./data/clickhouse:/var/lib/clickhouse  # Instead of clickhouse_data:/var/lib/clickhouse
+```
+
+4. **Remove volume definitions** from both docker-compose files:
+```yaml
+# Remove these lines:
+volumes:
+  pgdata:
+  # or
+  clickhouse_data:
+```
+
+**Or use the migration script** (if already running with Docker volumes):
+```bash
+./scripts/migrate-to-host-volumes.sh
+```
+
+### 5. Start All Services
 
 From the `conquertactoe` directory, start each service:
 
@@ -223,7 +374,7 @@ cd ..
 #### Start Autoplayer (AI System)
 
 ```bash
-cd conquertactoe/autoplayer
+cd conquertactoe-autoplayer
 docker-compose up --build -d
 cd ../..
 ```
@@ -278,7 +429,14 @@ You should see the Conquer-Tac-Toe login page!
 - **Container**: `conquertactoe_autoplayer`
 - **Port**: `8000:8000`
 - **Purpose**: AI bot system for all game variants
-- **Location**: `conquertactoe/autoplayer/`
+- **Location**: `conquertactoe-autoplayer/`
+
+### Admin Dashboard
+- **Frontend**: `http://localhost:3002`
+- **Backend**: `http://localhost:4000`
+- **Purpose**: System monitoring, user management, game analytics
+- **Location**: `conquertactoe/admin-dashboard/`
+- **Start Script**: `./start-admin.sh`
 
 ### ClickHouse
 - **Container**: `conquertactoe_clickhouse`
@@ -306,7 +464,7 @@ docker-compose down && docker-compose up --build -d
 cd ..
 
 # Autoplayer
-cd conquertactoe/autoplayer
+cd conquertactoe-autoplayer
 docker-compose down && docker-compose up --build -d
 cd ../..
 
@@ -351,7 +509,7 @@ Conquer-Tac-Toe/
 │   │   │   ├── utils/                  # Game logic utilities
 │   │   │   ├── config/                 # Configuration
 │   │   │   └── middleware/             # Auth & validation
-│   │   ├── .env-example
+│   │   ├── .env.example
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   └── package.json
@@ -368,7 +526,7 @@ Conquer-Tac-Toe/
 │   │   │   ├── redux/                  # State management
 │   │   │   ├── App.js
 │   │   │   └── index.js
-│   │   ├── .env-example
+│   │   ├── .env.example
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   └── package.json
@@ -377,11 +535,11 @@ Conquer-Tac-Toe/
 │   │   ├── init-db/
 │   │   │   ├── init.sql                # Schema & seed data
 │   │   │   └── init-db.sh              # Initialization script
-│   │   ├── .env-example
+│   │   ├── .env.example
 │   │   ├── Dockerfile
 │   │   └── docker-compose.yml
 │   │
-│   └── conquertactoe/autoplayer/       # Python AI System
+│   └── conquertactoe-autoplayer/       # Python AI System
 │       ├── bots/                       # Bot implementations
 │       │   ├── classic/                # Classic TicTacToe bot
 │       │   ├── gomoku/                 # Gomoku bot
@@ -392,7 +550,7 @@ Conquer-Tac-Toe/
 │       ├── clickhouse-config/
 │       │   ├── users.xml               # ClickHouse config
 │       │   └── users-example.xml       # Example config
-│       ├── .env-example
+│       ├── .env.example
 │       ├── main.py                     # FastAPI application
 │       ├── db.py                       # ClickHouse client
 │       ├── requirements.txt

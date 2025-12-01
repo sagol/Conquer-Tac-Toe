@@ -7,8 +7,10 @@ import {
   Grid,
   Card,
   CardContent,
-  CircularProgress
+  CircularProgress,
+  Snackbar
 } from '@material-ui/core';
+import { Alert } from '@material-ui/lab';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import SportsEsportsIcon from '@material-ui/icons/SportsEsports';
@@ -24,6 +26,7 @@ const Home = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
   useEffect(() => {
     fetchGlobalStats();
@@ -67,7 +70,21 @@ const Home = () => {
       }
       navigate(`/game/${res.data.id}`);
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to create game');
+      // Extract user-friendly error message
+      let errorMessage = 'Failed to create game. Please try again.';
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Game creation is currently disabled by the administrator.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Unable to create game. Please try again.';
+      }
+
+      setSnackbar({
+        open: true,
+        message: errorMessage
+      });
     }
   };
 
@@ -91,7 +108,7 @@ const Home = () => {
   };
 
   return (
-    <div className="modern-home">
+    <main className="modern-home">
       {/* Create Game Modal */}
       <CreateGameModal
         open={showCreateModal}
@@ -100,10 +117,10 @@ const Home = () => {
       />
 
       {/* Hero Section */}
-      <section className="hero-section">
+      <section className="hero-section" aria-label="Hero">
         <Container maxWidth="lg">
           <Box className="hero-content">
-            <Typography variant="h2" className="hero-title" gutterBottom>
+            <Typography variant="h1" className="hero-title" gutterBottom>
               Conquer Tac-Toe
             </Typography>
             <Typography variant="h5" className="hero-subtitle" gutterBottom>
@@ -333,7 +350,19 @@ const Home = () => {
           </Box>
         </Container>
       </section>
-    </div>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity="error">
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </main>
   );
 };
 

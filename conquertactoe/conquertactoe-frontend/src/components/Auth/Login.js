@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Box, TextField, Typography } from '@material-ui/core';
+import { Alert } from '@material-ui/lab';
 import axios from 'axios';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +11,7 @@ import './Login.css';
 const Login = () => {
   const [username, setUsername] = useState('');
   const [config, setConfig] = useState({});
+  const [errorMessage, setErrorMessage] = useState('');
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
@@ -34,12 +36,25 @@ const Login = () => {
 
   const handleDevLogin = async () => {
     try {
+      setErrorMessage(''); // Clear previous errors
       await axios.post(`${backendUrl}/auth/dev_login`, { username }, { withCredentials: true });
       await dispatch(fetchCurrentUser()); // Update Redux state
       navigate('/'); // Navigate to home
     } catch (error) {
       console.error('Dev login failed:', error);
-      alert('Dev login failed');
+
+      // Check if user is banned
+      if (error.response?.status === 403 && error.response?.data?.banned) {
+        const { reason, expiresAt } = error.response.data;
+        const encodedReason = encodeURIComponent(reason || 'Violation of terms of service');
+        const encodedExpires = encodeURIComponent(expiresAt || 'Permanent');
+        navigate(`/banned?reason=${encodedReason}&expires=${encodedExpires}`);
+      } else if (error.response?.status === 403 && error.response?.data?.error === 'New registrations are currently disabled') {
+        // Show banner for disabled registrations
+        setErrorMessage(error.response.data.error);
+      } else {
+        setErrorMessage(error.response?.data?.error || 'Dev login failed. Please try again.');
+      }
     }
   };
 
@@ -47,6 +62,24 @@ const Login = () => {
     <div className="auth-container">
       <div className="auth-form-box">
         <Typography variant="h2" className="modern-title">Login</Typography>
+
+        {/* Show error banner if there's an error */}
+        {errorMessage && (
+          <Box mb={2}>
+            <Alert severity="warning" onClose={() => setErrorMessage('')}>
+              {errorMessage}
+            </Alert>
+          </Box>
+        )}
+
+        {/* Show info banner if registrations are disabled */}
+        {config.new_registrations === 'false' && (
+          <Box mb={2}>
+            <Alert severity="info">
+              New user registrations are currently disabled. Please check back later or contact support.
+            </Alert>
+          </Box>
+        )}
 
         <Button
           variant="contained"

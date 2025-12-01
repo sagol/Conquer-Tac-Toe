@@ -3,7 +3,7 @@ version: '3.8'
 services:
   db:
     build: .
-    container_name: conquertactoe_db
+    container_name: ${POSTGRES_HOST}
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -13,13 +13,34 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
-    user: "999:999" # Ensure the container uses the same UID and GID as the postgres user on the host
     networks:
-      - ${NETWORK_NAME}
+      - conquer-network
+
+  clickhouse:
+    image: clickhouse/clickhouse-server
+    container_name: ${CLICKHOUSE_CONTAINER_NAME}
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT}:8123"
+      - "${CLICKHOUSE_NATIVE_PORT}:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      # - ./clickhouse-config/users.xml:/etc/clickhouse-server/users.d/users.xml:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - conquer-network
 
 networks:
-  ${NETWORK_NAME}:
+  conquer-network:
     external: true
 
 volumes:
   pgdata:
+  clickhouse_data:

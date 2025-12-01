@@ -44,9 +44,11 @@ const GamePage = () => {
           console.log('Fetched joiner name:', joinerRes.data.username);
           setJoinerName(joinerRes.data.username);
         } else if (res.data.game_type === 'bot') {
-          // For bot games, display "Bot AI" as the opponent
-          setJoinerName('Bot AI');
-          console.log('Bot game detected, setting joiner name to Bot AI');
+          // For bot games, display difficulty level alongside "Bot AI"
+          const difficulty = res.data.bot_difficulty || 'medium';
+          const capitalizedDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+          setJoinerName(`Bot AI (${capitalizedDifficulty})`);
+          console.log(`Bot game detected, setting joiner name to Bot AI (${capitalizedDifficulty})`);
         }
 
         if (res.data.status === 'won' || res.data.status === 'surrendered') {
@@ -217,20 +219,22 @@ const GamePage = () => {
   }
 
   return (
-    <Container>
-      <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" mt={5}>
-        <GameBoard
-          game={game}
-          updateGame={updateGame}
-          creatorName={creatorName}
-          joinerName={joinerName}
-          winner={game.winner}
-          isDraw={isDraw}
-          gameResult={game.status}
-          currentUser={auth.user}
-        />
-      </Box>
-    </Container>
+    <main>
+      <Container>
+        <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" mt={5}>
+          <GameBoard
+            game={game}
+            updateGame={updateGame}
+            creatorName={creatorName}
+            joinerName={joinerName}
+            winner={game.winner}
+            isDraw={isDraw}
+            gameResult={game.status}
+            currentUser={auth.user}
+          />
+        </Box>
+      </Container>
+    </main>
   );
 };
 

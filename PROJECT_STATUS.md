@@ -169,7 +169,7 @@ Conquer-Tac-Toe is a feature-complete multiplayer strategy game platform offerin
 - [x] **TEST_SCENARIOS.md**
   - Manual testing checklist
   - Expected behaviors
-- [x] **.env-example Files**
+- [x] **.env.example Files**
   - Backend configuration template
   - Frontend configuration template
   - Database configuration template
@@ -388,7 +388,7 @@ Contact: support@gurudo.com
 
 ### Documentation
 - [README.md](README.md) - Installation & Setup
-- [BOT_DEVELOPMENT.md](conquertactoe/conquertactoe/autoplayer/BOT_DEVELOPMENT.md) - Bot Development Guide
+- [BOT_DEVELOPMENT.md](conquertactoe/conquertactoe-autoplayer/BOT_DEVELOPMENT.md) - Bot Development Guide
 - [TEST_SCENARIOS.md](TEST_SCENARIOS.md) - Testing Documentation
 
 ---

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import '../Common/SharedModernStyles.css';
@@ -16,6 +16,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [selectedCone1, setSelectedCone1] = useState(2);
   const [selectedCone2, setSelectedCone2] = useState(2);
   const activePlayer = parseInt(game?.active_player) || 1;
+  const prevStatusRef = useRef(game?.status);
 
   // Randomization State
   const [isRandomizing, setIsRandomizing] = useState(false);
@@ -23,6 +24,8 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [showFinalName, setShowFinalName] = useState(false);
   const [hasRandomized, setHasRandomized] = useState(false);
   const [frozenBoard, setFrozenBoard] = useState(null); // Holds empty board during randomization
+  const [isSubmitting, setIsSubmitting] = useState(false); // Lock during backend processing
+
 
   const handlePlayAgain = async () => {
     try {
@@ -168,18 +171,21 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       return;
     }
 
-    // CHECK: Only show animation if game was just created (< 10 seconds ago)
-    // This prevents animation on hard refresh of older games
+    // CHECK: Only show animation if game was just created (< 10 seconds ago) OR if we just transitioned from pending to joined
+    // This prevents animation on hard refresh of older games, but ensures it runs when a player joins a waiting lobby
+    const prevStatus = prevStatusRef.current;
+    const isJustJoined = prevStatus === 'pending' && game.status === 'joined';
+
     if (game.created_at) {
       const createdAt = new Date(game.created_at);
       const now = new Date();
       const ageInSeconds = (now - createdAt) / 1000;
 
-      if (ageInSeconds > 10) {
-        console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, skipping randomization animation`);
+      if (ageInSeconds > 10 && !isJustJoined) {
+        console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old and not just joined (prev=${prevStatus}), skipping randomization animation`);
         return;
       }
-      console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, showing randomization animation`);
+      console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, showing randomization animation (isJustJoined=${isJustJoined})`);
     }
 
     // Start randomization immediately when game is joined
@@ -244,7 +250,18 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     }
   }, [game?.id]);
 
+  // Update prevStatusRef
+  useEffect(() => {
+    prevStatusRef.current = game?.status;
+  }, [game?.status]);
+
   const handleCellClick = async (row, col) => {
+    // Block if already processing a move
+    if (isSubmitting) {
+      console.log('[Click] Blocked: Already submitting a move');
+      return;
+    }
+
     // Ensure that the game isn't won or drawn before this move
     if (winner) {
       setError('The game has already been won. No further moves can be made.');
@@ -332,20 +349,37 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
     try {
       console.log('Updating game with move:', { row, col, selectedCone });
-      // IMPORTANT: Send ORIGINAL board state, let backend apply and validate the move
-      await updateGame(board, activePlayer, player1Cones, player2Cones, row, col, selectedCone);
+
+      // Lock the board to prevent multiple clicks
+      setIsSubmitting(true);
+
+      // OPTIMISTIC UPDATE: Update UI immediately for responsive feel
       setBoard(newBoard);
-      // REMOVED: setActivePlayer(activePlayer === 1 ? 2 : 1);
-      // activePlayer is now derived from game.active_player, backend will update it
       if (activePlayer === 1) {
         setPlayer1Cones(newCones);
       } else {
         setPlayer2Cones(newCones);
       }
       setError(null);
+
+      // IMPORTANT: Send ORIGINAL board state, let backend apply and validate the move
+      // For bot games, this will wait for bot's response, but UI already updated optimistically
+      await updateGame(board, activePlayer, player1Cones, player2Cones, row, col, selectedCone);
+
+      // Backend response will update game state via socket, which will sync the board
     } catch (error) {
       console.error('Error updating game:', error.response?.data || error.message);
+      // Revert optimistic update on error
+      setBoard(board);
+      if (activePlayer === 1) {
+        setPlayer1Cones(player1Cones);
+      } else {
+        setPlayer2Cones(player2Cones);
+      }
       setError(error.response?.data.error || error.message);
+    } finally {
+      // Always unlock the board when done
+      setIsSubmitting(false);
     }
   };
 
@@ -432,30 +466,43 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       }
     }
 
-    // Determine who started first for X/O assignment
-    // Count moves for each player - whoever has more moves (or equal if even total) started first
+    // Determine who started first for X/O assignment in Classic Tic-Tac-Toe
+    // Derive strictly from server state (game.board and game.active_player) to ensure stability
     let firstPlayer = 1; // default
-    if (isClassicTicTacToe && currentBoard) {
+    if (isClassicTicTacToe && game) {
       let player1Moves = 0;
       let player2Moves = 0;
 
-      currentBoard.forEach(row => {
-        row.forEach(cell => {
-          if (cell && cell.player === 1) player1Moves++;
-          if (cell && cell.player === 2) player2Moves++;
-        });
-      });
+      // Parse game.board if it's a string
+      let gameBoard = game.board;
+      if (typeof gameBoard === 'string') {
+        try {
+          gameBoard = JSON.parse(gameBoard);
+        } catch (e) {
+          // Ignore parse error, default to 0-0
+        }
+      }
 
-      // Whoever has more moves started first
-      // If equal, check active player (next to move means they started the round)
+      if (gameBoard && Array.isArray(gameBoard)) {
+        gameBoard.forEach(row => {
+          row.forEach(cell => {
+            if (cell && cell.player === 1) player1Moves++;
+            if (cell && cell.player === 2) player2Moves++;
+          });
+        });
+      }
+
       if (player1Moves > player2Moves) {
+        // Player 1 has more moves -> P1 started
         firstPlayer = 1;
       } else if (player2Moves > player1Moves) {
+        // Player 2 has more moves -> P2 started
         firstPlayer = 2;
       } else {
-        // Equal moves - check who's active
-        // If moves are equal (e.g., 0-0, 1-1), the player whose turn it is MUST be the one who started
-        firstPlayer = activePlayer;
+        // Equal moves (0-0, 1-1, etc.)
+        // If moves are equal, it is the starting player's turn!
+        // So starting player is whoever is currently active.
+        firstPlayer = parseInt(game.active_player) || 1;
       }
     }
 
