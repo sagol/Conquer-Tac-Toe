@@ -24,6 +24,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [showFinalName, setShowFinalName] = useState(false);
   const [hasRandomized, setHasRandomized] = useState(false);
   const [frozenBoard, setFrozenBoard] = useState(null); // Holds empty board during randomization
+  const [isSubmitting, setIsSubmitting] = useState(false); // Lock during backend processing
 
   const handlePlayAgain = async () => {
     try {
@@ -254,6 +255,12 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   }, [game?.status]);
 
   const handleCellClick = async (row, col) => {
+    // Block if already processing a move
+    if (isSubmitting) {
+      console.log('[Click] Blocked: Already submitting a move');
+      return;
+    }
+
     // Ensure that the game isn't won or drawn before this move
     if (winner) {
       setError('The game has already been won. No further moves can be made.');
@@ -342,6 +349,9 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     try {
       console.log('Updating game with move:', { row, col, selectedCone });
 
+      // Lock the board to prevent multiple clicks
+      setIsSubmitting(true);
+
       // OPTIMISTIC UPDATE: Update UI immediately for responsive feel
       setBoard(newBoard);
       if (activePlayer === 1) {
@@ -366,6 +376,9 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         setPlayer2Cones(player2Cones);
       }
       setError(error.response?.data.error || error.message);
+    } finally {
+      // Always unlock the board when done
+      setIsSubmitting(false);
     }
   };
 
