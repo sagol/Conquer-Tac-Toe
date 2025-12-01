@@ -143,6 +143,27 @@ exports.updateGameRequest = async (req, res) => {
       return res.status(400).json({ error: 'Invalid move: Cannot place cone at this position.' });
     }
 
+    // Log move to ClickHouse
+    const clickhouseService = require('../services/clickhouseService');
+    // Determine difficulty label
+    let difficultyLabel = 'pvp';
+    if (gameRequest.game_type === 'bot') {
+      difficultyLabel = gameRequest.bot_difficulty || 'medium';
+    }
+
+    // In PvP: player1Cones is Player 1, player2Cones is Player 2
+    // We map player2Cones to 'bot_cones' field for schema compatibility
+    clickhouseService.logMove({
+      gameId,
+      board, // State BEFORE move
+      playerCones: player1Cones,
+      botCones: player2Cones,
+      move: { row, col, coneSize },
+      difficulty: difficultyLabel,
+      variantId: gameRequest.variant_id || 3,
+      boardSize: board.length
+    });
+
     // CRITICAL FIX: Apply the player's move to the board BEFORE updating
     const updatedBoard = board.map((r, rowIndex) =>
       r.map((cell, colIndex) => {

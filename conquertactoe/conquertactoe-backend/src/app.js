@@ -9,6 +9,7 @@ const socket = require('./socket');
 const maintenanceMode = require('./middleware/maintenanceMode');
 require('dotenv').config();
 require('./config/passport');
+require('./services/clickhouseService');
 
 const app = express();
 app.set('trust proxy', 1);
