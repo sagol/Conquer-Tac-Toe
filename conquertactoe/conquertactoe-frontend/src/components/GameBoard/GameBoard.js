@@ -341,19 +341,30 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
     try {
       console.log('Updating game with move:', { row, col, selectedCone });
-      // IMPORTANT: Send ORIGINAL board state, let backend apply and validate the move
-      await updateGame(board, activePlayer, player1Cones, player2Cones, row, col, selectedCone);
+
+      // OPTIMISTIC UPDATE: Update UI immediately for responsive feel
       setBoard(newBoard);
-      // REMOVED: setActivePlayer(activePlayer === 1 ? 2 : 1);
-      // activePlayer is now derived from game.active_player, backend will update it
       if (activePlayer === 1) {
         setPlayer1Cones(newCones);
       } else {
         setPlayer2Cones(newCones);
       }
       setError(null);
+
+      // IMPORTANT: Send ORIGINAL board state, let backend apply and validate the move
+      // For bot games, this will wait for bot's response, but UI already updated optimistically
+      await updateGame(board, activePlayer, player1Cones, player2Cones, row, col, selectedCone);
+
+      // Backend response will update game state via socket, which will sync the board
     } catch (error) {
       console.error('Error updating game:', error.response?.data || error.message);
+      // Revert optimistic update on error
+      setBoard(board);
+      if (activePlayer === 1) {
+        setPlayer1Cones(player1Cones);
+      } else {
+        setPlayer2Cones(player2Cones);
+      }
       setError(error.response?.data.error || error.message);
     }
   };
