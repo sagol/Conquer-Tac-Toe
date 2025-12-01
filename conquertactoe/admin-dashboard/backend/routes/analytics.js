@@ -4,14 +4,17 @@ const { ClickHouse } = require('clickhouse');
 
 const clickhouse = new ClickHouse({
     url: `http://${process.env.CLICKHOUSE_HOST}`,
-    port: 8123, // Use HTTP port, not native protocol port
+    port: process.env.CLICKHOUSE_HTTP_PORT || 8123,
     debug: false,
-    basicAuth: null,
+    basicAuth: {
+        username: process.env.CLICKHOUSE_USER || 'default',
+        password: process.env.CLICKHOUSE_PASSWORD || '',
+    },
     isUseGzip: false,
     format: "json",
     raw: false,
     config: {
-        database: 'default',
+        database: process.env.CLICKHOUSE_DB || 'default',
     },
 });
 

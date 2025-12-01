@@ -51,19 +51,18 @@ const pool = new Pool({
 });
 
 const clickhouse = new ClickHouse({
-    url: `http://${process.env.CLICKHOUSE_HOST || 'conquertactoe_clickhouse'}`,
-    port: 8123, // Use HTTP port
+    url: `http://${process.env.CLICKHOUSE_HOST}`,
+    port: process.env.CLICKHOUSE_HTTP_PORT || 8123,
     debug: false,
-    basicAuth: null,
+    basicAuth: {
+        username: process.env.CLICKHOUSE_USER || 'default',
+        password: process.env.CLICKHOUSE_PASSWORD || '',
+    },
     isUseGzip: false,
     format: "json",
     raw: false,
     config: {
-        session_id: 'admin_dashboard',
-        session_timeout: 60,
-        output_format_json_quote_64bit_integers: 0,
-        enable_http_compression: 0,
-        database: 'default',
+        database: process.env.CLICKHOUSE_DB || 'default',
     },
 });
 

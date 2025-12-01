@@ -1,15 +1,25 @@
-const { ClickHouse } = require('clickhouse');
+const { ClickHouse } = require('clickhouse'); // Ensure this import exists
 
 const clickhouse = new ClickHouse({
-    url: process.env.CLICKHOUSE_HOST || 'clickhouse',
+    // 1. Add http:// prefix
+    url: `http://${process.env.CLICKHOUSE_HOST || 'conquertt_clickhouse'}`,
+
     port: process.env.CLICKHOUSE_HTTP_PORT || 8123,
     debug: false,
+
+    // 2. Credentials
     basicAuth: {
         username: process.env.CLICKHOUSE_USER || 'default',
         password: process.env.CLICKHOUSE_PASSWORD || '',
     },
+
     isUseGzip: false,
-    format: 'json', // "json" or "csv" or "tsv"
+    format: 'json',
+
+    // 3. Database Selection (Important!)
+    config: {
+        database: process.env.CLICKHOUSE_DB || 'default',
+    },
 });
 
 const DB_NAME = process.env.CLICKHOUSE_DB || 'default';
