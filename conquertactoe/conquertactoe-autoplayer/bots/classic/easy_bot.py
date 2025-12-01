@@ -3,7 +3,10 @@ from typing import Dict, Any, Optional
 from core.bot_interface import IBot
 
 class ClassicEasyBot(IBot):
-    """Easy difficulty bot for Classic Tic-Tac-Toe (current implementation)"""
+    """
+    Easy difficulty bot for Classic Tic-Tac-Toe.
+    Plays randomly 70% of the time to allow human players to win.
+    """
     
     @property
     def name(self) -> str:
@@ -21,6 +24,12 @@ class ClassicEasyBot(IBot):
         
         if not board:
             return None
+
+        # Easy Bot Logic:
+        # 70% chance to play randomly (making it actually easy)
+        # 30% chance to play optimally
+        if random.random() < 0.7:
+            return self.get_random_move(board)
 
         best_score = float('-inf')
         best_move = None
