@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import '../Common/SharedModernStyles.css';
@@ -16,6 +16,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [selectedCone1, setSelectedCone1] = useState(2);
   const [selectedCone2, setSelectedCone2] = useState(2);
   const activePlayer = parseInt(game?.active_player) || 1;
+  const prevStatusRef = useRef(game?.status);
 
   // Randomization State
   const [isRandomizing, setIsRandomizing] = useState(false);
@@ -168,18 +169,21 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       return;
     }
 
-    // CHECK: Only show animation if game was just created (< 10 seconds ago)
-    // This prevents animation on hard refresh of older games
+    // CHECK: Only show animation if game was just created (< 10 seconds ago) OR if we just transitioned from pending to joined
+    // This prevents animation on hard refresh of older games, but ensures it runs when a player joins a waiting lobby
+    const prevStatus = prevStatusRef.current;
+    const isJustJoined = prevStatus === 'pending' && game.status === 'joined';
+
     if (game.created_at) {
       const createdAt = new Date(game.created_at);
       const now = new Date();
       const ageInSeconds = (now - createdAt) / 1000;
 
-      if (ageInSeconds > 10) {
-        console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, skipping randomization animation`);
+      if (ageInSeconds > 10 && !isJustJoined) {
+        console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old and not just joined (prev=${prevStatus}), skipping randomization animation`);
         return;
       }
-      console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, showing randomization animation`);
+      console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, showing randomization animation (isJustJoined=${isJustJoined})`);
     }
 
     // Start randomization immediately when game is joined
@@ -243,6 +247,11 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       setHasRandomized(false);
     }
   }, [game?.id]);
+
+  // Update prevStatusRef
+  useEffect(() => {
+    prevStatusRef.current = game?.status;
+  }, [game?.status]);
 
   const handleCellClick = async (row, col) => {
     // Ensure that the game isn't won or drawn before this move
