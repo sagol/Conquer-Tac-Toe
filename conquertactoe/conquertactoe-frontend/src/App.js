@@ -9,6 +9,8 @@ import axios from 'axios';
 import Navbar from './components/Common/Navbar';
 import { CircularProgress, Box } from '@material-ui/core';
 import { fetchCurrentUser } from './redux/actions/authActions';
+import { NotificationProvider } from './context/NotificationContext';
+import NotificationToast from './components/Notifications/NotificationToast';
 
 // Lazy load components for performance
 const Login = lazy(() => import('./components/Auth/Login'));
@@ -49,23 +51,26 @@ const App = () => {
     <Provider store={store}>
       <ThemeProvider theme={theme}>
         <Router>
-          <Navbar />
-          <Suspense fallback={
-            <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
-              <CircularProgress />
-            </Box>
-          }>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/banned" element={<Banned />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/lobby" element={<Lobby />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/rules" element={<Rules />} />
-              <Route path="/game/:gameId" element={<GamePage />} />
-            </Routes>
-          </Suspense>
+          <NotificationProvider>
+            <Navbar />
+            <NotificationToast />
+            <Suspense fallback={
+              <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+                <CircularProgress />
+              </Box>
+            }>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/banned" element={<Banned />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/lobby" element={<Lobby />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/rules" element={<Rules />} />
+                <Route path="/game/:gameId" element={<GamePage />} />
+              </Routes>
+            </Suspense>
+          </NotificationProvider>
         </Router>
       </ThemeProvider>
     </Provider>

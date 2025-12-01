@@ -8,6 +8,7 @@ const userRoutes = require('./userRoutes');
 const statsRoutes = require('./statsRoutes');
 const gameVariantRoutes = require('./gameVariantRoutes');
 const configRoutes = require('./configRoutes');
+const notificationRoutes = require('./notificationRoutes');
 
 // Use the routes
 router.use(authRoutes);
@@ -17,5 +18,6 @@ router.use(userRoutes);
 router.use(statsRoutes);
 router.use(gameVariantRoutes);
 router.use('/api/config', configRoutes);
+router.use('/notifications', notificationRoutes);
 
 module.exports = router;

@@ -27,15 +27,20 @@ Conquer-Tac-Toe is a strategic evolution of classic tic-tac-toe, featuring:
   - Google OAuth integration
   - Dev login for testing
 - � **Player Statistics**
+-  **Player Statistics**
   - Separate PvP and Bot leaderboards
   - Detailed player profiles
   - Win rate tracking
 - 🌐 **Real-time Gameplay**
   - Socket.io for instant updates
   - Live game requests and moves
-- � **Game Analytics**
+-  **Game Analytics**
   - ClickHouse for move logging
   - Performance metrics
+- 🔔 **Notification System**
+  - Real-time alerts for game joins
+  - System-wide announcements
+  - Persistent notification history
 
 ## 🛠️ Tech Stack
 
@@ -740,6 +745,21 @@ curl http://localhost:8000/health
 curl -X POST http://localhost:8000/move \
   -H "Content-Type: application/json" \
   -d '{"variant_id": 1, "board": [[null,null,null],[null,null,null],[null,null,null]], "player_cones": [3,3,3], "bot_cones": [3,3,3]}'
+```
+
+### Notification System
+
+Test notification endpoints:
+
+```bash
+# Get user notifications
+curl http://localhost:3000/notifications -H "Cookie: your_session_cookie"
+
+# Mark notification as read
+curl -X PUT http://localhost:3000/notifications/1/read -H "Cookie: your_session_cookie"
+
+# Mark all as read
+curl -X PUT http://localhost:3000/notifications/read-all -H "Cookie: your_session_cookie"
 ```
 
 ## 📊 Monitoring & Logs

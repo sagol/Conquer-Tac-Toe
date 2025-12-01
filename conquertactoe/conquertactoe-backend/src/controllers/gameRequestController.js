@@ -466,6 +466,14 @@ exports.joinGameRequest = async (req, res) => {
     console.log(`Emitting playerJoined event for gameRequest: ${JSON.stringify(gameRequest)}`);
     socket.getIo().emit('playerJoined', gameRequest);
 
+    // Create notification for the game creator
+    const Notification = require('../models/Notification');
+    const notificationMessage = `A player has joined your game!|game_id:${requestId}`;
+    const notification = await Notification.create(gameRequest.creator_id, 'game_join', notificationMessage);
+
+    // Emit real-time notification to creator
+    socket.getIo().to(`user_${gameRequest.creator_id}`).emit('notification', notification);
+
     res.json(gameRequest);
   } catch (err) {
     console.error('Error in joinGameRequest:', err.message);
