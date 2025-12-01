@@ -477,6 +477,45 @@ exports.getGameRequestById = async (req, res) => {
       return res.status(403).json({ error: 'Access denied: You are not part of this game' });
     }
 
+    // FIX: Auto-trigger bot move if it's a bot game and it's bot's turn
+    // This prevents bot from being stuck after page reload
+    if (gameRequest.game_type === 'bot' &&
+      gameRequest.active_player === 2 &&
+      gameRequest.status === 'joined') {
+
+      console.log(`[GET Game ${requestId}] Bot's turn detected, auto-triggering bot move...`);
+
+      try {
+        // Parse game state
+        const board = typeof gameRequest.board === 'string'
+          ? JSON.parse(gameRequest.board)
+          : gameRequest.board;
+        const player1Cones = typeof gameRequest.player1_cones === 'string'
+          ? JSON.parse(gameRequest.player1_cones)
+          : gameRequest.player1_cones;
+        const player2Cones = typeof gameRequest.player2_cones === 'string'
+          ? JSON.parse(gameRequest.player2_cones)
+          : gameRequest.player2_cones;
+
+        // Trigger bot move
+        const botResult = await handleBotMove(
+          requestId,
+          board,
+          player1Cones,
+          player2Cones,
+          gameRequest.variant_id
+        );
+
+        // Return updated game state after bot move
+        if (botResult) {
+          return res.json(botResult);
+        }
+      } catch (botError) {
+        console.error(`[GET Game ${requestId}] Bot move failed:`, botError);
+        // Continue to return current game state if bot move fails
+      }
+    }
+
     res.json(gameRequest);
   } catch (err) {
     res.status(500).json({ error: err.message });
