@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Drawer, AppBar, Toolbar, List, Typography, Divider, ListItem, ListItemButton, ListItemIcon, ListItemText, IconButton } from '@mui/material';
-import { Dashboard as DashboardIcon, People, SportsEsports, Analytics, Settings as SettingsIcon, Logout as LogoutIcon } from '@mui/icons-material';
+import { Dashboard as DashboardIcon, People, SportsEsports, Analytics, Settings as SettingsIcon, Logout as LogoutIcon, Terminal as TerminalIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 
@@ -15,6 +15,7 @@ const Layout = ({ children }) => {
         { text: 'Users', icon: <People />, path: '/users' },
         { text: 'Games', icon: <SportsEsports />, path: '/games' },
         { text: 'Analytics', icon: <Analytics />, path: '/analytics' },
+        { text: 'Docker Logs', icon: <TerminalIcon />, path: '/docker-logs' },
         { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
     ];
 

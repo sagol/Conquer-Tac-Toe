@@ -1,0 +1,111 @@
+.log-container {
+    background-color: #1e1e1e;
+    border-radius: 4px;
+    padding: 16px;
+    max-height: 600px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.log-line {
+    padding: 4px 8px;
+    margin: 2px 0;
+    border-left: 3px solid transparent;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    transition: background-color 0.2s;
+}
+
+.log-line:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.log-type {
+    display: inline-block;
+    width: 80px;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.log-message {
+    color: #d4d4d4;
+}
+
+/* Log Level Colors */
+.log-error {
+    border-left-color: #f44336;
+}
+
+.log-error .log-type {
+    color: #f44336;
+}
+
+.log-error .log-message {
+    color: #ffcdd2;
+}
+
+.log-warning {
+    border-left-color: #ff9800;
+}
+
+.log-warning .log-type {
+    color: #ff9800;
+}
+
+.log-warning .log-message {
+    color: #ffe0b2;
+}
+
+.log-info {
+    border-left-color: #2196f3;
+}
+
+.log-info .log-type {
+    color: #2196f3;
+}
+
+.log-debug {
+    border-left-color: #9e9e9e;
+}
+
+.log-debug .log-type {
+    color: #9e9e9e;
+}
+
+.log-debug .log-message {
+    color: #bdbdbd;
+}
+
+/* Scrollbar styling for dark theme */
+.log-container::-webkit-scrollbar {
+    width: 12px;
+}
+
+.log-container::-webkit-scrollbar-track {
+    background: #2d2d2d;
+    border-radius: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .log-container {
+        font-size: 11px;
+        max-height: 400px;
+    }
+
+    .log-type {
+        width: 60px;
+        font-size: 10px;
+    }
+}

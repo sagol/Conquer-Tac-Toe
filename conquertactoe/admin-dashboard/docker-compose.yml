@@ -32,7 +32,9 @@ services:
       - ADMIN_FRONTEND_URL=${ADMIN_FRONTEND_URL:-http://localhost:3002}
     networks:
       - conquer-network
-    # volumes:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # Development volumes (uncomment for hot reload):
     #   - ./backend:/usr/src/app
     #   - /usr/src/app/node_modules
 
