@@ -26,6 +26,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [frozenBoard, setFrozenBoard] = useState(null); // Holds empty board during randomization
   const [isSubmitting, setIsSubmitting] = useState(false); // Lock during backend processing
 
+
   const handlePlayAgain = async () => {
     try {
       if (!game) return;
@@ -465,30 +466,43 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       }
     }
 
-    // Determine who started first for X/O assignment
-    // Count moves for each player - whoever has more moves (or equal if even total) started first
+    // Determine who started first for X/O assignment in Classic Tic-Tac-Toe
+    // Derive strictly from server state (game.board and game.active_player) to ensure stability
     let firstPlayer = 1; // default
-    if (isClassicTicTacToe && currentBoard) {
+    if (isClassicTicTacToe && game) {
       let player1Moves = 0;
       let player2Moves = 0;
 
-      currentBoard.forEach(row => {
-        row.forEach(cell => {
-          if (cell && cell.player === 1) player1Moves++;
-          if (cell && cell.player === 2) player2Moves++;
-        });
-      });
+      // Parse game.board if it's a string
+      let gameBoard = game.board;
+      if (typeof gameBoard === 'string') {
+        try {
+          gameBoard = JSON.parse(gameBoard);
+        } catch (e) {
+          // Ignore parse error, default to 0-0
+        }
+      }
 
-      // Whoever has more moves started first
-      // If equal, check active player (next to move means they started the round)
+      if (gameBoard && Array.isArray(gameBoard)) {
+        gameBoard.forEach(row => {
+          row.forEach(cell => {
+            if (cell && cell.player === 1) player1Moves++;
+            if (cell && cell.player === 2) player2Moves++;
+          });
+        });
+      }
+
       if (player1Moves > player2Moves) {
+        // Player 1 has more moves -> P1 started
         firstPlayer = 1;
       } else if (player2Moves > player1Moves) {
+        // Player 2 has more moves -> P2 started
         firstPlayer = 2;
       } else {
-        // Equal moves - check who's active
-        // If moves are equal (e.g., 0-0, 1-1), the player whose turn it is MUST be the one who started
-        firstPlayer = activePlayer;
+        // Equal moves (0-0, 1-1, etc.)
+        // If moves are equal, it is the starting player's turn!
+        // So starting player is whoever is currently active.
+        firstPlayer = parseInt(game.active_player) || 1;
       }
     }
 
