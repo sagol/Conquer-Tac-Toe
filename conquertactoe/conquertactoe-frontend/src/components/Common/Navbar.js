@@ -61,6 +61,13 @@ const Navbar = () => {
                 vertical: 'top',
                 horizontal: 'right',
               }}
+              PaperProps={{
+                style: {
+                  backgroundColor: 'transparent',
+                  boxShadow: 'none',
+                  borderRadius: '16px', // Match NotificationList border radius
+                },
+              }}
             >
               <NotificationList onClose={handleNotificationClose} />
             </Popover>
