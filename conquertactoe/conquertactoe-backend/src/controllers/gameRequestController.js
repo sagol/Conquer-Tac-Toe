@@ -1,4 +1,5 @@
 const GameRequest = require('../models/GameRequest');
+const Notification = require('../models/Notification');
 const socket = require('../socket');
 const pool = require('../config/db');
 const { getBotMove } = require('../services/aiService');
@@ -219,8 +220,7 @@ exports.updateGameRequest = async (req, res) => {
       // Send notification to the loser in PvP games (game_type is not 'bot')
       if (gameRequest.game_type !== 'bot' && loserId) {
         try {
-          const Notification = require('../models/Notification');
-          const notificationMessage = `You lost the game!|game_id:${gameId}`;
+          const notificationMessage = `Game Over - You lost. Winner: User ${winnerId || 'Bot'}|game_id:${gameId}`;
           const notification = await Notification.create(loserId, 'game_lost', notificationMessage);
           socket.getIo().to(`user_${loserId}`).emit('notification', notification);
           console.log(`Sent 'game_lost' notification to user ${loserId}`);
@@ -243,7 +243,6 @@ exports.updateGameRequest = async (req, res) => {
       // Send notification to both players in PvP games about the draw
       if (gameRequest.game_type !== 'bot') {
         try {
-          const Notification = require('../models/Notification');
           const notificationMessage = `Game ended in a draw!|game_id:${gameId}`;
 
           // Notify creator
@@ -271,7 +270,6 @@ exports.updateGameRequest = async (req, res) => {
       // Send notification to opponent in PvP games that it's their turn
       if (gameRequest.game_type !== 'bot' && gameRequest.joiner_id) {
         try {
-          const Notification = require('../models/Notification');
           // Determine who the opponent is (the player who should move next)
           const opponentId = activePlayer === 1 ? gameRequest.joiner_id : gameRequest.creator_id;
           const notificationMessage = `It's your turn!|game_id:${gameId}`;
@@ -636,16 +634,17 @@ exports.surrenderGame = async (req, res) => {
     // Update user stats
     await updateUserStats(winner, loser);
 
-    socket.getIo().emit('gameSurrendered', { gameId: parseInt(gameId), winner });
+    // Emit surrender event to specific users instead of globally
+    if (gameRequest.creator_id) socket.getIo().to(`user_${gameRequest.creator_id}`).emit('gameSurrendered', { gameId: parseInt(gameId), winner });
+    if (gameRequest.joiner_id) socket.getIo().to(`user_${gameRequest.joiner_id}`).emit('gameSurrendered', { gameId: parseInt(gameId), winner });
 
     // Send notification to the winner (for PvP games)
     if (gameRequest.game_type !== 'bot') {
       try {
-        const Notification = require('../models/Notification');
         const notificationMessage = `Your opponent surrendered! You won!|game_id:${gameId}`;
         const notification = await Notification.create(winner, 'game_won', notificationMessage);
         socket.getIo().to(`user_${winner}`).emit('notification', notification);
-        console.log(`Sent 'opponent_surrendered' notification to winner ${winner}`);
+        console.log(`Sent 'game_won' notification to winner ${winner}`);
       } catch (notificationError) {
         console.error('Failed to create surrender notification:', notificationError);
       }

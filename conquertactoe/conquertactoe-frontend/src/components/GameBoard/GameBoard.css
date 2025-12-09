@@ -571,7 +571,7 @@
   }
 }
 
-/* Large Board Adjustments (15x15, 19x19) - Desktop */
+/* Large Board Adjustments (15x15, 19x19) - Base/Desktop Default */
 .large-board {
   padding: 10px;
   gap: 3px;

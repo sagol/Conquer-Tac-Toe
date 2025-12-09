@@ -75,13 +75,17 @@ async function handleTimeout(game) {
             await pool.query('UPDATE Users SET losses = losses + 1 WHERE user_id = $1', [loserIdInt]);
         }
 
-        // Emit game timeout event via socket
-        socket.getIo().emit('gameTimeout', {
+        // Emit game timeout event via socket to specific users
+        const io = socket.getIo();
+        const payload = {
             gameId: parseInt(gameId),
             winner,
             loser,
             reason: 'timeout'
-        });
+        };
+        // Emit to both players
+        io.to(`user_${winner}`).emit('gameTimeout', payload);
+        io.to(`user_${loser}`).emit('gameTimeout', payload);
 
         // Send notifications
         try {

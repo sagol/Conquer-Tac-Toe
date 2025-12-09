@@ -14,26 +14,30 @@ const MoveTimer = ({ lastMoveAt, timeoutSeconds = 300, isMyTurn, gameActive }) =
     const [isWarning, setIsWarning] = useState(false);
     const [isCritical, setIsCritical] = useState(false);
 
+    // Calculate time left given lastMoveAt and timeoutSeconds
+    const calculateTimeLeft = (lastMoveTimestamp, timeoutLimit) => {
+        const lastMove = new Date(lastMoveTimestamp);
+        const now = new Date();
+        const elapsed = Math.floor((now - lastMove) / 1000);
+        const remaining = Math.max(0, timeoutLimit - elapsed);
+        return remaining;
+    };
+
     useEffect(() => {
         if (!gameActive || !lastMoveAt) {
             setTimeLeft(timeoutSeconds);
             return;
         }
 
-        const calculateTimeLeft = () => {
-            const lastMove = new Date(lastMoveAt);
-            const now = new Date();
-            const elapsed = Math.floor((now - lastMove) / 1000);
-            const remaining = Math.max(0, timeoutSeconds - elapsed);
-            return remaining;
-        };
-
         // Initial calculation
-        setTimeLeft(calculateTimeLeft());
+        const initialRemaining = calculateTimeLeft(lastMoveAt, timeoutSeconds);
+        setTimeLeft(initialRemaining);
+        setIsWarning(initialRemaining <= 60 && initialRemaining > 30);
+        setIsCritical(initialRemaining <= 30);
 
         // Update every second
         const interval = setInterval(() => {
-            const remaining = calculateTimeLeft();
+            const remaining = calculateTimeLeft(lastMoveAt, timeoutSeconds);
             setTimeLeft(remaining);
             setIsWarning(remaining <= 60 && remaining > 30);
             setIsCritical(remaining <= 30);

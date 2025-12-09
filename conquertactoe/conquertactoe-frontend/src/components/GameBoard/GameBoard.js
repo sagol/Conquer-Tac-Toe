@@ -213,8 +213,8 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     // Use proper fallback names based on game type
     const player1Name = creatorName || 'Player 1';
     // For bot games, fallback to 'Bot AI'; for PvP games, fallback to 'Opponent'
-    const isBotGame = game?.game_type === 'bot';
-    const player2Name = joinerName || (isBotGame ? 'Bot AI' : 'Opponent');
+    const isAgainstBot = game?.game_type === 'bot';
+    const player2Name = joinerName || (isAgainstBot ? 'Bot AI' : 'Opponent');
     const names = [player1Name, player2Name];
     console.log('Names array:', names, 'Game type:', game?.game_type);
     const duration = 1500; // 1.5 seconds total (reduced from 2s)

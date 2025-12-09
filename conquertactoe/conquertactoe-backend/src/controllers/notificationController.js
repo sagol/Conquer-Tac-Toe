@@ -41,9 +41,7 @@ exports.markAllRead = async (req, res) => {
 
 exports.createSystemNotification = async (req, res) => {
     try {
-        // Basic admin check - in production use proper role check
-        // For now, assuming this endpoint is protected by admin middleware or similar if needed
-        // Or just open for now as per "common functionality" request
+        // This endpoint is protected by ensureAdmin middleware (see notificationRoutes.js)
 
         const { userId, message, type = 'system' } = req.body;
 

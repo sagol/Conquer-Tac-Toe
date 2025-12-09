@@ -20,10 +20,11 @@ export const NotificationProvider = ({ children }) => {
     const location = useLocation();
     const currentGameId = location.pathname.match(/^\/game\/(\d+)/)?.[1] || null;
 
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+
     const fetchNotifications = useCallback(async () => {
         if (!user) return;
         try {
-            const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
             const res = await axios.get(`${backendUrl}/notifications`, { withCredentials: true });
             setNotifications(res.data.notifications);
             setUnreadCount(res.data.unreadCount);
@@ -34,7 +35,6 @@ export const NotificationProvider = ({ children }) => {
 
     const markAsRead = async (id) => {
         try {
-            const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
             await axios.put(`${backendUrl}/notifications/${id}/read`, {}, { withCredentials: true });
 
             setNotifications(prev => prev.map(n =>
@@ -48,7 +48,6 @@ export const NotificationProvider = ({ children }) => {
 
     const markAllAsRead = async () => {
         try {
-            const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
             await axios.put(`${backendUrl}/notifications/read-all`, {}, { withCredentials: true });
 
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -89,7 +88,7 @@ export const NotificationProvider = ({ children }) => {
             console.log('Received notification:', notification);
 
             // Extract game_id from notification message (format: "message|game_id:123")
-            const gameIdMatch = notification.message?.match(/game_id:(\d+)/);
+            const gameIdMatch = notification.message?.match(/\|game_id:(\d+)/);
             const notificationGameId = gameIdMatch ? gameIdMatch[1] : null;
 
             // Suppress toast and count for notifications about the currently viewed game

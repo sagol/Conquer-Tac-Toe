@@ -5,48 +5,16 @@
  * Run with: node test_notifications.js
  */
 
-const assert = require('assert');
 
-// Mock pool for testing Notification model
-const mockPool = {
-    query: async (sql, params) => {
-        // Mock responses based on SQL query
-        if (sql.includes('INSERT INTO Notifications')) {
-            return {
-                rows: [{
-                    id: 1,
-                    user_id: params[0],
-                    type: params[1],
-                    message: params[2],
-                    is_read: false,
-                    created_at: new Date()
-                }]
-            };
-        }
-        if (sql.includes('SELECT * FROM Notifications WHERE user_id')) {
-            return {
-                rows: [
-                    { id: 1, user_id: params[0], type: 'game_join', message: 'Test notification', is_read: false, created_at: new Date() }
-                ]
-            };
-        }
-        if (sql.includes('SELECT COUNT(*)')) {
-            return { rows: [{ count: '5' }] };
-        }
-        if (sql.includes('UPDATE Notifications SET is_read = TRUE WHERE id')) {
-            return { rows: [{ id: params[0], is_read: true }] };
-        }
-        return { rows: [] };
-    }
-};
+
+
 
 // Test Notification model input validation
 async function testNotificationValidation() {
     console.log('\n=== Testing Notification Model Validation ===\n');
 
     // Import the model and override pool
-    const pool = require('./src/config/db');
-    const Notification = require('./src/models/Notification');
+    // Import the model and override pool
 
     let passed = 0;
     let failed = 0;

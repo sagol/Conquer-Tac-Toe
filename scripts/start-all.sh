@@ -88,15 +88,28 @@ start_service "conquertactoe-db" "PostgreSQL Database"
 echo "⏳ Waiting for Database to be ready..."
 MAX_RETRIES=30
 RETRY_COUNT=0
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if docker exec conquertactoe_db psql -U postgres -d conquertactoe -c "SELECT 1 FROM users LIMIT 1;" > /dev/null 2>&1; then
-        echo "✅ Database is ready and tables are initialized."
-        break
-    fi
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    echo "   Attempt $RETRY_COUNT/$MAX_RETRIES - Database not ready yet..."
-    sleep 2
-done
+# Check DB readiness using docker compose exec from the service directory for reliability
+(
+    cd "$PROJECT_ROOT/conquertactoe-db" || exit
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        # Use -T for non-interactive execution
+        if docker compose exec -T db psql -U postgres -d conquertactoe -c "SELECT 1 FROM users LIMIT 1;" > /dev/null 2>&1; then
+            echo "✅ Database is ready and tables are initialized."
+            exit 0
+        fi
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "   Attempt $RETRY_COUNT/$MAX_RETRIES - Database not ready yet..."
+        sleep 2
+    done
+    exit 1
+)
+DB_READY=$?
+
+if [ $DB_READY -eq 0 ]; then
+    RETRY_COUNT=0 # Reset for the check below to skip manual init
+else
+    RETRY_COUNT=$MAX_RETRIES # Set to max to trigger manual init
+fi
 
 if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     echo "⚠️  Database didn't initialize within expected time. Trying manual init..."
