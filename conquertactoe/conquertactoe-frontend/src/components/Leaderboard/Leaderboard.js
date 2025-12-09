@@ -116,13 +116,13 @@ const Leaderboard = () => {
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell><strong>Rank</strong></TableCell>
-            <TableCell><strong>Username</strong></TableCell>
-            <TableCell align="center"><strong>Games</strong></TableCell>
-            <TableCell align="center"><strong>Wins</strong></TableCell>
-            <TableCell align="center"><strong>Losses</strong></TableCell>
-            <TableCell align="center"><strong>Draws</strong></TableCell>
-            <TableCell align="center"><strong>Win Rate</strong></TableCell>
+            <TableCell className="col-rank"><strong>Rank</strong></TableCell>
+            <TableCell className="col-username"><strong>Username</strong></TableCell>
+            <TableCell align="center" className="col-games"><strong>Games</strong></TableCell>
+            <TableCell align="center" className="col-wins"><strong>Wins</strong></TableCell>
+            <TableCell align="center" className="col-losses"><strong>Losses</strong></TableCell>
+            <TableCell align="center" className="col-draws"><strong>Draws</strong></TableCell>
+            <TableCell align="center" className="col-winrate"><strong>Win Rate</strong></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -132,14 +132,15 @@ const Leaderboard = () => {
               hover
               onClick={() => handleRowClick(user.user_id)}
               style={{ cursor: 'pointer' }}
+              className="clickable-row"
             >
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{user.username}</TableCell>
-              <TableCell align="center">{user.total_games}</TableCell>
-              <TableCell align="center">{user.wins}</TableCell>
-              <TableCell align="center">{user.losses}</TableCell>
-              <TableCell align="center">{user.draws}</TableCell>
-              <TableCell align="center">{(user.win_rate * 100).toFixed(1)}%</TableCell>
+              <TableCell className="col-rank">{index + 1}</TableCell>
+              <TableCell className="col-username">{user.username}</TableCell>
+              <TableCell align="center" className="col-games">{user.total_games}</TableCell>
+              <TableCell align="center" className="col-wins">{user.wins}</TableCell>
+              <TableCell align="center" className="col-losses">{user.losses}</TableCell>
+              <TableCell align="center" className="col-draws">{user.draws}</TableCell>
+              <TableCell align="center" className="col-winrate">{(user.win_rate * 100).toFixed(1)}%</TableCell>
             </TableRow>
           ))}
         </TableBody>

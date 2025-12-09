@@ -23,6 +23,14 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [isRandomizing, setIsRandomizing] = useState(false);
   const [randomizingName, setRandomizingName] = useState('');
   const [showFinalName, setShowFinalName] = useState(false);
+  const [showResultOverlay, setShowResultOverlay] = useState(false); // Controls the game over modal
+
+  // Effect to show overlay when game ends
+  useEffect(() => {
+    if (winner || isDraw) {
+      setShowResultOverlay(true);
+    }
+  }, [winner, isDraw]);
   const [hasRandomized, setHasRandomized] = useState(false);
   const [frozenBoard, setFrozenBoard] = useState(null); // Holds empty board during randomization
   const [isSubmitting, setIsSubmitting] = useState(false); // Lock during backend processing
@@ -551,69 +559,73 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   );
 
   const renderGameResult = () => {
-    if (winner) {
-      console.log('Rendering winner with details:', { winner, gameResult, gameType: game.game_type });
+    if (!winner && !isDraw) return null;
 
-      // For bot games, winner is player number (1 or 2), not user_id
+    // Mobile minified view or "View Result" button when overlay is closed
+    if (!showResultOverlay) {
+      return (
+        <div className="result-minimized">
+          <button className="view-result-button" onClick={() => setShowResultOverlay(true)}>
+            View Game Result
+          </button>
+        </div>
+      );
+    }
+
+    let message;
+    let bannerClass = "winner-banner glass-panel"; // Default base class
+
+    if (winner) {
+      // Logic from before...
       let winnerName;
       let isCurrentUserWinner;
       let isCurrentUserLoser;
 
-      console.log('Winner type:', typeof winner, 'Value:', winner);
-      console.log('Game type:', game.game_type);
-
       if (game.game_type === 'bot') {
-        // Bot game: winner is 1 (player) or 2 (bot)
-        // Use loose equality (==) to handle string/number mismatch
         winnerName = winner == 1 ? creatorName : joinerName;
         isCurrentUserWinner = winner == 1;
         isCurrentUserLoser = winner == 2;
-        console.log('Bot game logic:', { winnerName, isCurrentUserWinner, isCurrentUserLoser });
       } else {
-        // PvP game: winner is user_id
         winnerName = winner === game.creator_id ? creatorName : joinerName;
         isCurrentUserWinner = currentUser?.user_id === winner;
         isCurrentUserLoser = currentUser?.user_id === (winner === game.creator_id ? game.joiner_id : game.creator_id);
       }
 
-      let message;
-
       if (isCurrentUserWinner) {
         message = `🎉 Congratulations! ${winnerName} wins! 🎉`;
+        bannerClass += " win";
       } else if (isCurrentUserLoser) {
-        message = `${winnerName} wins! Better luck next time.`;
+        message = `${winnerName} wins. Better luck next time!`;
+        bannerClass += " loss";
       } else {
         message = `${winnerName} has won the game!`;
+        bannerClass += " win";
       }
 
       if (gameResult === 'surrendered') {
-        message += ` The game was won by surrender.`;
+        message += ` (Surrender)`;
       }
-
-      return (
-        <div className="winner-banner">
-          {message}
-          <div className="play-again-container">
-            <button className="play-again-button" onClick={handlePlayAgain}>
-              Play Again
-            </button>
-          </div>
-        </div>
-      );
-    } else if (isDraw) {
-      return (
-        <div className="draw-banner">
-          The game has ended in a draw.
-          <div className="play-again-container">
-            <button className="play-again-button" onClick={handlePlayAgain}>
-              Play Again
-            </button>
-          </div>
-        </div>
-      );
+    } else {
+      // Draw
+      message = "The game has ended in a draw.";
+      bannerClass = "draw-banner glass-panel draw";
     }
 
-    return null;
+    return (
+      <div className="game-result-overlay">
+        <div className={bannerClass}>
+          <button className="close-overlay-button" onClick={() => setShowResultOverlay(false)} aria-label="Close">
+            ✕
+          </button>
+          <div className="banner-message">{message}</div>
+          <div className="play-again-container">
+            <button className="play-again-button" onClick={handlePlayAgain}>
+              Play Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (

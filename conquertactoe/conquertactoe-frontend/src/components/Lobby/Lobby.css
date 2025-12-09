@@ -208,8 +208,8 @@
   }
 }
 
-/* Responsive - Mobile phones */
-@media (max-width: 480px) {
+/* Responsive - Mobile/Tablet (Card View) */
+@media (max-width: 800px) {
   .lobby-container {
     padding: 10px 5px;
   }
@@ -247,7 +247,6 @@
 
   .table-container .MuiTableHead-root {
     display: none !important;
-    /* Hide headers on mobile */
   }
 
   .table-container .MuiTableBody-root {
@@ -261,6 +260,7 @@
     margin-bottom: 8px;
     border-radius: 10px;
     border-bottom: none !important;
+    position: relative;
   }
 
   .table-container .MuiTableCell-root {
@@ -272,39 +272,47 @@
   }
 
   /* Creator name - full width */
-  .table-container .MuiTableCell-root:nth-child(1) {
+  .table-container .col-creator {
     width: 100%;
     font-weight: 600 !important;
-    font-size: 0.95rem !important;
-    margin-bottom: 6px;
+    font-size: 1rem !important;
+    color: #2c3e50 !important;
+    margin-bottom: 4px;
+    order: 1;
   }
 
-  /* Variant - half width */
-  .table-container .MuiTableCell-root:nth-child(2) {
+  /* Variant & Status - shared row */
+  .table-container .col-variant {
     width: 50%;
+    order: 2;
+    color: #555 !important;
   }
 
-  /* Status - quarter width */
-  .table-container .MuiTableCell-root:nth-child(3) {
-    width: 25%;
+  .table-container .col-status {
+    width: 50%;
+    order: 3;
+    justify-content: flex-end;
+    font-weight: 600 !important;
   }
 
-  /* Created - quarter width */
-  .table-container .MuiTableCell-root:nth-child(4) {
-    width: 25%;
-    font-size: 0.7rem !important;
+  /* Hide less critical columns on mobile to save space */
+  .table-container .col-type,
+  .table-container .col-created {
+    display: none !important;
   }
 
-  /* Action button - full width */
-  .table-container .MuiTableCell-root:nth-child(5) {
+  /* Action button - full width at bottom */
+  .table-container .col-action {
     width: 100%;
     justify-content: center;
     margin-top: 8px;
+    order: 4;
   }
 
   .table-container .MuiTableCell-root .lobby-button {
     width: 100%;
-    padding: 10px !important;
+    padding: 8px !important;
+    margin: 0 !important;
   }
 
   .lobby-button {

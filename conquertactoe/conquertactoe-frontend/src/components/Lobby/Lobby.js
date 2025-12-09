@@ -247,27 +247,27 @@ const Lobby = () => {
                     style={{ cursor: 'pointer' }}
                     className={request.status === 'pending' ? 'pending-game' : ''}
                   >
-                    <TableCell>{request.creator_name}</TableCell>
+                    <TableCell className="col-creator">{request.creator_name}</TableCell>
                     {activeTab === 0 ? (
                       <>
-                        <TableCell>{request.game_type}</TableCell>
-                        <TableCell>{request.variant_display_name || 'Unknown'}</TableCell>
+                        <TableCell className="col-type">{request.game_type}</TableCell>
+                        <TableCell className="col-variant">{request.variant_display_name || 'Unknown'}</TableCell>
                       </>
                     ) : (
-                      <TableCell>{request.variant_display_name || 'Unknown'}</TableCell>
+                      <TableCell className="col-variant">{request.variant_display_name || 'Unknown'}</TableCell>
                     )}
-                    <TableCell>{getUserGameStatus(request)}</TableCell>
-                    <TableCell>{formatTimestamp(request.created_at)}</TableCell>
-                    <TableCell>
+                    <TableCell className="col-status">{getUserGameStatus(request)}</TableCell>
+                    <TableCell className="col-created">{formatTimestamp(request.created_at)}</TableCell>
+                    <TableCell className="col-action">
                       {canJoin(request) ? (
                         <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); joinGameRequest(request.id); }} className="lobby-button">Join</Button>
                       ) : (request.creator_id === auth.user?.user_id && request.status === 'pending') ? (
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go to Game</Button>
-                          <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); deleteGameRequest(request.id); }} className="lobby-button">Delete</Button>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                          <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go</Button>
+                          <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); deleteGameRequest(request.id); }} className="lobby-button">Del</Button>
                         </div>
                       ) : (request.creator_id === auth.user?.user_id || request.joiner_id === auth.user?.user_id) ? (
-                        <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go to Game</Button>
+                        <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go</Button>
                       ) : null}
                     </TableCell>
                   </TableRow>
