@@ -93,7 +93,9 @@ CREATE TABLE GameRequests (
     player1_cones JSONB,
     player2_cones JSONB,
     winner INTEGER,
-    bot_difficulty VARCHAR(20) DEFAULT 'hard'
+    bot_difficulty VARCHAR(20) DEFAULT 'hard',
+    last_move_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    move_timeout_seconds INTEGER DEFAULT 300
 );
 
 -- Create indexes for GameRequests

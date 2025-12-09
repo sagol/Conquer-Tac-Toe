@@ -109,7 +109,7 @@ const NotificationList = ({ onClose }) => {
         }
 
         // Parse game_id from message if present
-        const gameIdMatch = notification.message.match(/\|game_id:(\d+)/);
+        const gameIdMatch = notification.message?.match(/\|game_id:(\d+)/);
         if (gameIdMatch) {
             const gameId = gameIdMatch[1];
             onClose();
@@ -147,7 +147,7 @@ const NotificationList = ({ onClose }) => {
                 <List disablePadding>
                     {recentNotifications.map((notification, index) => {
                         // Clean message text (remove metadata)
-                        const cleanMessage = notification.message.split('|')[0];
+                        const cleanMessage = notification.message?.split('|')[0] || '';
 
                         return (
                             <React.Fragment key={notification.id}>

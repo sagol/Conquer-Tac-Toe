@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import '../Common/SharedModernStyles.css';
 import './GameBoard.css';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
+import MoveTimer from './MoveTimer';
 
 const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser }) => {
   const navigate = useNavigate();
@@ -209,11 +210,13 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
     let interval;
     let counter = 0;
-    // For bot games, player 2 is the bot, so use proper names
+    // Use proper fallback names based on game type
     const player1Name = creatorName || 'Player 1';
-    const player2Name = joinerName || 'Bot';
+    // For bot games, fallback to 'Bot AI'; for PvP games, fallback to 'Opponent'
+    const isBotGame = game?.game_type === 'bot';
+    const player2Name = joinerName || (isBotGame ? 'Bot AI' : 'Opponent');
     const names = [player1Name, player2Name];
-    console.log('Names array:', names);
+    console.log('Names array:', names, 'Game type:', game?.game_type);
     const duration = 1500; // 1.5 seconds total (reduced from 2s)
     const speed = 80; // Switch every 80ms (slightly faster)
 
@@ -663,6 +666,22 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
           )}
         </div>
       </div>
+
+      {/* Move Timer - only show for PvP games */}
+      {game?.game_type !== 'bot' && game?.joiner_id && !winner && !isDraw && (
+        <div className="timer-container">
+          <MoveTimer
+            lastMoveAt={game.last_move_at}
+            timeoutSeconds={game.move_timeout_seconds || 300}
+            isMyTurn={
+              (currentUser?.user_id === game.creator_id && activePlayer === 1) ||
+              (currentUser?.user_id === game.joiner_id && activePlayer === 2)
+            }
+            gameActive={game.status === 'joined'}
+          />
+        </div>
+      )}
+
       <div
         key={boardSize} /* Force re-creation of DOM element when size changes to ensure grid style applies */
         className={`game-board ${boardSize > 10 ? 'large-board' : ''}`}

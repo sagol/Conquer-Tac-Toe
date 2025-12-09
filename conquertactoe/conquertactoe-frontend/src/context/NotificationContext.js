@@ -1,6 +1,7 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
+import { useLocation } from 'react-router-dom';
 import socket from '../utils/socket'; // socket.js is in src/utils/
 
 const NotificationContext = createContext();
@@ -15,7 +16,11 @@ export const NotificationProvider = ({ children }) => {
     // Use Redux selector to get user
     const user = useSelector(state => state.auth.user);
 
-    const fetchNotifications = async () => {
+    // Track current game being viewed to suppress notifications for it
+    const location = useLocation();
+    const currentGameId = location.pathname.match(/^\/game\/(\d+)/)?.[1] || null;
+
+    const fetchNotifications = useCallback(async () => {
         if (!user) return;
         try {
             const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
@@ -25,7 +30,7 @@ export const NotificationProvider = ({ children }) => {
         } catch (err) {
             console.error('Error fetching notifications:', err);
         }
-    };
+    }, [user]);
 
     const markAsRead = async (id) => {
         try {
@@ -61,31 +66,54 @@ export const NotificationProvider = ({ children }) => {
             setNotifications([]);
             setUnreadCount(0);
         }
-    }, [user]);
+    }, [user, fetchNotifications]);
 
-    // Socket listener
+    // Socket listener with reconnection handling
     useEffect(() => {
         if (!socket || !user) return;
 
-        // Join user room
-        socket.emit('joinUserRoom', user.user_id);
+        const joinUserRoom = () => {
+            console.log('Joining user notification room:', user.user_id);
+            socket.emit('joinUserRoom', user.user_id);
+        };
+
+        // Join room immediately if already connected
+        if (socket.connected) {
+            joinUserRoom();
+        }
+
+        // Re-join room on reconnect (critical fix for refresh issue)
+        socket.on('connect', joinUserRoom);
 
         const handleNotification = (notification) => {
             console.log('Received notification:', notification);
+
+            // Extract game_id from notification message (format: "message|game_id:123")
+            const gameIdMatch = notification.message?.match(/game_id:(\d+)/);
+            const notificationGameId = gameIdMatch ? gameIdMatch[1] : null;
+
+            // Suppress toast and count for notifications about the currently viewed game
+            if (notificationGameId && notificationGameId === currentGameId) {
+                console.log(`Suppressing notification for current game ${currentGameId}`);
+                // Still add to list but mark as read immediately
+                setNotifications(prev => [{ ...notification, is_read: true }, ...prev]);
+                return;
+            }
+
+            // Normal notification handling for other games
             setNotifications(prev => [notification, ...prev]);
             setUnreadCount(prev => prev + 1);
             setToast(notification);
-
-            // Auto-hide toast after 5 seconds
-            setTimeout(() => setToast(null), 5000);
+            // Note: Toast auto-hides via Snackbar's autoHideDuration - no need for setTimeout
         };
 
         socket.on('notification', handleNotification);
 
         return () => {
+            socket.off('connect', joinUserRoom);
             socket.off('notification', handleNotification);
         };
-    }, [user]);
+    }, [user, currentGameId]);
 
     return (
         <NotificationContext.Provider value={{
@@ -95,7 +123,8 @@ export const NotificationProvider = ({ children }) => {
             markAsRead,
             markAllAsRead,
             toast,
-            setToast
+            setToast,
+            currentGameId
         }}>
             {children}
         </NotificationContext.Provider>

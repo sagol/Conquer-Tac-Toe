@@ -7,6 +7,7 @@ const cors = require('cors');
 const routes = require('./routes');
 const socket = require('./socket');
 const maintenanceMode = require('./middleware/maintenanceMode');
+const timeoutChecker = require('./services/timeoutChecker');
 require('dotenv').config();
 require('./config/passport');
 require('./services/clickhouseService');
@@ -15,6 +16,9 @@ const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = socket.init(server); // Initialize Socket.io
+
+// Start the move timeout checker after socket is ready
+timeoutChecker.start();
 
 const corsOptions = {
   origin: process.env.CLIENT_URL,

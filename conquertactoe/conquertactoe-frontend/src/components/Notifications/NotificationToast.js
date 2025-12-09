@@ -43,7 +43,7 @@ const NotificationToast = () => {
         if (!toast) return;
 
         // Parse game_id from message if present
-        const gameIdMatch = toast.message.match(/\|game_id:(\d+)/);
+        const gameIdMatch = toast.message?.match(/\|game_id:(\d+)/);
         if (gameIdMatch) {
             const gameId = gameIdMatch[1];
             setToast(null); // Close toast

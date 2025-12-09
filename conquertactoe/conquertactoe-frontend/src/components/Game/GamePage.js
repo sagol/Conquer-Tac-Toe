@@ -111,6 +111,20 @@ const GamePage = () => {
       }
     });
 
+    socket.on('gameTimeout', (timeoutData) => {
+      console.log('Received gameTimeout event from socket:', timeoutData);
+      if (String(timeoutData.gameId) === String(gameId)) {
+        setGame(prev => ({ ...prev, status: 'won', winner: timeoutData.winner }));
+      }
+    });
+
+    socket.on('gameSurrendered', (surrenderData) => {
+      console.log('Received gameSurrendered event from socket:', surrenderData);
+      if (String(surrenderData.gameId) === String(gameId)) {
+        setGame(prev => ({ ...prev, status: 'won', winner: surrenderData.winner }));
+      }
+    });
+
     socket.on('playerJoined', (joinedGame) => {
       console.log('Received playerJoined event from socket: ' + JSON.stringify(joinedGame));
       console.log('Current gameId: ' + gameId);

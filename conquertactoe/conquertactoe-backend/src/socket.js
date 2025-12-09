@@ -15,10 +15,13 @@ function init(server) {
 
     // Join user-specific room for private notifications
     socket.on('joinUserRoom', (userId) => {
-      if (userId) {
+      // Validate userId is a valid number
+      if (userId && (typeof userId === 'number' || (typeof userId === 'string' && !isNaN(parseInt(userId))))) {
         const roomName = `user_${userId}`;
         socket.join(roomName);
         console.log(`Socket ${socket.id} joined room ${roomName}`);
+      } else {
+        console.warn(`Invalid userId for joinUserRoom: ${userId} (type: ${typeof userId})`);
       }
     });
 

@@ -315,41 +315,234 @@
   font-weight: 600;
 }
 
-/* Responsive */
+/* Responsive - Tablets */
 @media (max-width: 768px) {
   .game-container {
-    padding: 20px 10px;
+    padding: 15px 10px;
+    min-height: calc(100vh - 56px);
   }
 
   .game-info {
     flex-direction: column;
-    max-width: 350px;
-    gap: 10px;
+    max-width: 95vw;
+    gap: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+
+  .player-info {
+    padding: 12px;
+  }
+
+  .player-info strong {
+    font-size: 1.1rem;
   }
 
   .game-board {
-    width: 300px;
-    height: 300px;
-    padding: 15px;
-    gap: 8px;
+    width: auto;
+    height: auto;
+    max-width: 95vw;
+    padding: 12px;
+    gap: 6px;
+  }
+
+  .cell {
+    min-width: 50px;
+    min-height: 50px;
+    border-radius: 10px;
   }
 
   .small,
   .board-small {
-    width: 26px;
-    height: 26px;
+    width: 22px;
+    height: 22px;
   }
 
   .medium,
   .board-medium {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
   }
 
   .large,
   .board-large {
-    width: 50px;
-    height: 50px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .surrender-button {
+    padding: 10px 24px;
+    font-size: 0.9rem;
+  }
+
+  .xo-symbol {
+    font-size: 2.5rem;
+  }
+}
+
+/* Responsive - Mobile phones */
+@media (max-width: 480px) {
+  .game-container {
+    padding: 10px 5px;
+  }
+
+  .game-info {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .player-info {
+    padding: 8px;
+  }
+
+  .player-info strong {
+    font-size: 1rem;
+  }
+
+  .legend-item {
+    gap: 5px;
+  }
+
+  .game-board {
+    padding: 8px;
+    gap: 4px;
+    border-radius: 15px;
+  }
+
+  /* Standard 3x3 board on mobile */
+  .cell {
+    min-width: calc((95vw - 40px) / 3);
+    min-height: calc((95vw - 40px) / 3);
+    max-width: 80px;
+    max-height: 80px;
+    border-radius: 8px;
+  }
+
+  .small,
+  .board-small {
+    width: 18px;
+    height: 18px;
+  }
+
+  .medium,
+  .board-medium {
+    width: 26px;
+    height: 26px;
+  }
+
+  .large,
+  .board-large {
+    width: 36px;
+    height: 36px;
+  }
+
+  .xo-symbol {
+    font-size: 2rem;
+  }
+
+  .cone-count {
+    font-size: 0.75rem;
+  }
+
+  .splitter {
+    width: 1px;
+    height: 20px;
+  }
+
+  .winner-banner,
+  .draw-banner {
+    font-size: 1.2rem;
+    padding: 15px;
+    margin-top: 15px;
+  }
+
+  .play-again-button {
+    padding: 10px 20px;
+    font-size: 0.95rem;
+  }
+
+  .surrender-button {
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    margin-top: 10px;
+  }
+
+  /* Timer on mobile */
+  .timer-container {
+    margin: 10px 0;
+  }
+}
+
+/* Large board mobile adjustments (15x15 Gomoku, 19x19 Go) */
+@media (max-width: 768px) {
+  .large-board {
+    padding: 5px;
+    gap: 2px;
+    max-width: 98vw;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .large-board .cell {
+    min-width: calc((95vw - 50px) / 15);
+    min-height: calc((95vw - 50px) / 15);
+    max-width: 25px;
+    max-height: 25px;
+    border-radius: 2px;
+    border-width: 1px;
+  }
+
+  .large-board .xo-symbol {
+    font-size: 0.8rem;
+  }
+
+  .large-board .board-small {
+    width: 8px;
+    height: 8px;
+  }
+
+  .large-board .board-medium {
+    width: 12px;
+    height: 12px;
+  }
+
+  .large-board .board-large {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Extra small screens (iPhones SE, etc) */
+@media (max-width: 375px) {
+  .game-info {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .player-info strong {
+    font-size: 0.9rem;
+  }
+
+  .cell {
+    min-width: calc((92vw - 30px) / 3);
+    min-height: calc((92vw - 30px) / 3);
+  }
+
+  .large-board .cell {
+    min-width: calc((92vw - 40px) / 15);
+    min-height: calc((92vw - 40px) / 15);
+  }
+
+  .randomizing-name {
+    font-size: 2.5rem;
+  }
+
+  .randomizing-name.final {
+    font-size: 3rem;
+  }
+
+  .randomization-title {
+    font-size: 1.5rem;
   }
 }
 
@@ -378,12 +571,11 @@
   }
 }
 
-/* Large Board Adjustments (15x15, 19x19) */
+/* Large Board Adjustments (15x15, 19x19) - Desktop */
 .large-board {
   padding: 10px;
   gap: 3px;
   max-width: 95vw;
-  /* Removed max-height to allow board to grow */
   width: fit-content;
 }
 
@@ -540,4 +732,13 @@
 .play-again-button:active {
   transform: translateY(1px);
   box-shadow: 0 2px 10px rgba(255, 94, 98, 0.3);
+}
+
+/* Move Timer Container */
+.timer-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  width: 100%;
+  max-width: 700px;
 }

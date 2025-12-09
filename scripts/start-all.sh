@@ -84,9 +84,27 @@ fi
 # 2. Start Database (needs to be first)
 start_service "conquertactoe-db" "PostgreSQL Database"
 
-# Wait a few seconds for DB to initialize
-echo "⏳ Waiting 5 seconds for Database to initialize..."
-sleep 5
+# Wait for DB to be ready and tables to be initialized
+echo "⏳ Waiting for Database to be ready..."
+MAX_RETRIES=30
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if docker exec conquertactoe_db psql -U postgres -d conquertactoe -c "SELECT 1 FROM users LIMIT 1;" > /dev/null 2>&1; then
+        echo "✅ Database is ready and tables are initialized."
+        break
+    fi
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "   Attempt $RETRY_COUNT/$MAX_RETRIES - Database not ready yet..."
+    sleep 2
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    echo "⚠️  Database didn't initialize within expected time. Trying manual init..."
+    docker exec conquertactoe_db psql -U postgres -c "CREATE DATABASE conquertactoe;" 2>/dev/null || true
+    docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/init.sql 2>/dev/null || true
+    docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/02_create_notifications_table.sql 2>/dev/null || true
+    echo "✅ Manual database initialization completed."
+fi
 
 # 3. Start Backend
 start_service "conquertactoe-backend" "Node.js Backend"

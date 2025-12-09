@@ -1,0 +1,75 @@
+import React, { useState, useEffect } from 'react';
+import './MoveTimer.css';
+
+/**
+ * MoveTimer - Displays countdown timer for current player's move
+ * 
+ * @param {Date|string} lastMoveAt - Timestamp of the last move
+ * @param {number} timeoutSeconds - Maximum time allowed for a move (default 300s = 5 min)
+ * @param {boolean} isMyTurn - Whether it's the current user's turn
+ * @param {boolean} gameActive - Whether the game is still active
+ */
+const MoveTimer = ({ lastMoveAt, timeoutSeconds = 300, isMyTurn, gameActive }) => {
+    const [timeLeft, setTimeLeft] = useState(timeoutSeconds);
+    const [isWarning, setIsWarning] = useState(false);
+    const [isCritical, setIsCritical] = useState(false);
+
+    useEffect(() => {
+        if (!gameActive || !lastMoveAt) {
+            setTimeLeft(timeoutSeconds);
+            return;
+        }
+
+        const calculateTimeLeft = () => {
+            const lastMove = new Date(lastMoveAt);
+            const now = new Date();
+            const elapsed = Math.floor((now - lastMove) / 1000);
+            const remaining = Math.max(0, timeoutSeconds - elapsed);
+            return remaining;
+        };
+
+        // Initial calculation
+        setTimeLeft(calculateTimeLeft());
+
+        // Update every second
+        const interval = setInterval(() => {
+            const remaining = calculateTimeLeft();
+            setTimeLeft(remaining);
+            setIsWarning(remaining <= 60 && remaining > 30);
+            setIsCritical(remaining <= 30);
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [lastMoveAt, timeoutSeconds, gameActive]);
+
+    if (!gameActive) {
+        return null;
+    }
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const timerClass = `move-timer ${isMyTurn ? 'my-turn' : 'opponent-turn'} ${isWarning ? 'warning' : ''} ${isCritical ? 'critical' : ''}`;
+
+    return (
+        <div className={timerClass}>
+            <div className="timer-icon">⏱️</div>
+            <div className="timer-content">
+                <div className="timer-label">
+                    {isMyTurn ? 'Your time' : "Opponent's time"}
+                </div>
+                <div className="timer-value">
+                    {formatTime(timeLeft)}
+                </div>
+            </div>
+            {isMyTurn && isCritical && (
+                <div className="timer-alert">Hurry!</div>
+            )}
+        </div>
+    );
+};
+
+export default MoveTimer;

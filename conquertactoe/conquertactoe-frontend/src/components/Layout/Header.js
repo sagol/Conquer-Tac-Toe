@@ -1,26 +1,11 @@
-import React, { useState } from 'react';
-import { AppBar, Toolbar, Typography, Button, IconButton, Badge, Popover } from '@material-ui/core';
-import NotificationsIcon from '@material-ui/icons/Notifications';
+import React from 'react';
+import { AppBar, Toolbar, Typography, Button } from '@material-ui/core';
 import { Link } from 'react-router-dom';
-import { useNotifications } from '../../context/NotificationContext';
-import NotificationList from '../Notifications/NotificationList';
 import { useSelector } from 'react-redux';
+import NotificationIconButton from '../Notifications/NotificationIconButton';
 
 const Header = () => {
-  const { unreadCount } = useNotifications();
   const user = useSelector(state => state.auth.user);
-  const [anchorEl, setAnchorEl] = useState(null);
-
-  const handleNotificationClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleNotificationClose = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
-  const id = open ? 'notification-popover' : undefined;
 
   return (
     <AppBar position="static">
@@ -41,34 +26,11 @@ const Header = () => {
           Leaderboard
         </Button>
 
-        {user && (
-          <>
-            <IconButton color="inherit" onClick={handleNotificationClick}>
-              <Badge badgeContent={unreadCount} color="secondary">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-            <Popover
-              id={id}
-              open={open}
-              anchorEl={anchorEl}
-              onClose={handleNotificationClose}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'right',
-              }}
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-            >
-              <NotificationList onClose={handleNotificationClose} />
-            </Popover>
-          </>
-        )}
+        {user && <NotificationIconButton />}
       </Toolbar>
     </AppBar>
   );
 };
 
 export default Header;
+

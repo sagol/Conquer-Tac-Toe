@@ -67,7 +67,7 @@ class GameRequest {
 
   static async join(requestId, joinerId, activePlayer) {
     const result = await pool.query(
-      'UPDATE GameRequests SET joiner_id = $1, status = $2, active_player = $3 WHERE id = $4 RETURNING *',
+      'UPDATE GameRequests SET joiner_id = $1, status = $2, active_player = $3, last_move_at = NOW() WHERE id = $4 RETURNING *',
       [joinerId, 'joined', activePlayer, requestId]
     );
     return result.rows[0];
@@ -92,7 +92,7 @@ class GameRequest {
   static async updateBoard(gameId, board, activePlayer, player1Cones, player2Cones) {
     console.log(`[GameRequest] updateBoard called. ID:${gameId} Active:${activePlayer}`);
     const result = await pool.query(
-      'UPDATE GameRequests SET board = $1, active_player = $2, player1_cones = $3, player2_cones = $4 WHERE id = $5 RETURNING *',
+      'UPDATE GameRequests SET board = $1, active_player = $2, player1_cones = $3, player2_cones = $4, last_move_at = NOW() WHERE id = $5 RETURNING *',
       [JSON.stringify(board), activePlayer, JSON.stringify(player1Cones), JSON.stringify(player2Cones), gameId]
     );
     console.log(`[GameRequest] updateBoard result Active:${result.rows[0]?.active_player}`);
