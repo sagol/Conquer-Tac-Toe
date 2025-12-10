@@ -155,7 +155,7 @@ const notifyGameResult = async (gameId, winnerId, loserId, reason) => {
         try {
           // Fetch winner's name for friendlier message
           let winnerName = 'your opponent';
-          const winnerResult = await pool.query('SELECT username FROM Users WHERE user_id = CAST($1 AS INTEGER)', [winnerId]);
+          const winnerResult = await pool.query('SELECT username FROM Users WHERE user_id = $1', [winnerId]);
           if (winnerResult.rows.length > 0) winnerName = winnerResult.rows[0].username;
 
           let loseMsg = `Game Over - You lost to ${winnerName}.|game_id:${gameId}`;
@@ -310,14 +310,14 @@ exports.updateGameRequest = async (req, res) => {
       // Send notification to the next active player in PvP games that it's their turn
       if (gameRequest.game_type !== 'bot' && gameRequest.joiner_id) {
         try {
-          // Determine who the next player is (the player who should move next, which is updatedBoardState.active_player)
-          const opponentId = updatedBoardState.active_player === 1 ? gameRequest.creator_id : gameRequest.joiner_id;
+          // Determine the ID of the player whose turn it is (the active player, which is updatedBoardState.active_player)
+          const activePlayerId = updatedBoardState.active_player === 1 ? gameRequest.creator_id : gameRequest.joiner_id;
           const notificationMessage = `It's your turn!|game_id:${gameId}`;
-          const notification = await Notification.create(opponentId, 'your_turn', notificationMessage);
+          const notification = await Notification.create(activePlayerId, 'your_turn', notificationMessage);
 
-          // Emit real-time notification to opponent
-          socket.getIo().to(`user_${opponentId}`).emit('notification', notification);
-          console.log(`Sent 'your_turn' notification to user ${opponentId} for game ${gameId}`);
+          // Emit real-time notification to the active player
+          socket.getIo().to(`user_${activePlayerId}`).emit('notification', notification);
+          console.log(`Sent 'your_turn' notification to user ${activePlayerId} for game ${gameId}`);
         } catch (notificationError) {
           console.error('Failed to create move notification:', notificationError);
         }
@@ -693,17 +693,9 @@ exports.surrenderGame = async (req, res) => {
     if (gameRequest.joiner_id) socket.getIo().to(`user_${gameRequest.joiner_id}`).emit('gameSurrendered', { gameId: parseInt(gameId), winner });
 
     // Send notification to the winner (for PvP games)
+    // Send notification to both winner and loser about the surrender
     if (gameRequest.game_type !== 'bot') {
-      // Note: Helper expects (gameId, winnerId, loserId, reason)
-      // We pass null for loserId because surrendering player knows they lost (no need for active notification usually)
-      // Or we can notify them too. The previous logic only notified winner.
-      // Let's stick to previous logic: notify winner only, or notify both?
-      // Helper notifies both if provided. Let's pass null for loserId to match old behavior (waiting for winner notif).
-      // Actually, let's just use the helper fully, maybe notifying the loser "You surrendered" isn't bad?
-      // The original code only notified winner.
-      // If we use the helper, it tries to notify loser if ID provided.
-      // To matching existing behavior exactly:
-      await notifyGameResult(gameId, winner, null, 'surrender');
+      await notifyGameResult(gameId, winner, loser, 'surrender');
     }
 
     res.json({ message: 'Game surrendered', winner });

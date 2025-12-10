@@ -114,6 +114,7 @@ function start() {
         console.log('[TimeoutChecker] Already running');
         return;
     }
+    // Node.js is single-threaded, so no race condition possible here between check and assignment
 
     console.log(`[TimeoutChecker] Starting with ${CHECK_INTERVAL_MS}ms interval`);
     intervalId = setInterval(checkTimeouts, CHECK_INTERVAL_MS);

@@ -115,7 +115,7 @@ export const NotificationProvider = ({ children }) => {
             setNotifications(prev => [notification, ...prev]);
             setUnreadCount(prev => prev + 1);
             setToast(notification);
-            // Note: Toast auto-hides via Snackbar's autoHideDuration - no need for setTimeout
+            // Note: Toast visibility is managed by Snackbar's autoHideDuration and onClose handler
         };
 
         socket.on('notification', handleNotification);

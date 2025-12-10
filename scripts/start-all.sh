@@ -166,7 +166,7 @@ start_service "conquertactoe-db" "PostgreSQL Database"
         )
         echo "✅ Manual database initialization completed."
     else
-        echo "⚠️  Warning: Database service might not be fully ready. Proceeding anyway..."
+        echo "❌ Error: Database failed to start. Check logs with 'docker logs conquertactoe-db'. Proceeding may cause failures."
         # We don't exit here to allow debugging, but usage might fail
     fi
 

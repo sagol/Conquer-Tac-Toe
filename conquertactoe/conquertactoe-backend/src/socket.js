@@ -41,6 +41,13 @@ function init(server, sessionMiddleware) {
         // Security Check: Ensure the connected socket belongs to the user they are trying to join
         if (authenticatedUser && parseInt(authenticatedUser.user_id, 10) === targetUserId) {
           const roomName = `user_${targetUserId}`;
+
+          // Prevent duplicate joins
+          if (socket.rooms.has(roomName)) {
+            console.log(`Socket ${socket.id} already in room ${roomName}`);
+            return;
+          }
+
           socket.join(roomName);
           console.log(`Socket ${socket.id} joined room ${roomName} (Authorized)`);
         } else {

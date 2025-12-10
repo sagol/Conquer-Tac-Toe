@@ -5,7 +5,7 @@ console.log(`Socket initializing connection to: ${backendUrl}`);
 
 // Determine correct socket path based on backend URL
 // If backend is at https://domain.com/api, socket should likely be at /api/socket.io
-let socketUrl = backendUrl;
+// let socketUrl = backendUrl; // Unused
 let socketOptions = {
   withCredentials: true,
   transports: ['websocket', 'polling'],
