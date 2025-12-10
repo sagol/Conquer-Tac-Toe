@@ -47,7 +47,7 @@ const dynamicRateLimiter = require('./middleware/rateLimiter');
 const { getBooleanSetting } = require('./utils/settings');
 
 // Initialize Socket.io with session middleware for shared auth
-const io = socket.init(server, sessionMiddleware);
+socket.init(server, sessionMiddleware);
 app.use(dynamicRateLimiter);
 
 app.use(async (req, res, next) => {

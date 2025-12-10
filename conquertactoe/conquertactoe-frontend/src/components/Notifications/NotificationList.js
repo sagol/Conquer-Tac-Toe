@@ -97,11 +97,15 @@ const NotificationList = ({ onClose }) => {
     const navigate = useNavigate();
 
     // Filter notifications from last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const recentNotifications = notifications
-        .filter(n => new Date(n.created_at) > thirtyDaysAgo)
-        .slice(0, 20); // Show max 20
+    const recentNotifications = React.useMemo(() => {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return notifications
+            .filter(n => new Date(n.created_at) > thirtyDaysAgo)
+            .slice(0, 20); // Show max 20
+    }, [notifications]);
+
+    const GAME_ID_PATTERN = /\|game_id:(\d+)/;
 
     const handleItemClick = (notification) => {
         if (!notification.is_read) {
@@ -109,7 +113,7 @@ const NotificationList = ({ onClose }) => {
         }
 
         // Parse game_id from message if present
-        const gameIdMatch = notification.message?.match(/\|game_id:(\d+)/);
+        const gameIdMatch = notification.message?.match(GAME_ID_PATTERN);
         if (gameIdMatch) {
             const gameId = gameIdMatch[1];
             onClose();

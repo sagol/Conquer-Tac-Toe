@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import '../Common/SharedModernStyles.css';
+import { useSelector } from 'react-redux';
+import CloseIcon from '@material-ui/icons/Close'; // Import CloseIcon
 import './GameBoard.css';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
 import MoveTimer from './MoveTimer';
@@ -615,7 +616,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       <div className="game-result-overlay">
         <div className={bannerClass}>
           <button className="close-overlay-button" onClick={() => setShowResultOverlay(false)} aria-label="Close">
-            ✕
+            <CloseIcon />
           </button>
           <div className="banner-message">{message}</div>
           <div className="play-again-container">

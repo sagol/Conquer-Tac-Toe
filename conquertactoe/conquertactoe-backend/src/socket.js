@@ -44,7 +44,7 @@ function init(server, sessionMiddleware) {
           console.log(`Socket ${socket.id} joined room ${roomName} (Authorized)`);
         } else {
           console.warn(`Unauthorized joinUserRoom attempt. Socket User: ${authenticatedUser?.user_id || 'Unauthenticated'}, Target: ${targetUserId}`);
-          socket.emit('error', { message: 'Unauthorized to join this notification room only.' });
+          socket.emit('error', { message: 'Unauthorized to join this notification room.' });
         }
       } else {
         console.warn(`Invalid userId for joinUserRoom: ${userId} (type: ${typeof userId})`);
