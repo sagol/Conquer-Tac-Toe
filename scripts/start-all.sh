@@ -86,18 +86,34 @@ start_service "conquertactoe-db" "PostgreSQL Database"
 
 # Wait for DB to be ready and tables to be initialized
 # Wait for DB to be ready (2-Stage Check)
-    echo "⏳ Waiting for Database to be ready..."
-    MAX_RETRIES=30
-    RETRY_COUNT=0
-    DB_CONNECTED=0
-    SCHEMA_READY=0
+
+    # Load environment variables if present
+    if [ -f "$PROJECT_ROOT/.env" ]; then
+        echo "📄 Loading environment variables from .env..."
+        set -a
+        source "$PROJECT_ROOT/.env"
+        set +a
+    elif [ -f "$PROJECT_ROOT/conquertactoe-backend/.env" ]; then
+        # Fallback to backend .env if root .env missing
+        echo "📄 Loading environment variables from backend .env..."
+        set -a
+        source "$PROJECT_ROOT/conquertactoe-backend/.env"
+        set +a
+    fi
+
+    # Defaults if not set
+    DB_USER="${POSTGRES_USER:-postgres}"
+    DB_NAME="${POSTGRES_DB:-conquertactoe}"
+    
+    echo "🔎 Using Database User: $DB_USER"
+    echo "🔎 Using Database Name: $DB_NAME"
 
     (
         cd "$PROJECT_ROOT/conquertactoe-db" || exit
         
         # Stage 1: Wait for Connection
         while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if docker compose exec -T db pg_isready -U postgres > /dev/null 2>&1; then
+            if docker compose exec -T db pg_isready -U "$DB_USER" > /dev/null 2>&1; then
                 echo "   ✅ Database is accepting connections."
                 DB_CONNECTED=1
                 break
@@ -113,7 +129,7 @@ start_service "conquertactoe-db" "PostgreSQL Database"
         fi
 
         # Stage 2: Check for Schema (Users table)
-        if docker compose exec -T db psql -U postgres -d conquertactoe -c "SELECT 1 FROM users LIMIT 1;" > /dev/null 2>&1; then
+        if docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1 FROM users LIMIT 1;" > /dev/null 2>&1; then
             echo "   ✅ Database schema verified (Users table exists)."
             SCHEMA_READY=1
         else
@@ -136,10 +152,17 @@ start_service "conquertactoe-db" "PostgreSQL Database"
         # Navigate to db dir again to use compose context
         (
             cd "$PROJECT_ROOT/conquertactoe-db" || exit
-            docker compose exec -T db psql -U postgres -c "CREATE DATABASE conquertactoe;" 2>/dev/null || true
+            # Try to create DB if it doesn't exist (ignore error if it does)
+            docker compose exec -T db psql -U "$DB_USER" -c "CREATE DATABASE \"$DB_NAME\";" 2>/dev/null || true
+            
             # Run init scripts
-            docker compose exec -T db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/init.sql
-            docker compose exec -T db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/02_create_notifications_table.sql
+            echo "   Running init.sql..."
+            docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -f /docker-entrypoint-initdb.d/init.sql
+            
+            # Run notifications table script if it exists
+            if [ -f "$PROJECT_ROOT/conquertactoe-db/init-db/02_create_notifications_table.sql" ]; then
+                 docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -f /docker-entrypoint-initdb.d/02_create_notifications_table.sql
+            fi
         )
         echo "✅ Manual database initialization completed."
     else
