@@ -80,7 +80,6 @@ CREATE TABLE Leaderboards (
 );
 
 -- Notifications Table
--- Notifications Table
 -- The Notifications table schema is now included from a single source of truth.
 \i /docker-entrypoint-initdb.d/02_create_notifications_table.sql
 
