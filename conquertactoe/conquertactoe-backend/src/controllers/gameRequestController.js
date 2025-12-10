@@ -186,11 +186,7 @@ const notifyGameWin = async (gameId, winnerId, loserId, reason) => {
   }
 };
 
-// Deprecated wrapper for backward compatibility if needed, but we should switch callers
-const notifyGameResult = async (gameId, p1, p2, reason) => {
-  if (reason === 'draw') return notifyGameDraw(gameId, p1, p2);
-  return notifyGameWin(gameId, p1, p2, reason); // p1=winner, p2=loser
-};
+
 
 exports.updateGameRequest = async (req, res) => {
   try {
@@ -300,7 +296,7 @@ exports.updateGameRequest = async (req, res) => {
 
       // Send game result notifications to both players in PvP games
       if (gameRequest.game_type !== 'bot') {
-        await notifyGameResult(gameId, winnerId, loserId, 'win');
+        await notifyGameWin(gameId, winnerId, loserId, 'win');
       }
 
       const finalGameState = await GameRequest.getById(gameId);
@@ -315,7 +311,7 @@ exports.updateGameRequest = async (req, res) => {
 
       // Send notification to both players in PvP games about the draw
       if (gameRequest.game_type !== 'bot') {
-        await notifyGameResult(gameId, gameRequest.creator_id, gameRequest.joiner_id, 'draw');
+        await notifyGameDraw(gameId, gameRequest.creator_id, gameRequest.joiner_id);
       }
 
       const finalGameState = await GameRequest.getById(gameId);
@@ -717,7 +713,7 @@ exports.surrenderGame = async (req, res) => {
 
     // Send notification to both winner and loser about the surrender
     if (gameRequest.game_type !== 'bot') {
-      await notifyGameResult(gameId, winner, loser, 'surrender');
+      await notifyGameWin(gameId, winner, loser, 'surrender');
     }
 
     res.json({ message: 'Game surrendered', winner });
