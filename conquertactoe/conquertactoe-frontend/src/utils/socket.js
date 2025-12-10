@@ -1,15 +1,34 @@
 import io from 'socket.io-client';
 
-const backendUrl = process.env.REACT_APP_BACKEND_URL;
+const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
 console.log(`Socket initializing connection to: ${backendUrl}`);
 
-const socket = io(backendUrl, {
+// Determine correct socket path based on backend URL
+// If backend is at https://domain.com/api, socket should likely be at /api/socket.io
+let socketUrl = backendUrl;
+let socketOptions = {
   withCredentials: true,
   transports: ['websocket', 'polling'],
   reconnection: true,
   reconnectionAttempts: 10,
   reconnectionDelay: 1000,
-});
+};
+
+try {
+  const urlObj = new URL(backendUrl);
+  // If there is a pathname other than '/', append /socket.io to it
+  if (urlObj.pathname && urlObj.pathname !== '/') {
+    // e.g. /api -> /api/socket.io
+    const cleanPath = urlObj.pathname.replace(/\/+$/, ''); // remove trailing slash
+    socketOptions.path = `${cleanPath}/socket.io`;
+    // Socket.io client expects the URL to be just the origin if we are specifying a custom path that is NOT the default
+    // But passing the full URL is usually safer, let's just keep backendUrl but set the path explicitly
+  }
+} catch (e) {
+  console.error("Invalid Backend URL for socket setup:", backendUrl);
+}
+
+const socket = io(backendUrl, socketOptions);
 
 // Connection event handlers for debugging
 socket.on('connect', () => {

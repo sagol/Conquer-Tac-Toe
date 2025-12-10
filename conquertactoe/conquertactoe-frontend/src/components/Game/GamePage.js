@@ -5,7 +5,7 @@ import axios from 'axios';
 import GameBoard from '../GameBoard/GameBoard';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
 import { useSelector } from 'react-redux';
-import io from 'socket.io-client';
+import socket from '../../utils/socket'; // Use shared socket instance
 
 const GamePage = () => {
   const { gameId } = useParams();
@@ -26,7 +26,11 @@ const GamePage = () => {
 
   useEffect(() => {
     console.log('Initializing GamePage component...');
-    const socket = io(backendUrl, { transports: ['websocket', 'polling', 'flashsocket'] });
+
+    // Ensure socket is connected if not already
+    if (!socket.connected) {
+      socket.connect();
+    }
 
     const fetchGame = async () => {
       try {
@@ -71,7 +75,7 @@ const GamePage = () => {
       }
     };
 
-    socket.on('gameUpdated', (updatedGame) => {
+    const handleGameUpdated = (updatedGame) => {
       console.log(`[${new Date().toISOString()}] Socket gameUpdated:`, updatedGame);
       if (parseInt(updatedGame.gameId) === parseInt(gameId) || parseInt(updatedGame.id) === parseInt(gameId)) {
         console.log('Current game state before update:', game);
@@ -87,9 +91,9 @@ const GamePage = () => {
         });
         console.log('Updated game state after setting:', updatedGame);
       }
-    });
+    };
 
-    socket.on('gameWon', (gameWonData) => {
+    const handleGameWon = (gameWonData) => {
       console.log('Received gameWon event from socket:', gameWonData);
       console.log('Current game state before gameWon update:', game);
       // Convert to string for comparison as gameId from params is string but socket sends number
@@ -102,14 +106,22 @@ const GamePage = () => {
       } else {
         console.warn('Ignored gameWon event due to ID mismatch:', { socketId: gameWonData.gameId, currentId: gameId });
       }
-    });
+    };
 
-    socket.on('gameDraw', (gameDrawData) => {
+    const handleGameDraw = (gameDrawData) => {
       console.log('Received gameDraw event from socket:', gameDrawData);
       if (String(gameDrawData.gameId) === String(gameId)) {
-        setGame(prev => ({ ...prev, status: 'draw' }));
+        setGame(prev => {
+          const newState = { ...prev, status: 'draw' };
+          console.log('Setting new game state from gameDraw:', newState);
+          return newState;
+        });
       }
-    });
+    };
+
+    socket.on('gameUpdated', handleGameUpdated);
+    socket.on('gameWon', handleGameWon);
+    socket.on('gameDraw', handleGameDraw);
 
     socket.on('gameTimeout', (timeoutData) => {
       console.log('Received gameTimeout event from socket:', timeoutData);
