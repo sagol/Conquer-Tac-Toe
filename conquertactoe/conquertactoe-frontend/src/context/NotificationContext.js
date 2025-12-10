@@ -2,7 +2,9 @@ import React, { createContext, useState, useEffect, useContext, useCallback } fr
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'react-router-dom';
-import socket from '../utils/socket'; // socket.js is in src/utils/
+import socket from '../utils/socket';
+import { useNavigate } from 'react-router-dom';
+import { NOTIFICATION_GAME_ID_REGEX } from '../utils/constants';
 
 const NotificationContext = createContext();
 
@@ -90,10 +92,6 @@ export const NotificationProvider = ({ children }) => {
         // Re-join room on reconnect (critical fix for refresh issue)
         socket.on('connect', joinUserRoom);
 
-        import { NOTIFICATION_GAME_ID_REGEX } from '../utils/constants';
-
-        // ... imports
-
         // ... inside component
         const handleNotification = (notification) => {
             console.log('Received notification:', notification);
@@ -150,8 +148,5 @@ export const NotificationProvider = ({ children }) => {
         }}>
             {children}
         </NotificationContext.Provider>
-    );
-};
-        </NotificationContext.Provider >
     );
 };

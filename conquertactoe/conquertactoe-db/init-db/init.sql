@@ -80,8 +80,6 @@ CREATE TABLE Leaderboards (
 );
 
 -- Notifications Table
--- Notifications Table
--- Notifications Table
 CREATE TABLE IF NOT EXISTS Notifications (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES Users(user_id) ON DELETE CASCADE,

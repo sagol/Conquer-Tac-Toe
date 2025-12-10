@@ -4,7 +4,8 @@
  * @returns {boolean}
  */
 const isValidUserId = (userId) => {
-    return userId && (typeof userId === 'number' || (typeof userId === 'string' && !isNaN(parseInt(userId)) && Number.isInteger(Number(userId))));
+    const num = typeof userId === 'number' ? userId : (typeof userId === 'string' ? Number(userId) : NaN);
+    return Number.isInteger(num) && num > 0;
 };
 
 module.exports = {

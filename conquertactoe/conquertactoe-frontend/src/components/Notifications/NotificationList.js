@@ -91,7 +91,7 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
-const GAME_ID_PATTERN = /\|game_id:(\d+)/;
+import { NOTIFICATION_GAME_ID_REGEX } from '../../utils/constants';
 
 const NotificationList = ({ onClose }) => {
     const classes = useStyles();

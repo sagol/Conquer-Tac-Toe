@@ -52,7 +52,7 @@ const MoveTimer = ({ lastMoveAt, timeoutSeconds = 300, isMyTurn, gameActive, onT
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [lastMoveAt, timeoutSeconds, gameActive]);
+    }, [lastMoveAt, timeoutSeconds, gameActive, onTimeout]);
 
     if (!gameActive) {
         return null;

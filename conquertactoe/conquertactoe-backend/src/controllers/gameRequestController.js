@@ -116,7 +116,6 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
 };
 
 // Helper to send game result notifications
-// Helper to send game result notifications
 /**
  * Notify both players of a draw result.
  * @param {string} gameId
@@ -716,7 +715,6 @@ exports.surrenderGame = async (req, res) => {
     if (gameRequest.creator_id) socket.getIo().to(`user_${gameRequest.creator_id}`).emit('gameSurrendered', { gameId: parseInt(gameId), winner });
     if (gameRequest.joiner_id) socket.getIo().to(`user_${gameRequest.joiner_id}`).emit('gameSurrendered', { gameId: parseInt(gameId), winner });
 
-    // Send notification to the winner (for PvP games)
     // Send notification to both winner and loser about the surrender
     if (gameRequest.game_type !== 'bot') {
       await notifyGameResult(gameId, winner, loser, 'surrender');

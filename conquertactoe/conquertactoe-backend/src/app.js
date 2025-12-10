@@ -22,7 +22,7 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 // Initialize Socket.io after session middleware to enable shared authentication
 
-// Start the move timeout checker after socket initialization to ensure that the socket system is ready before processing timeouts.
+
 
 const corsOptions = {
   origin: process.env.CLIENT_URL,
@@ -57,6 +57,8 @@ socket.init(server, sessionMiddleware);
 
 // Start the move timeout checker after socket is ready
 timeoutChecker.start();
+
+// Apply dynamic rate limiter
 app.use(dynamicRateLimiter);
 
 app.use(async (req, res, next) => {
