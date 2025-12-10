@@ -79,6 +79,19 @@ CREATE TABLE Leaderboards (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Notifications Table
+CREATE TABLE Notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES Users(user_id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create index for Notifications
+CREATE INDEX idx_notifications_user ON Notifications(user_id);
+
 -- GameRequests Table (UPDATED with variant_id)
 CREATE TABLE GameRequests (
     id SERIAL PRIMARY KEY,
