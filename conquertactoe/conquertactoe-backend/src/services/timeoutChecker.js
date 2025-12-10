@@ -65,7 +65,6 @@ async function handleTimeout(game) {
         );
 
         // Update user stats
-        // Update user stats
         await pool.query('UPDATE Users SET wins = wins + 1 WHERE user_id = $1', [winner]);
         await pool.query('UPDATE Users SET losses = losses + 1 WHERE user_id = $1', [loser]);
 
