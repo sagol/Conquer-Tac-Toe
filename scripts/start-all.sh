@@ -133,10 +133,14 @@ start_service "conquertactoe-db" "PostgreSQL Database"
         echo "✅ Database is fully ready."
     elif [ $CHECK_RESULT -eq 2 ]; then
         echo "⚙️  Database empty. Running manual initialization..."
-        docker exec conquertactoe_db psql -U postgres -c "CREATE DATABASE conquertactoe;" 2>/dev/null || true
-        # Run init scripts
-        docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/init.sql
-        docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/02_create_notifications_table.sql
+        # Navigate to db dir again to use compose context
+        (
+            cd "$PROJECT_ROOT/conquertactoe-db" || exit
+            docker compose exec -T db psql -U postgres -c "CREATE DATABASE conquertactoe;" 2>/dev/null || true
+            # Run init scripts
+            docker compose exec -T db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/init.sql
+            docker compose exec -T db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/02_create_notifications_table.sql
+        )
         echo "✅ Manual database initialization completed."
     else
         echo "❌ Critical Error: Database service is not responding."

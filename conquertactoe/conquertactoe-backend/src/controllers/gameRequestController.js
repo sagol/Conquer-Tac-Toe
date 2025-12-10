@@ -118,19 +118,18 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
 // Helper to send game result notifications
 const notifyGameResult = async (gameId, winnerId, loserId, reason) => {
   try {
-    const Notification = require('../models/Notification');
-    const { getIo } = require('../socket');
+    // Notification and socket are already imported at module level
     let notificationMessage;
 
     if (reason === 'draw') {
       notificationMessage = `Game ended in a draw!|game_id:${gameId}`;
       if (winnerId) { // user1
         const notif1 = await Notification.create(winnerId, 'game_draw', notificationMessage);
-        getIo().to(`user_${winnerId}`).emit('notification', notif1);
+        socket.getIo().to(`user_${winnerId}`).emit('notification', notif1);
       }
       if (loserId) { // user2
         const notif2 = await Notification.create(loserId, 'game_draw', notificationMessage);
-        getIo().to(`user_${loserId}`).emit('notification', notif2);
+        socket.getIo().to(`user_${loserId}`).emit('notification', notif2);
       }
       console.log(`Sent 'game_draw' notifications for game ${gameId}`);
       return;
@@ -145,7 +144,7 @@ const notifyGameResult = async (gameId, winnerId, loserId, reason) => {
         else if (reason === 'timeout') winMsg = `Your opponent ran out of time! You won!|game_id:${gameId}`;
 
         const winNotif = await Notification.create(winnerId, 'game_won', winMsg);
-        getIo().to(`user_${winnerId}`).emit('notification', winNotif);
+        socket.getIo().to(`user_${winnerId}`).emit('notification', winNotif);
         console.log(`Sent 'game_won' notification to winner ${winnerId}`);
       } catch (e) {
         console.error('Failed to notify winner:', e);
@@ -163,7 +162,7 @@ const notifyGameResult = async (gameId, winnerId, loserId, reason) => {
           if (reason === 'timeout') loseMsg = `Time's up! You lost to ${winnerName}.|game_id:${gameId}`;
 
           const loseNotif = await Notification.create(loserId, 'game_lost', loseMsg);
-          getIo().to(`user_${loserId}`).emit('notification', loseNotif);
+          socket.getIo().to(`user_${loserId}`).emit('notification', loseNotif);
           console.log(`Sent 'game_lost' notification to loser ${loserId}`);
         } catch (e) {
           console.error('Failed to notify loser:', e);

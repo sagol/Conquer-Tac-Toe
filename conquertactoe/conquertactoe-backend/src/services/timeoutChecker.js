@@ -65,14 +65,19 @@ async function handleTimeout(game) {
         );
 
         // Update user stats
-        const winnerIdInt = parseInt(winner, 10);
-        const loserIdInt = parseInt(loser, 10);
+        // Update user stats
+        const winnerIdInt = typeof winner === 'number' ? winner : parseInt(winner, 10);
+        const loserIdInt = typeof loser === 'number' ? loser : parseInt(loser, 10);
 
-        if (!isNaN(winnerIdInt)) {
-            await pool.query('UPDATE Users SET wins = wins + 1 WHERE user_id = $1', [winnerIdInt]);
+        if (Number.isInteger(winnerIdInt) && winnerIdInt > 0) {
+            await pool.query('UPDATE Users SET wins = wins + 1 WHERE user_id = CAST($1 AS INTEGER)', [winnerIdInt]);
+        } else {
+            console.error(`[TimeoutChecker] Invalid winner ID for game ${gameId}:`, winner);
         }
-        if (!isNaN(loserIdInt)) {
-            await pool.query('UPDATE Users SET losses = losses + 1 WHERE user_id = $1', [loserIdInt]);
+        if (Number.isInteger(loserIdInt) && loserIdInt > 0) {
+            await pool.query('UPDATE Users SET losses = losses + 1 WHERE user_id = CAST($1 AS INTEGER)', [loserIdInt]);
+        } else {
+            console.error(`[TimeoutChecker] Invalid loser ID for game ${gameId}:`, loser);
         }
 
         // Emit game timeout event via socket to specific users

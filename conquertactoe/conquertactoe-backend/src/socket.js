@@ -33,8 +33,14 @@ function init(server, sessionMiddleware) {
     // Join user-specific room for private notifications
     socket.on('joinUserRoom', (userId) => {
       // Validate userId is a valid number
-      if (userId && (typeof userId === 'number' || (typeof userId === 'string' && !isNaN(parseInt(userId))))) {
-        const targetUserId = parseInt(userId);
+      if (
+        userId !== undefined &&
+        (
+          (typeof userId === 'number' && Number.isInteger(userId)) ||
+          (typeof userId === 'string' && userId.trim() !== '' && !isNaN(Number(userId)) && Number.isInteger(Number(userId)))
+        )
+      ) {
+        const targetUserId = parseInt(userId, 10);
         const authenticatedUser = socket.request.user;
 
         // Security Check: Ensure the connected socket belongs to the user they are trying to join

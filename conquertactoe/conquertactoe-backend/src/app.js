@@ -17,8 +17,7 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 // Socket.io initialization moved to after session middleware definition
 
-// Start the move timeout checker after socket is ready
-timeoutChecker.start();
+// Start the move timeout checker moved to after socket initialization
 
 const corsOptions = {
   origin: process.env.CLIENT_URL,
@@ -48,6 +47,9 @@ const { getBooleanSetting } = require('./utils/settings');
 
 // Initialize Socket.io with session middleware for shared auth
 socket.init(server, sessionMiddleware);
+
+// Start the move timeout checker after socket is ready
+timeoutChecker.start();
 app.use(dynamicRateLimiter);
 
 app.use(async (req, res, next) => {

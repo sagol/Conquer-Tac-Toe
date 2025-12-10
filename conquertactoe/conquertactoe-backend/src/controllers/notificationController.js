@@ -49,6 +49,11 @@ exports.createSystemNotification = async (req, res) => {
             return res.status(400).json({ error: 'userId and message are required' });
         }
 
+        // Validate that userId is a valid integer
+        if (!Number.isInteger(Number(userId))) {
+            return res.status(400).json({ error: 'userId must be a valid integer' });
+        }
+
         const notification = await Notification.create(userId, type, message);
 
         // Emit real-time event

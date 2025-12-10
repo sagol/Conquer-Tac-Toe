@@ -1,8 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useSelector } from 'react-redux';
 import CloseIcon from '@material-ui/icons/Close'; // Import CloseIcon
+
+{/* Move Timer - only show for PvP games that are active */ }
+{
+  game?.game_type !== 'bot' && game?.joiner_id && !winner && !isDraw && game?.status === 'joined' && (
+    <div className="timer-container">
+      <MoveTimer
+        lastMoveAt={game.last_move_at}
+        timeoutSeconds={game.move_timeout_seconds || 300}
+        isMyTurn={
+          (currentUser?.user_id === game.creator_id && activePlayer === 1) ||
+          (currentUser?.user_id === game.joiner_id && activePlayer === 2)
+        }
+        gameActive={game.status === 'joined'}
+      />
+    </div>
+  )
+}
 import './GameBoard.css';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
 import MoveTimer from './MoveTimer';
@@ -680,8 +696,8 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         </div>
       </div>
 
-      {/* Move Timer - only show for PvP games */}
-      {game?.game_type !== 'bot' && game?.joiner_id && !winner && !isDraw && (
+      {/* Move Timer - only show for PvP games that are active */}
+      {game?.game_type !== 'bot' && game?.joiner_id && !winner && !isDraw && game?.status === 'joined' && (
         <div className="timer-container">
           <MoveTimer
             lastMoveAt={game.last_move_at}
