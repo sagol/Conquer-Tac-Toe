@@ -108,14 +108,14 @@ start_service "conquertactoe-db" "PostgreSQL Database"
     echo "🔎 Using Database User: $DB_USER"
     echo "🔎 Using Database Name: $DB_NAME"
 
-    # Initialize variables before subshell to avoid errors
-    MAX_RETRIES=30
-    RETRY_COUNT=0
-    DB_CONNECTED=0
-    SCHEMA_READY=0
-
     (
         cd "$PROJECT_ROOT/conquertactoe-db" || exit
+        
+        # Initialize variables inside subshell to avoid errors
+        MAX_RETRIES=30
+        RETRY_COUNT=0
+        DB_CONNECTED=0
+        SCHEMA_READY=0
         
         # Stage 1: Wait for Connection
         while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do

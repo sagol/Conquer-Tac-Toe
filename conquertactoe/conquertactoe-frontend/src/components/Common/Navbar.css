@@ -15,8 +15,8 @@
 }
 
 /* Mobile Drawer */
-/* Increased specificity to avoid !important */
-.MuiDrawer-root .drawer-paper {
+/* Use global class selector applied via PaperProps */
+.drawer-paper {
     width: 280px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }

@@ -685,7 +685,6 @@ docker exec conquertactoe_db psql -U postgres -c "CREATE DATABASE conquertactoe;
 
 # Initialize tables
 docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/init.sql
-docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/init.sql
 
 # Restart backend to reconnect
 cd conquertactoe/conquertactoe-backend && docker-compose restart

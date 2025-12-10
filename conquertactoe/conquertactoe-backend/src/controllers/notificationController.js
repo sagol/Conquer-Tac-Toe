@@ -2,7 +2,6 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const socket = require('../socket');
 
-// ... (existing exports)
 
 exports.getNotifications = async (req, res) => {
     try {

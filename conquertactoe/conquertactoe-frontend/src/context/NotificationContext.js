@@ -91,7 +91,6 @@ export const NotificationProvider = ({ children }) => {
         // Re-join room on reconnect (critical fix for refresh issue)
         socket.on('connect', joinUserRoom);
 
-        // ... inside component
         const handleNotification = (notification) => {
             console.log('Received notification:', notification);
 
