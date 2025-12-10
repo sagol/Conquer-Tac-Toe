@@ -115,9 +115,9 @@ const NotificationList = ({ onClose }) => {
         // Parse game_id from message if present
         const gameIdMatch = notification.message?.match(GAME_ID_PATTERN);
         if (gameIdMatch) {
-            const gameId = gameIdMatch[1];
+            const gameId = parseInt(gameIdMatch[1], 10);
             // Validate game_id is a positive integer
-            if (/^\d+$/.test(gameId)) {
+            if (!isNaN(gameId) && gameId > 0) {
                 onClose();
                 navigate(`/game/${gameId}`);
             }

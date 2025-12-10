@@ -222,7 +222,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     let counter = 0;
     // Use proper fallback names based on game type
     const player1Name = creatorName || 'Player 1';
-    // For bot games, fallback to 'Bot AI'; for PvP games, fallback to 'Opponent'
+    // Fallback: 'Bot AI' for bot games, 'Opponent' for PvP games
     const isAgainstBot = game?.game_type === 'bot';
     const player2Name = joinerName || (isAgainstBot ? 'Bot AI' : 'Opponent');
     const names = [player1Name, player2Name];
@@ -563,7 +563,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const renderGameResult = () => {
     if (!winner && !isDraw) return null;
 
-    // Mobile minified view or "View Result" button when overlay is closed
+    // Show "View Result" button when overlay is dismissed
     if (!showResultOverlay) {
       return (
         <div className="result-minimized">
@@ -578,7 +578,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     let bannerClass = "winner-banner glass-panel"; // Default base class
 
     if (winner) {
-      // Logic from before...
+
       let winnerName;
       let isCurrentUserWinner;
       let isCurrentUserLoser;

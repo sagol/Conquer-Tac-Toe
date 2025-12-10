@@ -307,10 +307,10 @@ exports.updateGameRequest = async (req, res) => {
       console.log('No win/draw after player move. Checking for bot turn...');
       console.log('Game type:', gameRequest.game_type, 'Active player:', updatedBoardState.active_player);
 
-      // Send notification to opponent in PvP games that it's their turn
+      // Send notification to the next active player in PvP games that it's their turn
       if (gameRequest.game_type !== 'bot' && gameRequest.joiner_id) {
         try {
-          // Determine who the opponent is (the player who should move next, which is updatedBoardState.active_player)
+          // Determine who the next player is (the player who should move next, which is updatedBoardState.active_player)
           const opponentId = updatedBoardState.active_player === 1 ? gameRequest.creator_id : gameRequest.joiner_id;
           const notificationMessage = `It's your turn!|game_id:${gameId}`;
           const notification = await Notification.create(opponentId, 'your_turn', notificationMessage);

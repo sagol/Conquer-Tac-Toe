@@ -33,13 +33,8 @@ function init(server, sessionMiddleware) {
     // Join user-specific room for private notifications
     socket.on('joinUserRoom', (userId) => {
       // Validate userId is a valid number
-      if (
-        userId !== undefined &&
-        (
-          (typeof userId === 'number' && Number.isInteger(userId)) ||
-          (typeof userId === 'string' && userId.trim() !== '' && !isNaN(Number(userId)) && Number.isInteger(Number(userId)))
-        )
-      ) {
+      // Check if userId is not null/undefined, and is a valid number (or string that parses to number)
+      if (userId && !isNaN(Number(userId)) && Number.isInteger(Number(userId))) {
         const targetUserId = parseInt(userId, 10);
         const authenticatedUser = socket.request.user;
 

@@ -45,9 +45,9 @@ const NotificationToast = () => {
         // Parse game_id from message if present
         const gameIdMatch = toast.message?.match(/\|game_id:(\d+)/);
         if (gameIdMatch) {
-            const gameId = gameIdMatch[1];
-            // Validate gameId is a positive integer string
-            if (/^\d+$/.test(gameId)) {
+            const gameId = parseInt(gameIdMatch[1], 10);
+            // Validate gameId is a positive integer
+            if (!isNaN(gameId) && gameId > 0) {
                 setToast(null); // Close toast
                 navigate(`/game/${gameId}`);
             }

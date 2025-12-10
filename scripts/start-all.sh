@@ -85,7 +85,7 @@ fi
 start_service "conquertactoe-db" "PostgreSQL Database"
 
 # Wait for DB to be ready and tables to be initialized
-    # Wait for DB to be ready (2-Stage Check)
+# Wait for DB to be ready (2-Stage Check)
     echo "⏳ Waiting for Database to be ready..."
     MAX_RETRIES=30
     RETRY_COUNT=0

@@ -20,6 +20,12 @@ export const NotificationProvider = ({ children }) => {
     const location = useLocation();
     const currentGameId = location.pathname.match(/^\/game\/(\d+)/)?.[1] || null;
 
+    // Use Ref to track current game ID to avoid socket listener churn
+    const currentGameIdRef = React.useRef(currentGameId);
+    useEffect(() => {
+        currentGameIdRef.current = currentGameId;
+    }, [currentGameId]);
+
     const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
 
     const fetchNotifications = useCallback(async () => {
@@ -31,7 +37,7 @@ export const NotificationProvider = ({ children }) => {
         } catch (err) {
             console.error('Error fetching notifications:', err);
         }
-    }, [user, backendUrl]);
+    }, [user]); // Removed backendUrl dependency as it is constant
 
     const markAsRead = async (id) => {
         try {
@@ -92,8 +98,9 @@ export const NotificationProvider = ({ children }) => {
             const notificationGameId = gameIdMatch ? gameIdMatch[1] : null;
 
             // Suppress toast and count for notifications about the currently viewed game
-            if (notificationGameId && notificationGameId === currentGameId) {
-                console.log(`Suppressing notification for current game ${currentGameId}`);
+            // Use String comparison to be safe
+            if (notificationGameId && String(notificationGameId) === String(currentGameIdRef.current)) {
+                console.log(`Suppressing notification for current game ${currentGameIdRef.current}`);
                 // Still add to list but mark as read immediately
                 setNotifications(prev => [{ ...notification, is_read: true }, ...prev]);
                 return;
@@ -112,7 +119,7 @@ export const NotificationProvider = ({ children }) => {
             socket.off('connect', joinUserRoom);
             socket.off('notification', handleNotification);
         };
-    }, [user, currentGameId]);
+    }, [user]); // Removed currentGameId dependency to prevent listener churn
 
     return (
         <NotificationContext.Provider value={{
