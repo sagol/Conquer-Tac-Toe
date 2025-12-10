@@ -186,7 +186,8 @@ const GamePage = () => {
       socket.off('gameTimeout');
       socket.off('gameSurrendered');
       socket.off('playerJoined');
-      socket.disconnect();
+      socket.off('playerJoined');
+      // Do not disconnect the socket here as it's shared across the app
     };
   }, [backendUrl, gameId]);
 

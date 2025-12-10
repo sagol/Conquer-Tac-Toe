@@ -116,54 +116,59 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
 };
 
 // Helper to send game result notifications
-const notifyGameResult = async (gameId, winnerId, loserId, reason) => {
+/**
+ * Notify players of game result.
+ * For draw: player1Id and player2Id are the two users (no winner/loser).
+ * For win/loss: player1Id is the winner, player2Id is the loser.
+ */
+const notifyGameResult = async (gameId, player1Id, player2Id, reason) => {
   try {
     // Notification and socket are already imported at module level
     let notificationMessage;
 
     if (reason === 'draw') {
       notificationMessage = `Game ended in a draw!|game_id:${gameId}`;
-      if (winnerId) { // user1
-        const notif1 = await Notification.create(winnerId, 'game_draw', notificationMessage);
-        socket.getIo().to(`user_${winnerId}`).emit('notification', notif1);
+      if (player1Id) { // user1
+        const notif1 = await Notification.create(player1Id, 'game_draw', notificationMessage);
+        socket.getIo().to(`user_${player1Id}`).emit('notification', notif1);
       }
-      if (loserId) { // user2
-        const notif2 = await Notification.create(loserId, 'game_draw', notificationMessage);
-        socket.getIo().to(`user_${loserId}`).emit('notification', notif2);
+      if (player2Id) { // user2
+        const notif2 = await Notification.create(player2Id, 'game_draw', notificationMessage);
+        socket.getIo().to(`user_${player2Id}`).emit('notification', notif2);
       }
       console.log(`Sent 'game_draw' notifications for game ${gameId}`);
       return;
     }
 
-    // Win/Loss scenario
-    if (winnerId) {
+    // Win/Loss scenario: player1Id is winner, player2Id is loser
+    if (player1Id) {
       // 1. Notify Winner
       try {
         let winMsg = `You won the game!|game_id:${gameId}`;
         if (reason === 'surrender') winMsg = `Your opponent surrendered! You won!|game_id:${gameId}`;
         else if (reason === 'timeout') winMsg = `Your opponent ran out of time! You won!|game_id:${gameId}`;
 
-        const winNotif = await Notification.create(winnerId, 'game_won', winMsg);
-        socket.getIo().to(`user_${winnerId}`).emit('notification', winNotif);
-        console.log(`Sent 'game_won' notification to winner ${winnerId}`);
+        const winNotif = await Notification.create(player1Id, 'game_won', winMsg);
+        socket.getIo().to(`user_${player1Id}`).emit('notification', winNotif);
+        console.log(`Sent 'game_won' notification to winner ${player1Id}`);
       } catch (e) {
         console.error('Failed to notify winner:', e);
       }
 
       // 2. Notify Loser
-      if (loserId) {
+      if (player2Id) {
         try {
           // Fetch winner's name for friendlier message
           let winnerName = 'your opponent';
-          const winnerResult = await pool.query('SELECT username FROM Users WHERE user_id = $1', [winnerId]);
+          const winnerResult = await pool.query('SELECT username FROM Users WHERE user_id = $1', [player1Id]);
           if (winnerResult.rows.length > 0) winnerName = winnerResult.rows[0].username;
 
-          let loseMsg = `Game Over - You lost to ${winnerName}.|game_id:${gameId}`;
-          if (reason === 'timeout') loseMsg = `Time's up! You lost to ${winnerName}.|game_id:${gameId}`;
+          let loseMsg = `Game Over - You lost to ${winnerName}|game_id:${gameId}`;
+          if (reason === 'timeout') loseMsg = `Time's up! You lost to ${winnerName}|game_id:${gameId}`;
 
-          const loseNotif = await Notification.create(loserId, 'game_lost', loseMsg);
-          socket.getIo().to(`user_${loserId}`).emit('notification', loseNotif);
-          console.log(`Sent 'game_lost' notification to loser ${loserId}`);
+          const loseNotif = await Notification.create(player2Id, 'game_lost', loseMsg);
+          socket.getIo().to(`user_${player2Id}`).emit('notification', loseNotif);
+          console.log(`Sent 'game_lost' notification to loser ${player2Id}`);
         } catch (e) {
           console.error('Failed to notify loser:', e);
         }

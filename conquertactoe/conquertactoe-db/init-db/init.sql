@@ -80,20 +80,9 @@ CREATE TABLE Leaderboards (
 );
 
 -- Notifications Table
--- NOTE: The Notifications table schema is duplicated here and in 02_create_notifications_table.sql for migrations.
--- The authoritative source of truth is 02_create_notifications_table.sql. If you update the schema here, you MUST also update it there to keep them in sync.
--- To avoid maintenance issues, consider refactoring to use a single source of truth for this schema.
-CREATE TABLE Notifications (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES Users(user_id) ON DELETE CASCADE,
-    type VARCHAR(50) NOT NULL,
-    message TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create index for Notifications
-CREATE INDEX idx_notifications_user ON Notifications(user_id);
+-- Notifications Table
+-- The Notifications table schema is now included from a single source of truth.
+\i /docker-entrypoint-initdb.d/02_create_notifications_table.sql
 
 -- GameRequests Table (UPDATED with variant_id)
 CREATE TABLE GameRequests (

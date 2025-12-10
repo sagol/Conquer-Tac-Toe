@@ -168,6 +168,9 @@ start_service "conquertactoe-db" "PostgreSQL Database"
             # Run notifications table script if it exists
             if [ -f "$PROJECT_ROOT/conquertactoe-db/init-db/02_create_notifications_table.sql" ]; then
                  docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -f /docker-entrypoint-initdb.d/02_create_notifications_table.sql
+            else
+                 echo "❌ Critical Error: Notification initialization script (02_create_notifications_table.sql) not found!"
+                 exit 1
             fi
         )
         echo "✅ Manual database initialization completed."
