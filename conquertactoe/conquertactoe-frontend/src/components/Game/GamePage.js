@@ -119,25 +119,21 @@ const GamePage = () => {
       }
     };
 
-    socket.on('gameUpdated', handleGameUpdated);
-    socket.on('gameWon', handleGameWon);
-    socket.on('gameDraw', handleGameDraw);
-
-    socket.on('gameTimeout', (timeoutData) => {
+    const handleGameTimeout = (timeoutData) => {
       console.log('Received gameTimeout event from socket:', timeoutData);
       if (String(timeoutData.gameId) === String(gameId)) {
         setGame(prev => ({ ...prev, status: 'won', winner: timeoutData.winner }));
       }
-    });
+    };
 
-    socket.on('gameSurrendered', (surrenderData) => {
+    const handleGameSurrendered = (surrenderData) => {
       console.log('Received gameSurrendered event from socket:', surrenderData);
       if (String(surrenderData.gameId) === String(gameId)) {
         setGame(prev => ({ ...prev, status: 'won', winner: surrenderData.winner }));
       }
-    });
+    };
 
-    socket.on('playerJoined', (joinedGame) => {
+    const handlePlayerJoined = (joinedGame) => {
       console.log('Received playerJoined event from socket: ' + JSON.stringify(joinedGame));
       console.log('Current gameId: ' + gameId);
 
@@ -173,7 +169,14 @@ const GamePage = () => {
       } else {
         console.log('Joined game ID does not match the current gameId.');
       }
-    });
+    };
+
+    socket.on('gameUpdated', handleGameUpdated);
+    socket.on('gameWon', handleGameWon);
+    socket.on('gameDraw', handleGameDraw);
+    socket.on('gameTimeout', handleGameTimeout);
+    socket.on('gameSurrendered', handleGameSurrendered);
+    socket.on('playerJoined', handlePlayerJoined);
 
 
     fetchGame();
@@ -183,9 +186,9 @@ const GamePage = () => {
       socket.off('gameUpdated', handleGameUpdated);
       socket.off('gameWon', handleGameWon);
       socket.off('gameDraw', handleGameDraw);
-      socket.off('gameTimeout');
-      socket.off('gameSurrendered');
-      socket.off('playerJoined');
+      socket.off('gameTimeout', handleGameTimeout);
+      socket.off('gameSurrendered', handleGameSurrendered);
+      socket.off('playerJoined', handlePlayerJoined);
       // Do not disconnect the socket here as it's shared across the app
     };
   }, [backendUrl, gameId]);

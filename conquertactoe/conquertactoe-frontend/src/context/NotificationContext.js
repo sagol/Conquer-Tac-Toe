@@ -3,7 +3,6 @@ import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 import socket from '../utils/socket';
-import { useNavigate } from 'react-router-dom';
 import { NOTIFICATION_GAME_ID_REGEX } from '../utils/constants';
 
 const NotificationContext = createContext();
