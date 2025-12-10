@@ -9,19 +9,22 @@ import './MoveTimer.css';
  * @param {boolean} isMyTurn - Whether it's the current user's turn
  * @param {boolean} gameActive - Whether the game is still active
  */
+
+// Calculate time left given lastMoveAt and timeoutSeconds
+const calculateTimeLeft = (lastMoveTimestamp, timeoutLimit) => {
+    const lastMove = new Date(lastMoveTimestamp);
+    const now = new Date();
+    const elapsed = Math.floor((now - lastMove) / 1000);
+    const remaining = Math.max(0, timeoutLimit - elapsed);
+    return remaining;
+};
+
 const MoveTimer = ({ lastMoveAt, timeoutSeconds = 300, isMyTurn, gameActive }) => {
     const [timeLeft, setTimeLeft] = useState(timeoutSeconds);
     const [isWarning, setIsWarning] = useState(false);
     const [isCritical, setIsCritical] = useState(false);
 
-    // Calculate time left given lastMoveAt and timeoutSeconds
-    const calculateTimeLeft = (lastMoveTimestamp, timeoutLimit) => {
-        const lastMove = new Date(lastMoveTimestamp);
-        const now = new Date();
-        const elapsed = Math.floor((now - lastMove) / 1000);
-        const remaining = Math.max(0, timeoutLimit - elapsed);
-        return remaining;
-    };
+    // calculateTimeLeft moved outside component for performance
 
     useEffect(() => {
         if (!gameActive || !lastMoveAt) {

@@ -8,12 +8,10 @@
 
 
 
-
 // Test Notification model input validation
 async function testNotificationValidation() {
     console.log('\n=== Testing Notification Model Validation ===\n');
 
-    // Import the model and override pool
     // Import the model and override pool
 
     let passed = 0;

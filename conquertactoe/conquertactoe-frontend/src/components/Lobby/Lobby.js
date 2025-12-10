@@ -263,8 +263,8 @@ const Lobby = () => {
                         <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); joinGameRequest(request.id); }} className="lobby-button">Join</Button>
                       ) : (request.creator_id === auth.user?.user_id && request.status === 'pending') ? (
                         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                          <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go</Button>
-                          <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); deleteGameRequest(request.id); }} className="lobby-button">Del</Button>
+                          <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button" aria-label="Go to game">Go</Button>
+                          <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); deleteGameRequest(request.id); }} className="lobby-button" aria-label="Delete game">Del</Button>
                         </div>
                       ) : (request.creator_id === auth.user?.user_id || request.joiner_id === auth.user?.user_id) ? (
                         <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go</Button>

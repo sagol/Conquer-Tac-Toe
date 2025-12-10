@@ -15,7 +15,7 @@ require('./services/clickhouseService');
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
-const io = socket.init(server); // Initialize Socket.io
+// Socket.io initialization moved to after session middleware definition
 
 // Start the move timeout checker after socket is ready
 timeoutChecker.start();
@@ -31,20 +31,23 @@ app.use(bodyParser.json());
 // Check maintenance mode before processing requests
 app.use(maintenanceMode);
 
-app.use(session({
+const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   secure: process.env.NODE_ENV === 'production', // Should be true for HTTPS
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // or 'lax'
-}));
+});
+
+app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 
 const dynamicRateLimiter = require('./middleware/rateLimiter');
 const { getBooleanSetting } = require('./utils/settings');
 
-// Apply dynamic rate limiter
+// Initialize Socket.io with session middleware for shared auth
+const io = socket.init(server, sessionMiddleware);
 app.use(dynamicRateLimiter);
 
 app.use(async (req, res, next) => {

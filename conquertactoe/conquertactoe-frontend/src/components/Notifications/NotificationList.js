@@ -129,6 +129,7 @@ const NotificationList = ({ onClose }) => {
                         variant="outlined"
                         className={classes.markAllButton}
                         onClick={markAllAsRead}
+                        aria-label="Mark all notifications as read"
                     >
                         Mark all read
                     </Button>
