@@ -46,8 +46,11 @@ const NotificationToast = () => {
         const gameIdMatch = toast.message?.match(/\|game_id:(\d+)/);
         if (gameIdMatch) {
             const gameId = gameIdMatch[1];
-            setToast(null); // Close toast
-            navigate(`/game/${gameId}`);
+            // Validate gameId is a positive integer string
+            if (/^\d+$/.test(gameId)) {
+                setToast(null); // Close toast
+                navigate(`/game/${gameId}`);
+            }
         }
     };
 

@@ -280,14 +280,13 @@ exports.updateGameRequest = async (req, res) => {
       socket.getIo().emit('gameWon', { gameId: parseInt(gameId), winner: winnerFieldValue });
       console.log(`Emitting 'gameWon' event for gameId: ${gameId} to winner: ${winnerFieldValue}`);
 
-      // Send notification to the loser in PvP games (game_type is not 'bot')
+      // Send game result notifications to both players in PvP games
       if (gameRequest.game_type !== 'bot') {
         await notifyGameResult(gameId, winnerId, loserId, 'win');
       }
 
       const finalGameState = await GameRequest.getById(gameId);
       res.json(finalGameState);
-
     } else if (gameOverCondition?.draw) {
       console.log('Game ended in a draw.');
       await pool.query('UPDATE GameRequests SET status = $1 WHERE id = $2', ['draw', gameId]);

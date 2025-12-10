@@ -44,7 +44,7 @@ function init(server, sessionMiddleware) {
         const authenticatedUser = socket.request.user;
 
         // Security Check: Ensure the connected socket belongs to the user they are trying to join
-        if (authenticatedUser && authenticatedUser.user_id === targetUserId) {
+        if (authenticatedUser && parseInt(authenticatedUser.user_id, 10) === targetUserId) {
           const roomName = `user_${targetUserId}`;
           socket.join(roomName);
           console.log(`Socket ${socket.id} joined room ${roomName} (Authorized)`);
