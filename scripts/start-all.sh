@@ -85,39 +85,63 @@ fi
 start_service "conquertactoe-db" "PostgreSQL Database"
 
 # Wait for DB to be ready and tables to be initialized
-echo "⏳ Waiting for Database to be ready..."
-MAX_RETRIES=30
-RETRY_COUNT=0
-# Check DB readiness using docker compose exec from the service directory for reliability
-(
-    cd "$PROJECT_ROOT/conquertactoe-db" || exit
-    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-        # Use -T for non-interactive execution
-        if docker compose exec -T db psql -U postgres -d conquertactoe -c "SELECT 1 FROM users LIMIT 1;" > /dev/null 2>&1; then
-            echo "✅ Database is ready and tables are initialized."
-            exit 0
+    # Wait for DB to be ready (2-Stage Check)
+    echo "⏳ Waiting for Database to be ready..."
+    MAX_RETRIES=30
+    RETRY_COUNT=0
+    DB_CONNECTED=0
+    SCHEMA_READY=0
+
+    (
+        cd "$PROJECT_ROOT/conquertactoe-db" || exit
+        
+        # Stage 1: Wait for Connection
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if docker compose exec -T db pg_isready -U postgres > /dev/null 2>&1; then
+                echo "   ✅ Database is accepting connections."
+                DB_CONNECTED=1
+                break
+            fi
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "   Scanning for active database connection ($RETRY_COUNT/$MAX_RETRIES)..."
+            sleep 2
+        done
+
+        if [ $DB_CONNECTED -eq 0 ]; then
+            echo "❌ Database failed to start responding within timeout."
+            exit 1
         fi
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        echo "   Attempt $RETRY_COUNT/$MAX_RETRIES - Database not ready yet..."
-        sleep 2
-    done
-    exit 1
-)
-DB_READY=$?
 
-if [ $DB_READY -eq 0 ]; then
-    RETRY_COUNT=0 # Reset for the check below to skip manual init
-else
-    RETRY_COUNT=$MAX_RETRIES # Set to max to trigger manual init
-fi
+        # Stage 2: Check for Schema (Users table)
+        if docker compose exec -T db psql -U postgres -d conquertactoe -c "SELECT 1 FROM users LIMIT 1;" > /dev/null 2>&1; then
+            echo "   ✅ Database schema verified (Users table exists)."
+            SCHEMA_READY=1
+        else
+            echo "   ⚠️  Database connected but 'users' table not found. Initialization required."
+        fi
+        
+        # Return status code based on Schema Readiness
+        if [ $SCHEMA_READY -eq 1 ]; then
+            exit 0
+        else
+            exit 2 # Special code for "Up but needs init"
+        fi
+    )
+    CHECK_RESULT=$?
 
-if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo "⚠️  Database didn't initialize within expected time. Trying manual init..."
-    docker exec conquertactoe_db psql -U postgres -c "CREATE DATABASE conquertactoe;" 2>/dev/null || true
-    docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/init.sql 2>/dev/null || true
-    docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/02_create_notifications_table.sql 2>/dev/null || true
-    echo "✅ Manual database initialization completed."
-fi
+    if [ $CHECK_RESULT -eq 0 ]; then
+        echo "✅ Database is fully ready."
+    elif [ $CHECK_RESULT -eq 2 ]; then
+        echo "⚙️  Database empty. Running manual initialization..."
+        docker exec conquertactoe_db psql -U postgres -c "CREATE DATABASE conquertactoe;" 2>/dev/null || true
+        # Run init scripts
+        docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/init.sql
+        docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/02_create_notifications_table.sql
+        echo "✅ Manual database initialization completed."
+    else
+        echo "❌ Critical Error: Database service is not responding."
+        # We don't exit here to allow debugging, but usage might fail
+    fi
 
 # 3. Start Backend
 start_service "conquertactoe-backend" "Node.js Backend"
