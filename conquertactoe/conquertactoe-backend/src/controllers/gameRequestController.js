@@ -532,6 +532,21 @@ exports.joinGameRequest = async (req, res) => {
     console.log(`Player ${joinerId} attempting to join game request ${requestId}`);
 
     // Additional checks and logs
+    // Fetch the game request to validate
+    const gameToJoin = await GameRequest.getById(requestId);
+    if (!gameToJoin) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    if (gameToJoin.status !== 'pending') {
+      return res.status(400).json({ error: 'Game is no longer available to join' });
+    }
+
+    // Prevent joining own game
+    if (gameToJoin.creator_id === joinerId) {
+      return res.status(400).json({ error: 'You cannot join your own game.' });
+    }
+
     // Check max active games limit for joiner
     const { getNumberSetting } = require('../utils/settings');
     const maxActiveGames = await getNumberSetting('max_active_games_per_user', 5);
