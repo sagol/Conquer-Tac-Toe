@@ -249,16 +249,16 @@ async function testAdminMiddleware() {
 }
 
 // Test socket joinUserRoom validation
+const { isValidUserId } = require('./src/utils/validation');
+
 function testSocketValidation() {
-    console.log('\n=== Testing Socket Validation ===\n');
+    console.log('\n=== Testing Socket Validation Logic ===\n');
 
     let passed = 0;
     let failed = 0;
 
-    // Simulate the validation logic from socket.js
-    const isValidUserId = (userId) => {
-        return userId && (typeof userId === 'number' || (typeof userId === 'string' && !isNaN(parseInt(userId))));
-    };
+    // Use the shared validation logic from utils/validation.js
+
 
     // Test 1: Valid number userId
     try {

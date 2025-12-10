@@ -90,23 +90,35 @@ export const NotificationProvider = ({ children }) => {
         // Re-join room on reconnect (critical fix for refresh issue)
         socket.on('connect', joinUserRoom);
 
+        import { NOTIFICATION_GAME_ID_REGEX } from '../utils/constants';
+
+        // ... imports
+
+        // ... inside component
         const handleNotification = (notification) => {
             console.log('Received notification:', notification);
 
-            // Extract game_id from notification message (format: "message|game_id:123")
-            const gameIdMatch = notification.message?.match(/\|game_id:(\d+)/);
+            // Extract game_id from notification message using shared regex
+            const gameIdMatch = notification.message?.match(NOTIFICATION_GAME_ID_REGEX);
             const notificationGameId = gameIdMatch ? gameIdMatch[1] : null;
 
             // Suppress toast and count for notifications about the currently viewed game
             // Use String comparison to be safe
             if (notificationGameId && String(notificationGameId) === String(currentGameIdRef.current)) {
                 console.log(`Suppressing notification for current game ${currentGameIdRef.current}`);
-                // Still add to list but mark as read immediately AND sync with backend
+                // Still add to list but mark as read immediately
                 setNotifications(prev => [{ ...notification, is_read: true }, ...prev]);
 
                 // Mark as read in backend so it doesn't show up as unread on refresh
+                // Wrap in try-catch logic (simplified as promise catch here)
                 axios.put(`${backendUrl}/notifications/${notification.id}/read`, {}, { withCredentials: true })
-                    .catch(err => console.error('Error auto-marking notification as read:', err));
+                    .catch(async err => {
+                        console.error('Error auto-marking notification as read:', err);
+                        // Revert local state if backend fails? 
+                        // It's complex to revert specific item in list without full refetch or reducer.
+                        // For now, we log error. A full revert might jank the UI.
+                        // Ideally we'd optimize the optimistic update.
+                    });
 
                 return;
             }
@@ -115,7 +127,6 @@ export const NotificationProvider = ({ children }) => {
             setNotifications(prev => [notification, ...prev]);
             setUnreadCount(prev => prev + 1);
             setToast(notification);
-            // Note: Toast visibility is managed by Snackbar's autoHideDuration and onClose handler
         };
 
         socket.on('notification', handleNotification);
@@ -124,7 +135,7 @@ export const NotificationProvider = ({ children }) => {
             socket.off('connect', joinUserRoom);
             socket.off('notification', handleNotification);
         };
-    }, [user]); // Removed currentGameId dependency to prevent listener churn
+    }, [user]);
 
     return (
         <NotificationContext.Provider value={{
@@ -134,10 +145,13 @@ export const NotificationProvider = ({ children }) => {
             markAsRead,
             markAllAsRead,
             toast,
-            setToast,
-            currentGameId
+            setToast
+            // currentGameId removed as it's internal
         }}>
             {children}
         </NotificationContext.Provider>
+    );
+};
+        </NotificationContext.Provider >
     );
 };

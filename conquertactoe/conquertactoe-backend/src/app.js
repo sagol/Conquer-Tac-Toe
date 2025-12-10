@@ -12,6 +12,11 @@ require('dotenv').config();
 require('./config/passport');
 require('./services/clickhouseService');
 
+if (!process.env.SESSION_SECRET) {
+  console.error('FATAL: SESSION_SECRET environment variable is not set.');
+  process.exit(1);
+}
+
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);

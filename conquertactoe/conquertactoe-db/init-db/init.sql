@@ -18,7 +18,7 @@ CREATE TABLE Users (
     losses INTEGER DEFAULT 0,
     draws INTEGER DEFAULT 0,
     token VARCHAR(255),
-    role VARCHAR(20) DEFAULT 'user',
+    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     login_count INTEGER DEFAULT 0,
     last_login_at TIMESTAMP,
     is_banned BOOLEAN DEFAULT false,
@@ -80,8 +80,19 @@ CREATE TABLE Leaderboards (
 );
 
 -- Notifications Table
--- The Notifications table schema is now included from a single source of truth.
-\i /docker-entrypoint-initdb.d/02_create_notifications_table.sql
+-- Notifications Table
+-- Notifications Table
+CREATE TABLE IF NOT EXISTS Notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES Users(user_id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON Notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON Notifications(user_id, is_read, created_at);
 
 -- GameRequests Table (UPDATED with variant_id)
 CREATE TABLE GameRequests (

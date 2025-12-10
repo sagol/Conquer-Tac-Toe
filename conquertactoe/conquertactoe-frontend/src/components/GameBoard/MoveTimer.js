@@ -19,7 +19,7 @@ const calculateTimeLeft = (lastMoveTimestamp, timeoutLimit) => {
     return remaining;
 };
 
-const MoveTimer = ({ lastMoveAt, timeoutSeconds = 300, isMyTurn, gameActive }) => {
+const MoveTimer = ({ lastMoveAt, timeoutSeconds = 300, isMyTurn, gameActive, onTimeout }) => {
     const [timeLeft, setTimeLeft] = useState(timeoutSeconds);
     const [isWarning, setIsWarning] = useState(false);
     const [isCritical, setIsCritical] = useState(false);
@@ -44,6 +44,11 @@ const MoveTimer = ({ lastMoveAt, timeoutSeconds = 300, isMyTurn, gameActive }) =
             setTimeLeft(remaining);
             setIsWarning(remaining <= 60 && remaining > 30);
             setIsCritical(remaining <= 30);
+
+            // Trigger timeout callback if provided and time ran out
+            if (remaining === 0 && onTimeout) {
+                onTimeout();
+            }
         }, 1000);
 
         return () => clearInterval(interval);

@@ -30,11 +30,12 @@ function init(server, sessionMiddleware) {
       console.log(`Socket ${socket.id} authenticated as user ${user.username} (${user.user_id})`);
     }
 
+    const { isValidUserId } = require('./utils/validation');
+
     // Join user-specific room for private notifications
     socket.on('joinUserRoom', (userId) => {
-      // Validate userId is a valid number
-      // Check if userId is not null/undefined, and is a valid number (or string that parses to number)
-      if (userId && !isNaN(Number(userId)) && Number.isInteger(Number(userId))) {
+      // Validate userId
+      if (isValidUserId(userId)) {
         const targetUserId = parseInt(userId, 10);
         const authenticatedUser = socket.request.user;
 

@@ -115,7 +115,6 @@ function start() {
         return;
     }
     // Race condition guard (double-check after function entry)
-    // if (intervalId !== null) return; // Redundant per reviewed code
 
     console.log(`[TimeoutChecker] Starting with ${CHECK_INTERVAL_MS}ms interval`);
     intervalId = setInterval(checkTimeouts, CHECK_INTERVAL_MS);

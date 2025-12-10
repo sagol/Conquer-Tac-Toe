@@ -1,7 +1,7 @@
 /* Navbar Mobile Styles */
 
-.navbar {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+.navbar .MuiToolbar-root {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .navbar-title {
@@ -15,9 +15,10 @@
 }
 
 /* Mobile Drawer */
-.drawer-paper {
-    width: 280px !important;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+/* Increased specificity to avoid !important */
+.MuiDrawer-root .drawer-paper {
+    width: 280px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .mobile-drawer {
