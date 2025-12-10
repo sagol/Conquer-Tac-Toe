@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import CloseIcon from '@material-ui/icons/Close'; // Import CloseIcon
+import CloseIcon from '@material-ui/icons/Close';
+
 import './GameBoard.css';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
 import MoveTimer from './MoveTimer';

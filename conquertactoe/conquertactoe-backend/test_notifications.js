@@ -2,7 +2,6 @@
  * Notification System Tests
  * 
  * Tests for the notification model, controller, and routes.
- * Run with: node test_notifications.js
  */
 // Test Notification model input validation
 async function testNotificationValidation() {

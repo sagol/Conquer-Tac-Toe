@@ -91,6 +91,8 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
+const GAME_ID_PATTERN = /\|game_id:(\d+)/;
+
 const NotificationList = ({ onClose }) => {
     const classes = useStyles();
     const { notifications, markAsRead, markAllAsRead } = useNotifications();
@@ -104,8 +106,6 @@ const NotificationList = ({ onClose }) => {
             .filter(n => new Date(n.created_at) > thirtyDaysAgo)
             .slice(0, 20); // Show max 20
     }, [notifications]);
-
-    const GAME_ID_PATTERN = /\|game_id:(\d+)/;
 
     const handleItemClick = (notification) => {
         if (!notification.is_read) {

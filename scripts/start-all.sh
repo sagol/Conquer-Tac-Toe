@@ -143,7 +143,7 @@ start_service "conquertactoe-db" "PostgreSQL Database"
         )
         echo "✅ Manual database initialization completed."
     else
-        echo "❌ Critical Error: Database service is not responding."
+        echo "⚠️  Warning: Database service might not be fully ready. Proceeding anyway..."
         # We don't exit here to allow debugging, but usage might fail
     fi
 

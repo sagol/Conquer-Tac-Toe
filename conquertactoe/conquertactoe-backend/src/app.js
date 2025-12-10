@@ -34,8 +34,10 @@ const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  secure: process.env.NODE_ENV === 'production', // Should be true for HTTPS
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // or 'lax'
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Should be true for HTTPS
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // or 'lax'
+  },
 });
 
 app.use(sessionMiddleware);
@@ -45,7 +47,7 @@ app.use(passport.session());
 const dynamicRateLimiter = require('./middleware/rateLimiter');
 const { getBooleanSetting } = require('./utils/settings');
 
-// Initialize Socket.io with session middleware for shared auth
+// Initialize Socket.io after session middleware to enable shared authentication
 socket.init(server, sessionMiddleware);
 
 // Start the move timeout checker after socket is ready

@@ -8,6 +8,8 @@ const NotificationContext = createContext();
 
 export const useNotifications = () => useContext(NotificationContext);
 
+const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+
 export const NotificationProvider = ({ children }) => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -26,8 +28,6 @@ export const NotificationProvider = ({ children }) => {
         currentGameIdRef.current = currentGameId;
     }, [currentGameId]);
 
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
-
     const fetchNotifications = useCallback(async () => {
         if (!user) return;
         try {
@@ -37,7 +37,7 @@ export const NotificationProvider = ({ children }) => {
         } catch (err) {
             console.error('Error fetching notifications:', err);
         }
-    }, [user]); // Removed backendUrl dependency as it is constant
+    }, [user]);
 
     const markAsRead = async (id) => {
         try {
@@ -101,8 +101,13 @@ export const NotificationProvider = ({ children }) => {
             // Use String comparison to be safe
             if (notificationGameId && String(notificationGameId) === String(currentGameIdRef.current)) {
                 console.log(`Suppressing notification for current game ${currentGameIdRef.current}`);
-                // Still add to list but mark as read immediately
+                // Still add to list but mark as read immediately AND sync with backend
                 setNotifications(prev => [{ ...notification, is_read: true }, ...prev]);
+
+                // Mark as read in backend so it doesn't show up as unread on refresh
+                axios.put(`${backendUrl}/notifications/${notification.id}/read`, {}, { withCredentials: true })
+                    .catch(err => console.error('Error auto-marking notification as read:', err));
+
                 return;
             }
 
