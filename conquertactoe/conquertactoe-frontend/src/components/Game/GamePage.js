@@ -179,7 +179,13 @@ const GamePage = () => {
     fetchGame();
 
     return () => {
-      console.log('Disconnecting socket for GamePage');
+      console.log('Disconnecting socket handlers (and socket) for GamePage');
+      socket.off('gameUpdated', handleGameUpdated);
+      socket.off('gameWon', handleGameWon);
+      socket.off('gameDraw', handleGameDraw);
+      socket.off('gameTimeout');
+      socket.off('gameSurrendered');
+      socket.off('playerJoined');
       socket.disconnect();
     };
   }, [backendUrl, gameId]);

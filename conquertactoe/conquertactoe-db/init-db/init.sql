@@ -80,7 +80,9 @@ CREATE TABLE Leaderboards (
 );
 
 -- Notifications Table
--- Note: duplicated in 02_create_notifications_table.sql for migrations, kept here for full schema initialization
+-- NOTE: The Notifications table schema is duplicated here and in 02_create_notifications_table.sql for migrations.
+-- The authoritative source of truth is 02_create_notifications_table.sql. If you update the schema here, you MUST also update it there to keep them in sync.
+-- To avoid maintenance issues, consider refactoring to use a single source of truth for this schema.
 CREATE TABLE Notifications (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES Users(user_id) ON DELETE CASCADE,
