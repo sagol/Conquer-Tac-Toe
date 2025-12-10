@@ -15,7 +15,7 @@ require('./services/clickhouseService');
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
-// Socket.io initialization moved after session middleware definition to enable session sharing between HTTP and WebSocket connections for user authentication.
+// Initialize Socket.io after session middleware to enable shared authentication
 
 // Start the move timeout checker after socket initialization to ensure that the socket system is ready before processing timeouts.
 
