@@ -559,6 +559,8 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   );
 
   const renderGameResult = () => {
+    // Only render the game result if the game has ended (winner or draw).
+    // Otherwise, return null to indicate nothing should be rendered.
     if (!winner && !isDraw) return null;
 
     // Show "View Result" button when overlay is dismissed
