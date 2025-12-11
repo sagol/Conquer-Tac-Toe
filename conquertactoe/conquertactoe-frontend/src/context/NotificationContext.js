@@ -38,7 +38,7 @@ export const NotificationProvider = ({ children }) => {
         } catch (err) {
             console.error('Error fetching notifications:', err);
         }
-    }, [user, backendUrl]);
+    }, [user]);
 
     const markAsRead = async (id) => {
         try {
@@ -106,7 +106,7 @@ export const NotificationProvider = ({ children }) => {
                 setNotifications(prev => [{ ...notification, is_read: true }, ...prev]);
 
                 // Mark as read in backend so it doesn't show up as unread on refresh
-                // Wrap in try-catch logic (simplified as promise catch here)
+                // Mark as read in backend asynchronously
                 axios.put(`${backendUrl}/notifications/${notification.id}/read`, {}, { withCredentials: true })
                     .catch(err => {
                         console.error('Error auto-marking notification as read:', err);

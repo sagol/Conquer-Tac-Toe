@@ -169,8 +169,10 @@ const notifyGameWin = async (gameId, winnerId, loserId, reason) => {
       try {
         // Fetch winner's name for friendlier message
         let winnerName = 'your opponent';
-        const winnerResult = await pool.query('SELECT username FROM Users WHERE user_id = $1', [winnerId]);
-        if (winnerResult.rows.length > 0) winnerName = winnerResult.rows[0].username;
+        if (winnerId) {
+          const winnerResult = await pool.query('SELECT username FROM Users WHERE user_id = $1', [winnerId]);
+          if (winnerResult.rows.length > 0) winnerName = winnerResult.rows[0].username;
+        }
 
         let loseMsg = `Game Over - You lost to ${winnerName}|game_id:${gameId}`;
         if (reason === 'timeout') loseMsg = `Time's up! You lost to ${winnerName}|game_id:${gameId}`;

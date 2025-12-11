@@ -1,8 +1,6 @@
 /**
- * Validates if a user ID is valid (number or numeric string).
- * @param {any} userId 
- * Validates if a user ID is a valid positive integer.
- * @param {any} userId 
+ * Validates if a user ID is a valid positive integer (number or numeric string).
+ * @param {any} userId - The user ID to validate. 
  * @returns {boolean} True if valid positive integer within safe range.
  */
 const isValidUserId = (userId) => {

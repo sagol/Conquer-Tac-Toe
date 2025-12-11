@@ -62,21 +62,7 @@ const { getBooleanSetting } = require('./utils/settings');
 socket.init(server, sessionMiddleware);
 
 // Start the move timeout checker after socket is ready
-// MOVED: timeoutChecker.start() should be called in server.js or bin/www after DB is connected.
-// For now, we'll keep it here but wrap it in a safe check or move to where server starts listening.
-// Actually, app.js exports app and server, usually index.js starts it.
-// Let's look at where the server starts. Ah, usually in bin/www or server.js.
-// Wait, this file 'app.js' seems to be the main entry or module.
-// Let's check package.json "start" script to know the entry point.
-// Assumed entry is likely index.js or server.js that imports app.
-// If I remove it here, I must add it elsewhere.
-// Copilot says: "Start ... after confirming database connectivity."
-// Since I don't see the DB connection logic here (it's in ./config/db usually), I should probably export a start function or similar.
-// But to be safe and simple: I'll wrap it in a function and export it, OR just rely on the fact that pool is initialized.
-// Actually, `timeoutChecker.js` imports `pool`. The pool connects lazily or immediately.
-// I will comment it out here and let the user know, OR improved:
-// I'll check if there is a better place. The file ends with module.exports = { app, server }.
-// I'll remove it from here.
+timeoutChecker.start();
 
 // Apply dynamic rate limiter
 app.use(dynamicRateLimiter);
