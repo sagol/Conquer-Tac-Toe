@@ -745,6 +745,7 @@ exports.surrenderGame = async (req, res) => {
     }
 
     // Emit surrender event to specific users instead of globally
+    // We emit after commit to ensure DB integrity first. If emit fails, UI might be stale but data is safe.
     if (gameRequest.creator_id) socket.getIo().to(`user_${gameRequest.creator_id}`).emit('gameSurrendered', { gameId: parseInt(gameId), winner });
     if (gameRequest.joiner_id) socket.getIo().to(`user_${gameRequest.joiner_id}`).emit('gameSurrendered', { gameId: parseInt(gameId), winner });
 

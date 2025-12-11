@@ -1,6 +1,11 @@
 import io from 'socket.io-client';
 
 const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+
+if (process.env.NODE_ENV === 'production' && !process.env.REACT_APP_BACKEND_URL) {
+  console.warn('CRITICAL: REACT_APP_BACKEND_URL is not defined in production. Defaulting to localhost, which will likely fail.');
+}
+
 console.log(`Socket initializing connection to: ${backendUrl}`);
 
 // Determine correct socket path based on backend URL

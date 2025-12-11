@@ -6,7 +6,7 @@ const SEO = ({ title, description, keywords, image, url, type }) => {
     const siteTitle = 'Conquer-Tac-Toe | Strategic Tic-Tac-Toe Variant Game';
     const siteDescription = description || 'Play Conquer-Tac-Toe, an advanced strategic variant of Tic-Tac-Toe with cones, territory control, and multiple game modes including Gomoku. Play online or against AI.';
     const siteKeywords = keywords || 'tic tac toe, gomoku, strategy game, board game, online game, ai bot, conquer tac toe, react game';
-    const siteImage = image || '%PUBLIC_URL%/og-image.png';
+    const siteImage = image || `${process.env.PUBLIC_URL || ''}/og-image.png`;
     const siteUrl = url || 'https://gurudo.com/';
     const siteType = type || 'website';
 

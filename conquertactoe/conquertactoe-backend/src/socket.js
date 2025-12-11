@@ -36,6 +36,7 @@ function init(server, sessionMiddleware) {
     // Join user-specific room for private notifications
     socket.on('joinUserRoom', (userId) => {
       // Rate limiting: allow max 5 attempts per minute per socket
+      // Rate limit state is attached to the ephemeral socket instance and is garbage collected on disconnect.
       const LIMIT_WINDOW_MS = 60000;
       const MAX_ATTEMPTS = 5;
 

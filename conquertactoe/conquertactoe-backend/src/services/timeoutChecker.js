@@ -23,6 +23,7 @@ let intervalId = null;
 async function checkTimeouts() {
     try {
         // Find all active PvP games where the move has timed out
+        // Query checks for 'joined' status. Handled games are updated to 'won', preventing double-processing.
         const result = await pool.query(`
             SELECT id, creator_id, joiner_id, active_player, game_type, last_move_at, 
                    COALESCE(move_timeout_seconds, $1) as timeout_seconds
