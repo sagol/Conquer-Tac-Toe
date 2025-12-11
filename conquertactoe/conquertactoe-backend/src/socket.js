@@ -1,4 +1,5 @@
 const { Server } = require('socket.io');
+const { isValidUserId } = require('./utils/validation');
 
 let io;
 
@@ -30,7 +31,7 @@ function init(server, sessionMiddleware) {
       console.log(`Socket ${socket.id} authenticated as user ${user.username} (${user.user_id})`);
     }
 
-    const { isValidUserId } = require('./utils/validation');
+
 
     // Join user-specific room for private notifications
     socket.on('joinUserRoom', (userId) => {

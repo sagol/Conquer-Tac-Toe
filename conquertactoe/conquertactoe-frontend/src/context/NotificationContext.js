@@ -38,7 +38,7 @@ export const NotificationProvider = ({ children }) => {
         } catch (err) {
             console.error('Error fetching notifications:', err);
         }
-    }, [user?.user_id]);
+    }, [user, backendUrl]);
 
     const markAsRead = async (id) => {
         try {
@@ -108,7 +108,7 @@ export const NotificationProvider = ({ children }) => {
                 // Mark as read in backend so it doesn't show up as unread on refresh
                 // Wrap in try-catch logic (simplified as promise catch here)
                 axios.put(`${backendUrl}/notifications/${notification.id}/read`, {}, { withCredentials: true })
-                    .catch(async err => {
+                    .catch(err => {
                         console.error('Error auto-marking notification as read:', err);
                         // Revert local state if backend fails? 
                         // It's complex to revert specific item in list without full refetch or reducer.

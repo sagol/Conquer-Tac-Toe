@@ -701,9 +701,23 @@ exports.surrenderGame = async (req, res) => {
       return res.status(400).json({ error: 'Game has no opponent' });
     }
 
-    // Determine the winner (the OTHER player - the one NOT surrendering)
-    const winner = surrenderingPlayer === gameRequest.creator_id ? gameRequest.joiner_id : gameRequest.creator_id;
-    const loser = surrenderingPlayer;
+    // Determine the winner
+    // If it's a bot game, joiner_id is null.
+    // If creator surrenders against bot, winner should be 'bot' (or just handle stats differently).
+    // Surrendering against a bot counts as a loss.
+    let winner = null;
+    let loser = surrenderingPlayer;
+
+    if (gameRequest.game_type === 'bot') {
+      // For bot games, the "winner" isn't a user ID. It's the bot.
+      // We can represent bot as a specific ID or null.
+      // The DB likely expects an integer for winner if it's a FK to Users.
+      // If winner column is nullable, we can leave it null.
+      // If we need to record a loss, we just update the loser's stats.
+      winner = null;
+    } else {
+      winner = surrenderingPlayer === gameRequest.creator_id ? gameRequest.joiner_id : gameRequest.creator_id;
+    }
 
     console.log(`Player ${surrenderingPlayer} surrendered game ${gameId}. Winner: ${winner}`);
 

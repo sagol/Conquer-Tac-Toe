@@ -189,7 +189,7 @@ const NotificationList = ({ onClose }) => {
                 </List>
             )}
 
-            {notifications.length > 20 && (
+            {notifications.length > 20 && recentNotifications.length === 20 && (
                 <Box p={2} textAlign="center" borderTop="1px solid rgba(255, 255, 255, 0.2)">
                     <Typography variant="caption" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                         Showing 20 most recent notifications
