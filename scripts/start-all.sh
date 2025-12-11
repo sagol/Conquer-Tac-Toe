@@ -73,6 +73,21 @@ docker system prune -f
 echo "✅ Cleanup complete."
 echo "------------------------------------------------"
 
+# ------------------------------------------------
+# ENVIRONMENT VALIDATION
+# ------------------------------------------------
+echo "🔍 Validating environment variables..."
+if [ -f "$SCRIPT_DIR/verify-env.sh" ]; then
+    bash "$SCRIPT_DIR/verify-env.sh"
+    if [ $? -ne 0 ]; then
+        echo "❌ Environment validation failed. Please fix the issues above before continuing."
+        exit 1
+    fi
+else
+    echo "⚠️  Warning: verify-env.sh not found. Skipping validation."
+fi
+echo "------------------------------------------------"
+
 # 1. Create Network (if it doesn't exist)
 if [ -z "$(docker network ls | grep conquer-network)" ]; then
     echo "🌐 Creating shared network 'conquer-network'..."
