@@ -329,6 +329,7 @@ exports.updateGameRequest = async (req, res) => {
       if (gameRequest.game_type !== 'bot' && gameRequest.joiner_id) {
         try {
           // Determine the ID of the player whose turn it is (the active player, which is updatedBoardState.active_player)
+          // Notification is sent to the *next* active player (the opponent of the one who just moved).
           const activePlayerId = updatedBoardState.active_player === 1 ? gameRequest.creator_id : gameRequest.joiner_id;
           const notificationMessage = `It's your turn!|game_id:${gameId}`;
           const notification = await Notification.create(activePlayerId, 'your_turn', notificationMessage);
@@ -724,11 +725,24 @@ exports.surrenderGame = async (req, res) => {
 
     console.log(`Player ${surrenderingPlayer} surrendered game ${gameId}. Winner: ${winner}`);
 
-    // Update the game status AND set winner (this was the bug - winner wasn't being saved)
-    await pool.query('UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3', ['won', winner, gameId]);
+    // Transaction for game status and user stats
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    // Update user stats
-    await updateUserStats(winner, loser);
+      // Update the game status AND set winner
+      await client.query('UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3', ['won', winner, gameId]);
+
+      // Update user stats with transaction client
+      await updateUserStats(winner, loser, false, client);
+
+      await client.query('COMMIT');
+    } catch (transactionError) {
+      await client.query('ROLLBACK');
+      throw transactionError; // Re-throw to be caught by outer catch
+    } finally {
+      client.release();
+    }
 
     // Emit surrender event to specific users instead of globally
     if (gameRequest.creator_id) socket.getIo().to(`user_${gameRequest.creator_id}`).emit('gameSurrendered', { gameId: parseInt(gameId), winner });
@@ -747,7 +761,8 @@ exports.surrenderGame = async (req, res) => {
 };
 
 // Function to update user statistics
-const updateUserStats = async (winnerId, loserId, isDraw = false) => {
+const updateUserStats = async (winnerId, loserId, isDraw = false, client = null) => {
+  const db = client || pool;
   try {
     console.log('Updating user stats... Winner:', winnerId, 'Loser:', loserId);
     // Explicitly cast the IDs to integers
@@ -756,14 +771,14 @@ const updateUserStats = async (winnerId, loserId, isDraw = false) => {
 
     if (isDraw) {
       console.log(`Updating stats for draw between user ${winnerIdInt} and user ${loserIdInt}`);
-      await pool.query(
+      await db.query(
         'UPDATE Users SET draws = draws + 1 WHERE user_id = CAST($1 AS INTEGER) OR user_id = CAST($2 AS INTEGER)',
         [winnerIdInt, loserIdInt]
       );
     } else {
       if (!isNaN(winnerIdInt)) {
         console.log(`Updating stats: User ${winnerIdInt} won`);
-        await pool.query(
+        await db.query(
           'UPDATE Users SET wins = wins + 1 WHERE user_id = CAST($1 AS INTEGER)',
           [winnerIdInt]
         );
@@ -771,7 +786,7 @@ const updateUserStats = async (winnerId, loserId, isDraw = false) => {
 
       if (!isNaN(loserIdInt)) {
         console.log(`Updating stats: User ${loserIdInt} lost`);
-        await pool.query(
+        await db.query(
           'UPDATE Users SET losses = losses + 1 WHERE user_id = CAST($1 AS INTEGER)',
           [loserIdInt]
         );
