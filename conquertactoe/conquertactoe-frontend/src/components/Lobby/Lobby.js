@@ -7,6 +7,7 @@ import axios from 'axios';
 import socket from '../../utils/socket'; // Use shared socket instance
 import { fetchActiveGameRequests, addGameRequest, updateGameRequest } from '../../redux/actions/gameRequestActions';
 import CreateGameModal from './CreateGameModal';
+import SEO from '../Common/SEO';
 import '../Common/SharedModernStyles.css';
 import './Lobby.css';
 
@@ -206,16 +207,23 @@ const Lobby = () => {
     });
 
   return (
-    <div className="lobby-container">
-      <div className="lobby-box">
-        <h5 className="modern-title">Lobby</h5>
-
+    <div className="lobby-container modern-container">
+      <SEO
+        title="Game Lobby"
+        description="Join open games or create a new challenge in the Conquer-Tac-Toe lobby. Play vs AI or human opponents."
+      />
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+        <Typography variant="h2" className="modern-title" style={{ margin: 0 }}>
+          Game Lobby
+        </Typography>
         {!userPendingOrJoined && (
-          <Button variant="contained" color="primary" onClick={() => setCreateModalOpen(true)} className="lobby-button" style={{ marginBottom: '20px' }} data-testid="create-game-request-button">
+          <Button variant="contained" color="primary" onClick={() => setCreateModalOpen(true)} className="lobby-button" data-testid="create-game-request-button">
             Create Game Request
           </Button>
         )}
+      </Box>
 
+      <div className="lobby-box">
         <Tabs
           value={activeTab}
           onChange={handleTabChange}

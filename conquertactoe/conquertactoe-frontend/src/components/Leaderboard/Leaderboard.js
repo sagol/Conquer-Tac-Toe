@@ -26,6 +26,7 @@ import {
 import { Autocomplete } from '@material-ui/lab';
 import SearchIcon from '@material-ui/icons/Search';
 import axios from 'axios';
+import SEO from '../Common/SEO';
 import '../Common/SharedModernStyles.css';
 import './Leaderboard.css';
 
@@ -223,66 +224,70 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="leaderboard-container">
-      <div className="leaderboard-box">
-        <h3 className="modern-title">Leaderboard</h3>
+    <div className="leaderboard-container modern-container">
+      <SEO
+        title="Leaderboard"
+        description="Check top players and bot challengers in Conquer-Tac-Toe rankings. See who dominates the board."
+      />
+      <Typography variant="h2" className="modern-title" gutterBottom>
+        Leaderboard
+      </Typography>
 
-        {/* Search Bar */}
-        <Box mb={3} mt={2} className="search-box">
-          <Autocomplete
-            freeSolo
-            options={searchResults}
-            getOptionLabel={(option) => option.username || ''}
-            loading={searching}
-            onInputChange={handleSearchChange}
-            onChange={handlePlayerSelect}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder="Search for a player"
-                variant="outlined"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                InputProps={{
-                  ...params.InputProps,
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <>
-                      {searching ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-          />
-        </Box>
+      {/* Search Bar */}
+      <Box mb={3} mt={2} className="search-box">
+        <Autocomplete
+          freeSolo
+          options={searchResults}
+          getOptionLabel={(option) => option.username || ''}
+          loading={searching}
+          onInputChange={handleSearchChange}
+          onChange={handlePlayerSelect}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder="Search for a player"
+              variant="outlined"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              InputProps={{
+                ...params.InputProps,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <>
+                    {searching ? <CircularProgress color="inherit" size={20} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+        />
+      </Box>
 
-        {/* Tabs */}
-        <Tabs
-          value={activeTab}
-          onChange={(e, newValue) => setActiveTab(newValue)}
-          indicatorColor="primary"
-          textColor="primary"
-          centered
-        >
-          <Tab label="PvP Leaderboard" />
-          <Tab label="Bot Leaderboard" />
-        </Tabs>
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onChange={(e, newValue) => setActiveTab(newValue)}
+        indicatorColor="primary"
+        textColor="primary"
+        centered
+      >
+        <Tab label="PvP Leaderboard" />
+        <Tab label="Bot Leaderboard" />
+      </Tabs>
 
-        {/* Tab Panels */}
-        <Box mt={3}>
-          {activeTab === 0 && renderLeaderboardTable(pvpLeaderboard)}
-          {activeTab === 1 && renderLeaderboardTable(botLeaderboard)}
-        </Box>
+      {/* Tab Panels */}
+      <Box mt={3}>
+        {activeTab === 0 && renderLeaderboardTable(pvpLeaderboard)}
+        {activeTab === 1 && renderLeaderboardTable(botLeaderboard)}
+      </Box>
 
-        {/* Stats Dialog */}
-        {renderStatsDialog()}
-      </div>
+      {/* Stats Dialog */}
+      {renderStatsDialog()}
     </div>
   );
 };

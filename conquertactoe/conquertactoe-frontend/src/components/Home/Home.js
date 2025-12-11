@@ -18,6 +18,7 @@ import PeopleIcon from '@material-ui/icons/People';
 import TrendingUpIcon from '@material-ui/icons/TrendingUp';
 import AndroidIcon from '@material-ui/icons/Android';
 import CreateGameModal from '../Lobby/CreateGameModal';
+import SEO from '../Common/SEO';
 import './Home.css';
 
 const Home = () => {
@@ -109,6 +110,7 @@ const Home = () => {
 
   return (
     <main className="modern-home">
+      <SEO />
       {/* Create Game Modal */}
       <CreateGameModal
         open={showCreateModal}

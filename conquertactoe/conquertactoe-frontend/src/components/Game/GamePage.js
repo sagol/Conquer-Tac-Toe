@@ -4,6 +4,7 @@ import { Container, Box } from '@material-ui/core';
 import axios from 'axios';
 import GameBoard from '../GameBoard/GameBoard';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
+import SEO from '../Common/SEO';
 import { useSelector } from 'react-redux';
 import socket from '../../utils/socket'; // Use shared socket instance
 
@@ -254,23 +255,40 @@ const GamePage = () => {
     return <div>Loading user data...</div>;
   }
 
+  // Determine SEO title based on game state
+  const seoTitle = game ? `Game #${gameId} (${game.game_type})` : `Game #${gameId}`;
+
   return (
-    <main>
-      <Container>
-        <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" mt={5}>
-          <GameBoard
-            game={game}
-            updateGame={updateGame}
-            creatorName={creatorName}
-            joinerName={joinerName}
-            winner={game.winner}
-            isDraw={isDraw}
-            gameResult={game.status}
-            currentUser={auth.user}
-          />
-        </Box>
-      </Container>
-    </main>
+    <Container maxWidth="md" style={{ marginTop: '20px', paddingBottom: '40px' }}>
+      <SEO
+        title={seoTitle}
+        description={`Watch or play Game #${gameId} on Conquer-Tac-Toe. ${creatorName ? `Host: ${creatorName}` : ''}`}
+      />
+      <Box display="flex" flexDirection="column" alignItems="center">
+        {error ? (
+          <ErrorMessage message={error} />
+        ) : !game ? (
+          // Loading state
+          <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
+            <div className="loading-spinner"></div>
+          </Box>
+        ) : (
+          <>
+            {/* Game Board and status would go here - wrapping existing return logic */}
+            <GameBoard
+              game={game}
+              updateGame={updateGame}
+              creatorName={creatorName}
+              joinerName={joinerName}
+              winner={game.winner}
+              isDraw={isDraw}
+              gameResult={game.status}
+              currentUser={auth.user}
+            />
+          </>
+        )}
+      </Box>
+    </Container>
   );
 };
 
