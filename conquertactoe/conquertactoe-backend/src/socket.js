@@ -3,6 +3,10 @@ const { isValidUserId } = require('./utils/validation');
 
 let io;
 
+// Rate limiting constants for joinUserRoom event
+const LIMIT_WINDOW_MS = 60000; // 1 minute
+const MAX_ATTEMPTS = 5; // Max attempts per window
+
 function init(server, sessionMiddleware) {
   io = new Server(server, {
     cors: {
@@ -25,7 +29,7 @@ function init(server, sessionMiddleware) {
   io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    // Log authenticated user if present
+    // Log  authenticated user if present
     const user = socket.request.user;
     if (user) {
       console.log(`Socket ${socket.id} authenticated as user ${user.username} (${user.user_id})`);
@@ -37,8 +41,6 @@ function init(server, sessionMiddleware) {
     socket.on('joinUserRoom', (userId) => {
       // Rate limiting: allow max 5 attempts per minute per socket
       // Rate limit state is attached to the ephemeral socket instance and is garbage collected on disconnect.
-      const LIMIT_WINDOW_MS = 60000;
-      const MAX_ATTEMPTS = 5;
 
       // Initialize rate limit state if needed
       if (!socket.rateLimit) socket.rateLimit = { count: 0, firstAttempt: Date.now() };

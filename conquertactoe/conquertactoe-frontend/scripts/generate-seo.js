@@ -52,7 +52,7 @@ const sitemapContent = `<?xml version="1.0" encoding="UTF-8"?>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
-   <url>
+  <url>
     <loc>${DOMAIN}/register</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>monthly</changefreq>

@@ -198,9 +198,9 @@ const GamePage = () => {
       socket.off('gameTimeout', handleGameTimeout);
       socket.off('gameSurrendered', handleGameSurrendered);
       socket.off('playerJoined', handlePlayerJoined);
-      // Copilot: Do not disconnect the socket here as it's shared across the app (Singleton).
-      // Disconnecting it would break real-time features in other components like the Lobby.
-      // Connection lifecycle is managed by App.js and AuthContext.
+      // Note: Socket is NOT disconnected here as it's a shared singleton instance.
+      // Disconnecting would break real-time features in other components (Lobby, Notifications).
+      // Socket lifecycle is managed centrally by App.js and AuthContext.
     };
   }, [backendUrl, gameId]);
 
@@ -264,10 +264,8 @@ const GamePage = () => {
     return <div>Loading user data...</div>;
   }
 
-  // Determine SEO title based on game state
-  // 'game' is populated asynchronously via useEffect, so we need to check if it exists.
-  // Copilot may flag this as "always true" due to misinterpretation of React state.
-  const seoTitle = game ? `Game #${gameId} (${game.game_type})` : `Game #${gameId}`;
+  // At this point, 'game' is guaranteed to be truthy due to early return on line 258
+  const seoTitle = `Game #${gameId} (${game.game_type})`;
 
   return (
     <Container maxWidth="md" style={{ marginTop: '20px', paddingBottom: '40px' }}>
@@ -276,29 +274,17 @@ const GamePage = () => {
         description={`Watch or play Game #${gameId} on Conquer-Tac-Toe. ${creatorName ? `Host: ${creatorName}` : ''}`}
       />
       <Box display="flex" flexDirection="column" alignItems="center">
-        {/* 'error' is state-managed and initially null. Copilot may incorrectly flag this as constant. */}
-        {error ? (
-          <ErrorMessage message={error} />
-        ) : !game ? (
-          // Loading state
-          <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
-            <div className="loading-spinner"></div>
-          </Box>
-        ) : (
-          <>
-            {/* Game Board and status would go here - wrapping existing return logic */}
-            <GameBoard
-              game={game}
-              updateGame={updateGame}
-              creatorName={creatorName}
-              joinerName={joinerName}
-              winner={game.winner}
-              isDraw={isDraw}
-              gameResult={game.status}
-              currentUser={auth.user}
-            />
-          </>
-        )}
+        {/* At this point, both 'error' and 'game' are guaranteed values due to early returns above (lines 248-260) */}
+        <GameBoard
+          game={game}
+          updateGame={updateGame}
+          creatorName={creatorName}
+          joinerName={joinerName}
+          winner={game.winner}
+          isDraw={isDraw}
+          gameResult={game.status}
+          currentUser={auth.user}
+        />
       </Box>
     </Container>
   );

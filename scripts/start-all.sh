@@ -179,8 +179,6 @@ start_service "conquertactoe-db" "PostgreSQL Database"
             # Run init scripts
             echo "   Running init.sql..."
             docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -f /docker-entrypoint-initdb.d/init.sql
-            
-            # 02_create_notifications_table.sql is now integrated into init.sql
         )
         echo "✅ Manual database initialization completed."
     else
