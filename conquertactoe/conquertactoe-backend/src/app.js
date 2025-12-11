@@ -13,8 +13,13 @@ require('./config/passport');
 require('./services/clickhouseService');
 
 if (!process.env.SESSION_SECRET) {
-  console.error('FATAL: SESSION_SECRET environment variable is not set.');
-  process.exit(1);
+  if (process.env.NODE_ENV === 'production') {
+    console.error('FATAL: SESSION_SECRET environment variable is not set.');
+    process.exit(1);
+  } else {
+    console.warn('WARNING: SESSION_SECRET is not set. Using default insecure session secret for development only.');
+    process.env.SESSION_SECRET = 'insecure-development-secret';
+  }
 }
 
 const app = express();

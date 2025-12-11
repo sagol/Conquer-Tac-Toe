@@ -22,6 +22,7 @@ CREATE TABLE Users (
     -- 'user': Standard user with access to play games and view leaderboards.
     -- 'admin': Has additional permissions such as managing users, moderating games, and accessing admin features.
     -- For detailed permissions, see application code (e.g., backend RBAC implementation).
+    -- NOTE: Database enforces 'user' or 'admin' roles to ensure data integrity.
     role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     login_count INTEGER DEFAULT 0,
     last_login_at TIMESTAMP,

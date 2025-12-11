@@ -183,6 +183,7 @@ const notifyGameWin = async (gameId, winnerId, loserId, reason) => {
       }
     }
   } catch (err) {
+    // Log error but do not throw - notifications are non-critical
     console.error('Error in notifyGameWin:', err);
   }
 };

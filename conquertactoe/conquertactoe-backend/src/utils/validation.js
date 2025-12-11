@@ -1,7 +1,9 @@
 /**
  * Validates if a user ID is valid (number or numeric string).
  * @param {any} userId 
- * @returns {boolean}
+ * Validates if a user ID is a valid positive integer.
+ * @param {any} userId 
+ * @returns {boolean} True if valid positive integer within safe range.
  */
 const isValidUserId = (userId) => {
     const num = typeof userId === 'number' ? userId : (typeof userId === 'string' ? Number(userId) : NaN);

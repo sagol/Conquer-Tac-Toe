@@ -34,40 +34,58 @@ function init(server, sessionMiddleware) {
 
 
     // Join user-specific room for private notifications
-    socket.on('joinUserRoom', (userId) => {
-      // Validate userId
-      if (isValidUserId(userId)) {
-        const targetUserId = parseInt(userId, 10);
-        const authenticatedUser = socket.request.user;
+    // Rate limiting: allow max 5 attempts per minute per socket
+    const LIMIT_WINDOW_MS = 60000;
+    const MAX_ATTEMPTS = 5;
 
-        // Security Check: Ensure the connected socket belongs to the user they are trying to join
-        if (authenticatedUser && parseInt(authenticatedUser.user_id, 10) === targetUserId) {
-          const roomName = `user_${targetUserId}`;
+    // Initialize rate limit state if needed
+    if (!socket.rateLimit) socket.rateLimit = { count: 0, firstAttempt: Date.now() };
 
-          // Prevent duplicate joins
-          if (socket.rooms.has(roomName)) {
-            console.log(`Socket ${socket.id} already in room ${roomName}`);
-            return;
-          }
+    // Reset window if expired
+    if (Date.now() - socket.rateLimit.firstAttempt > LIMIT_WINDOW_MS) {
+      socket.rateLimit = { count: 0, firstAttempt: Date.now() };
+    }
 
-          socket.join(roomName);
-          console.log(`Socket ${socket.id} joined room ${roomName} (Authorized)`);
-        } else {
-          console.warn(`Unauthorized joinUserRoom attempt. Socket User: ${authenticatedUser?.user_id || 'Unauthenticated'}, Target: ${targetUserId}`);
-          socket.emit('error', { message: 'Unauthorized to join this notification room.' });
+    socket.rateLimit.count++;
+
+    if (socket.rateLimit.count > MAX_ATTEMPTS) {
+      console.warn(`Rate limit exceeded for joinUserRoom from socket ${socket.id}`);
+      // Silent return or error emission
+      return;
+    }
+
+    // Validate userId
+    if (isValidUserId(userId)) {
+      const targetUserId = parseInt(userId, 10);
+      const authenticatedUser = socket.request.user;
+
+      // Security Check: Ensure the connected socket belongs to the user they are trying to join
+      if (authenticatedUser && parseInt(authenticatedUser.user_id, 10) === targetUserId) {
+        const roomName = `user_${targetUserId}`;
+
+        // Prevent duplicate joins
+        if (socket.rooms.has(roomName)) {
+          console.log(`Socket ${socket.id} already in room ${roomName}`);
+          return;
         }
-      } else {
-        console.warn(`Invalid userId for joinUserRoom: ${userId} (type: ${typeof userId})`);
-      }
-      // TODO: Implement rate limiting for joinUserRoom attempts to prevent enumeration attacks
-    });
 
-    socket.on('disconnect', () => {
-      console.log('User disconnected:', socket.id);
-    });
+        socket.join(roomName);
+        console.log(`Socket ${socket.id} joined room ${roomName} (Authorized)`);
+      } else {
+        console.warn(`Unauthorized joinUserRoom attempt. Socket User: ${authenticatedUser?.user_id || 'Unauthenticated'}, Target: ${targetUserId}`);
+        socket.emit('error', { message: 'Unauthorized to join this notification room.' });
+      }
+    } else {
+      console.warn(`Invalid userId for joinUserRoom: ${userId} (type: ${typeof userId})`);
+    }
   });
 
-  return io;
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+return io;
 }
 
 function getIo() {
