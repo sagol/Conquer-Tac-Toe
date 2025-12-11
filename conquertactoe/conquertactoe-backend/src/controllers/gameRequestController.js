@@ -115,7 +115,6 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
   }
 };
 
-// Helper to send game result notifications
 /**
  * Notify both players of a draw result.
  * @param {string} gameId
@@ -124,7 +123,11 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
  */
 const notifyGameDraw = async (gameId, player1Id, player2Id) => {
   try {
-    // Pipe character is our delimiter, so we shouldn't use it in message text
+    // NOTIFICATION FORMAT: message_text|game_id:value
+    // Using pipe (|) delimiter is intentional for backward compatibility with existing
+    // frontend parsing logic in NotificationList.js. While JSON would be more flexible,
+    // this simple format is sufficient for current needs and matches the established pattern.
+    // Future consideration: migrate to structured metadata field if notification types expand.
     const notificationMessage = `Game ended in a draw!|game_id:${gameId}`;
     if (player1Id) {
       const notif1 = await Notification.create(player1Id, 'game_draw', notificationMessage);

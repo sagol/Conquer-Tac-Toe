@@ -19,6 +19,8 @@ function init(server, sessionMiddleware) {
   // Convert express middleware to socket.io middleware
   const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
 
+  // Safe: sessionMiddleware is checked before use (if statement)
+  // If sessionMiddleware is null/undefined, this block is skipped entirely
   if (sessionMiddleware) {
     io.use(wrap(sessionMiddleware));
     const passport = require('passport');

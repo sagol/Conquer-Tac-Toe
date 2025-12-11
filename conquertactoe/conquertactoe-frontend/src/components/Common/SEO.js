@@ -7,7 +7,17 @@ const SEO = ({ title, description, keywords, image, url, type }) => {
     const siteDescription = description || 'Play Conquer-Tac-Toe, an advanced strategic variant of Tic-Tac-Toe with cones, territory control, and multiple game modes including Gomoku. Play online or against AI.';
     const siteKeywords = keywords || 'tic tac toe, gomoku, strategy game, board game, online game, ai bot, conquer tac toe, react game';
     const siteImage = image || `${process.env.PUBLIC_URL || ''}/og-image.png`;
+
+    // Fallback domain 'https://gurudo.com/' is the actual production domain for this project.
+    // This fallback ensures SEO tags work even if REACT_APP_CLIENT_URL is not set.
+    // In production, REACT_APP_CLIENT_URL should be explicitly set to avoid any ambiguity.
     const siteUrl = url || process.env.REACT_APP_CLIENT_URL || 'https://gurudo.com/';
+
+    // Development warning if env var is not set
+    if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_CLIENT_URL) {
+        console.warn('SEO: REACT_APP_CLIENT_URL is not set. Using fallback domain. Set this in .env for accurate SEO tags.');
+    }
+
     const siteType = type || 'website';
 
     // Format title: "Page Title | Site Name" or just "Site Name"
