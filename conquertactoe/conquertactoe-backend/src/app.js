@@ -42,6 +42,7 @@ const sessionMiddleware = session({
   cookie: {
     secure: process.env.NODE_ENV === 'production', // Should be true for HTTPS
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // or 'lax'
+    httpOnly: true,
   },
 });
 

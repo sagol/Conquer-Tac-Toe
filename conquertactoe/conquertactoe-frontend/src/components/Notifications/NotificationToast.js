@@ -4,6 +4,7 @@ import CloseIcon from '@material-ui/icons/Close';
 import NotificationsIcon from '@material-ui/icons/Notifications';
 import { useNotifications } from '../../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
+import { NOTIFICATION_GAME_ID_REGEX } from '../../utils/constants';
 
 const useStyles = makeStyles((theme) => ({
     content: {
@@ -43,7 +44,7 @@ const NotificationToast = () => {
         if (!toast) return;
 
         // Parse game_id from message if present
-        const gameIdMatch = toast.message?.match(/\|game_id:(\d+)/);
+        const gameIdMatch = toast.message?.match(NOTIFICATION_GAME_ID_REGEX);
         if (gameIdMatch) {
             const gameId = parseInt(gameIdMatch[1], 10);
             // Validate gameId is a positive integer

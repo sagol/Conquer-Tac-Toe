@@ -38,7 +38,7 @@ export const NotificationProvider = ({ children }) => {
         } catch (err) {
             console.error('Error fetching notifications:', err);
         }
-    }, [user]);
+    }, [user?.user_id]);
 
     const markAsRead = async (id) => {
         try {

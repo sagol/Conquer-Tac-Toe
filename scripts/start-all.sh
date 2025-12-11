@@ -169,7 +169,7 @@ start_service "conquertactoe-db" "PostgreSQL Database"
         )
         echo "✅ Manual database initialization completed."
     else
-        echo "❌ Error: Database failed to start. Check logs with 'docker logs conquertactoe-db'. Proceeding may cause failures."
+        echo "❌ Error: Database failed to start or unknown status (Code: $CHECK_RESULT). Check logs with 'docker logs conquertactoe-db'."
         # We don't exit here to allow debugging, but usage might fail
     fi
 

@@ -2,7 +2,7 @@
 
 .game-container {
   position: relative;
-  /* Context for absolute overlays */
+  /* IMPORTANT: `position: relative` is required for absolutely positioned overlays (e.g., game board overlays) to be positioned correctly within `.game-container`. Removing this will break overlay positioning. */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
   min-height: calc(100vh - 64px);
   /* Adjust for navbar */

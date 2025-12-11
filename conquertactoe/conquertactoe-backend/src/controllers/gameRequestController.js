@@ -124,6 +124,7 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
  */
 const notifyGameDraw = async (gameId, player1Id, player2Id) => {
   try {
+    // Pipe character is our delimiter, so we shouldn't use it in message text
     const notificationMessage = `Game ended in a draw!|game_id:${gameId}`;
     if (player1Id) {
       const notif1 = await Notification.create(player1Id, 'game_draw', notificationMessage);
@@ -693,6 +694,11 @@ exports.surrenderGame = async (req, res) => {
     // Prevent surrender if the game is already finished
     if (gameRequest.status !== 'joined') {
       return res.status(400).json({ error: 'Game is already finished' });
+    }
+
+    // For PvP games, ensure there is a joiner
+    if (gameRequest.game_type !== 'bot' && !gameRequest.joiner_id) {
+      return res.status(400).json({ error: 'Game has no opponent' });
     }
 
     // Determine the winner (the OTHER player - the one NOT surrendering)
