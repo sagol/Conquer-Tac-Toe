@@ -198,7 +198,8 @@ const GamePage = () => {
       socket.off('gameTimeout', handleGameTimeout);
       socket.off('gameSurrendered', handleGameSurrendered);
       socket.off('playerJoined', handlePlayerJoined);
-      // Do not disconnect the socket here as it's shared across the app.
+      // Copilot: Do not disconnect the socket here as it's shared across the app (Singleton).
+      // Disconnecting it would break real-time features in other components like the Lobby.
       // Connection lifecycle is managed by App.js and AuthContext.
     };
   }, [backendUrl, gameId]);

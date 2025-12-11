@@ -70,6 +70,13 @@ const Lobby = () => {
         socket.connect();
       }
 
+      const handleConnectError = (err) => {
+        console.error('Lobby socket connection error:', err);
+        setError('Lost connection to game server. Trying to reconnect...');
+      };
+
+      socket.on('connect_error', handleConnectError);
+
       // Event Listeners
       const handleGameRequestCreated = (gameRequest) => {
         dispatch(addGameRequest(gameRequest));
@@ -92,6 +99,7 @@ const Lobby = () => {
         socket.off('gameRequestCreated', handleGameRequestCreated);
         socket.off('gameRequestJoined', handleGameRequestJoined);
         socket.off('gameRequestCancelled', handleGameRequestCancelled);
+        socket.off('connect_error', handleConnectError);
       };
     }
   }, [auth.user, dispatch, backendUrl]);

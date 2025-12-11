@@ -19,11 +19,11 @@ CREATE TABLE Users (
     draws INTEGER DEFAULT 0,
     token VARCHAR(255),
     -- Role-based access control:
-    -- 'user': Standard user with access to play games and view leaderboards.
-    -- 'admin': Has additional permissions such as managing users, moderating games, and accessing admin features.
+    -- Example roles: 'user', 'admin', etc.
     -- For detailed permissions, see application code (e.g., backend RBAC implementation).
-    -- NOTE: Database enforces 'user' or 'admin' roles to ensure data integrity.
-    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    -- NOTE: The database does not restrict role values; ensure application and database roles are kept in sync.
+    -- Consider using a Roles table for more flexibility if adding new roles.
+    role VARCHAR(20) DEFAULT 'user',
     login_count INTEGER DEFAULT 0,
     last_login_at TIMESTAMP,
     is_banned BOOLEAN DEFAULT false,

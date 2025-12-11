@@ -134,12 +134,12 @@ start_service "conquertactoe-db" "PostgreSQL Database"
             exit 1
         fi
 
-        # Stage 2: Check for Schema (Users table)
-        if docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1 FROM users LIMIT 1;" > /dev/null 2>&1; then
-            echo "   ✅ Database schema verified (Users table exists)."
+        # Stage 2: Check for Schema (GameVariants table - indicates init.sql verified up to variants)
+        if docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1 FROM GameVariants LIMIT 1;" > /dev/null 2>&1; then
+            echo "   ✅ Database schema verified (GameVariants table exists)."
             SCHEMA_READY=1
         else
-            echo "   ⚠️  Database connected but 'users' table not found. Initialization required."
+            echo "   ⚠️  Database connected but 'GameVariants' table not found. Initialization required."
         fi
         
         # Return status code based on Schema Readiness
