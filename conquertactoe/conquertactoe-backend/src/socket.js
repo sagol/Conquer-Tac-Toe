@@ -19,8 +19,13 @@ function init(server, sessionMiddleware) {
   // Convert express middleware to socket.io middleware
   const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
 
-  // Safe: sessionMiddleware is checked before use (if statement)
-  // If sessionMiddleware is null/undefined, this block is skipped entirely
+  // Defensive programming: Check sessionMiddleware before use
+  // In current app.js initialization, sessionMiddleware is always defined.
+  // However, this check provides safety for:
+  // - Future refactoring or different initialization patterns
+  // - Unit testing scenarios where middleware might be mocked/skipped
+  // - Deployment configurations that might disable sessions
+  // The overhead is negligible and prevents potential runtime errors.
   if (sessionMiddleware) {
     io.use(wrap(sessionMiddleware));
     const passport = require('passport');

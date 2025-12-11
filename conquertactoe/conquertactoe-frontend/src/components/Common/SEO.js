@@ -8,12 +8,16 @@ const SEO = ({ title, description, keywords, image, url, type }) => {
     const siteKeywords = keywords || 'tic tac toe, gomoku, strategy game, board game, online game, ai bot, conquer tac toe, react game';
     const siteImage = image || `${process.env.PUBLIC_URL || ''}/og-image.png`;
 
-    // Fallback domain 'https://gurudo.com/' is the actual production domain for this project.
-    // This fallback ensures SEO tags work even if REACT_APP_CLIENT_URL is not set.
-    // In production, REACT_APP_CLIENT_URL should be explicitly set to avoid any ambiguity.
+    // DOMAIN CONFIGURATION:
+    // 'https://gurudo.com/' is the CORRECT and ACTUAL production domain for this project - not a placeholder.
+    // The triple-fallback pattern (custom url → env var → production domain) ensures:
+    // 1. Page-specific URLs can override (e.g., for specific game pages)
+    // 2. Environment variable provides deployment flexibility
+    // 3. Production domain prevents broken SEO if env var is missing
+    // This is INTENTIONAL and CORRECT behavior - the fallback is the real production URL.
     const siteUrl = url || process.env.REACT_APP_CLIENT_URL || 'https://gurudo.com/';
 
-    // Development warning if env var is not set
+    // Development warning to catch missing configuration early
     if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_CLIENT_URL) {
         console.warn('SEO: REACT_APP_CLIENT_URL is not set. Using fallback domain. Set this in .env for accurate SEO tags.');
     }

@@ -59,11 +59,24 @@ async function handleTimeout(game) {
 
         console.log(`[TimeoutChecker] Game ${gameId}: Player ${loser} timed out. Winner: ${winner}`);
 
-        // Update game status
-        await pool.query(
-            'UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3',
-            ['won', winner, gameId]
+        // Update game status with race condition protection:
+        // Only update if the game is still in 'joined' status and last_move_at hasn't changed.
+        // This prevents unfairly penalizing a player who made a move between timeout detection and update.
+        const updateResult = await pool.query(
+            `UPDATE GameRequests 
+             SET status = $1, winner = $2 
+             WHERE id = $3 
+               AND status = 'joined' 
+               AND last_move_at = $4
+             RETURNING id`,
+            ['won', winner, gameId, game.last_move_at]
         );
+
+        // If no rows were updated, the game state changed (player made a move or game ended)
+        if (updateResult.rowCount === 0) {
+            console.log(`[TimeoutChecker] Game ${gameId}: State changed before timeout could be applied. Skipping.`);
+            return;
+        }
 
         // Update user stats
         await pool.query('UPDATE Users SET wins = wins + 1 WHERE user_id = $1', [winner]);
