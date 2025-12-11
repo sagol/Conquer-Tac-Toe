@@ -94,11 +94,6 @@ const Lobby = () => {
       };
     }
   }, [auth.user, dispatch, backendUrl]);
-
-
-
-
-
   const createGameRequest = async (gameData) => {
     try {
       const { gameType } = gameData;

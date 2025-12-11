@@ -114,7 +114,6 @@ function start() {
         console.log('[TimeoutChecker] Already running');
         return;
     }
-    // Race condition guard (double-check after function entry)
 
 
     console.log(`[TimeoutChecker] Starting with ${CHECK_INTERVAL_MS}ms interval`);

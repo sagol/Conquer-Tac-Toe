@@ -189,7 +189,8 @@ const GamePage = () => {
       socket.off('gameTimeout', handleGameTimeout);
       socket.off('gameSurrendered', handleGameSurrendered);
       socket.off('playerJoined', handlePlayerJoined);
-      // Do not disconnect the socket here as it's shared across the app
+      // Do not disconnect the socket here as it's shared across the app.
+      // Connection lifecycle is managed by App.js and AuthContext.
     };
   }, [backendUrl, gameId]);
 

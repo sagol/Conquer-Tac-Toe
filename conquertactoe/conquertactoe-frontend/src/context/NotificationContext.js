@@ -131,7 +131,7 @@ export const NotificationProvider = ({ children }) => {
             socket.off('connect', joinUserRoom);
             socket.off('notification', handleNotification);
         };
-    }, [user]);
+    }, [user, backendUrl]);
 
     return (
         <NotificationContext.Provider value={{

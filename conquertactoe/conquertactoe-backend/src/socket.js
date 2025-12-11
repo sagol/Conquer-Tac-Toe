@@ -58,6 +58,7 @@ function init(server, sessionMiddleware) {
       } else {
         console.warn(`Invalid userId for joinUserRoom: ${userId} (type: ${typeof userId})`);
       }
+      // TODO: Implement rate limiting for joinUserRoom attempts to prevent enumeration attacks
     });
 
     socket.on('disconnect', () => {

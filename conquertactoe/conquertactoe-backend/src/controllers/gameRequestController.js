@@ -718,7 +718,7 @@ exports.surrenderGame = async (req, res) => {
     if (gameRequest.joiner_id) socket.getIo().to(`user_${gameRequest.joiner_id}`).emit('gameSurrendered', { gameId: parseInt(gameId), winner });
 
     // Send notification to both winner and loser about the surrender
-    if (gameRequest.game_type !== 'bot' && !isNaN(parseInt(winner)) && !isNaN(parseInt(loser))) {
+    if (gameRequest.game_type !== 'bot') {
       await notifyGameWin(gameId, winner, loser, 'surrender');
     }
 

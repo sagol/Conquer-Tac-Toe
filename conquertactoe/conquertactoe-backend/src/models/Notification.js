@@ -3,7 +3,6 @@ const pool = require('../config/db');
 const Notification = {
     create: async (userId, type, message) => {
         // Input validation
-        // Input validation
         const userIdNum = Number(userId);
         if (!userId || !Number.isInteger(userIdNum) || userIdNum <= 0) {
             throw new Error('Valid userId is required');
