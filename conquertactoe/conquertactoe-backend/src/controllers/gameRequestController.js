@@ -127,6 +127,8 @@ const notifyGameDraw = async (gameId, player1Id, player2Id) => {
     // Using pipe (|) delimiter is intentional for backward compatibility with existing
     // frontend parsing logic in NotificationList.js. While JSON would be more flexible,
     // this simple format is sufficient for current needs and matches the established pattern.
+    // Safety: All message texts are hardcoded strings that don't contain pipes.
+    // If user-generated content is added to messages in the future, migrate to JSON format.
     // Future consideration: migrate to structured metadata field if notification types expand.
     const notificationMessage = `Game ended in a draw!|game_id:${gameId}`;
     if (player1Id) {

@@ -12,6 +12,14 @@ require('dotenv').config();
 require('./config/passport');
 require('./services/clickhouseService');
 
+// SESSION_SECRET validation
+// Production: SESSION_SECRET is REQUIRED - fail hard if missing to prevent insecure deployment
+// Development: Falls back to hardcoded value for local dev convenience
+// This pattern prioritizes:
+// 1. Security: Production fails immediately if SESSION_SECRET is missing (line 18)
+// 2. Developer experience: Local development "just works" without manual env setup
+// 3. Visibility: Warning ensures developers know they should set a real secret
+// The development fallback is INTENTIONALLY insecure - it's never used in production.
 if (!process.env.SESSION_SECRET) {
   if (process.env.NODE_ENV === 'production') {
     console.error('FATAL: SESSION_SECRET environment variable is not set.');

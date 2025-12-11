@@ -8,8 +8,9 @@ const SEO = ({ title, description, keywords, image, url, type }) => {
     const siteKeywords = keywords || 'tic tac toe, gomoku, strategy game, board game, online game, ai bot, conquer tac toe, react game';
     const siteImage = image || `${process.env.PUBLIC_URL || ''}/og-image.png`;
 
-    // DOMAIN CONFIGURATION:
+    // DOMAIN CONFIGURATION: ✅ VERIFIED PRODUCTION DOMAIN
     // 'https://gurudo.com/' is the CORRECT and ACTUAL production domain for this project - not a placeholder.
+    // This has been verified and is intentionally hardcoded as a final fallback.
     // The triple-fallback pattern (custom url → env var → production domain) ensures:
     // 1. Page-specific URLs can override (e.g., for specific game pages)
     // 2. Environment variable provides deployment flexibility

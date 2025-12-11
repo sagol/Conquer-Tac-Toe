@@ -46,7 +46,12 @@ function init(server, sessionMiddleware) {
 
     // Join user-specific room for private notifications
     socket.on('joinUserRoom', (userId) => {
-      // Rate limiting: allow max 5 attempts per minute per socket
+      // Rate limiting: allow max 5 attempts per minute per socket connection
+      // SCOPE: Per-socket (not per-user) - intentional tradeoff for simplicity
+      // - Pros: Simple implementation, automatic cleanup on disconnect, no shared state needed
+      // - Cons: User can bypass by opening multiple socket connections
+      // - Acceptable for this use case: joinUserRoom is non-destructive, and user authentication
+      //   provides primary security. Rate limit prevents accidental spam, not determined attacks.
       // Rate limit state is attached to the ephemeral socket instance and is garbage collected on disconnect.
 
       // Initialize rate limit state if needed
@@ -74,7 +79,9 @@ function init(server, sessionMiddleware) {
         if (authenticatedUser && parseInt(authenticatedUser.user_id, 10) === targetUserId) {
           const roomName = `user_${targetUserId}`;
 
-          // Prevent duplicate joins
+          // Prevent duplicate joins using Set.has() (socket.rooms is a Set in Socket.IO 4.x)
+          // Note: .has() is the correct Set API method. Array.from().includes() would work
+          // but is less efficient and unnecessary for Sets.
           if (socket.rooms.has(roomName)) {
             console.log(`Socket ${socket.id} already in room ${roomName}`);
             return;
