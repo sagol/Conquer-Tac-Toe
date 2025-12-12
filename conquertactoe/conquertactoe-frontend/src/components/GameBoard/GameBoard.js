@@ -6,8 +6,9 @@ import CloseIcon from '@material-ui/icons/Close';
 import './GameBoard.css';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
 import MoveTimer from './MoveTimer';
+import RematchModal from './RematchModal';
 
-const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser }) => {
+const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser, socket, openRematchModal, onClearRematchParam }) => {
   const navigate = useNavigate();
   const [board, setBoard] = useState([]);
   const [boardSize, setBoardSize] = useState(3); // Default to 3x3
@@ -36,26 +37,114 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [frozenBoard, setFrozenBoard] = useState(null); // Holds empty board during randomization
   const [isSubmitting, setIsSubmitting] = useState(false); // Lock during backend processing
 
+  // Rematch Modal State (for PvP games)
+  const [showRematchModal, setShowRematchModal] = useState(false);
+  const [rematchReceivedState, setRematchReceivedState] = useState(null); // { requesterName, timeoutMs }
+
+  // Check for pending rematch via REST API when a finished game loads
+  // This is a fallback for when socket authentication fails
+  useEffect(() => {
+    if (!game?.id || (!winner && !isDraw)) return;
+
+    const checkPendingRematch = async () => {
+      try {
+        const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+        const response = await axios.get(
+          `${backendUrl}/game-requests/${game.id}/pending-rematch`,
+          { withCredentials: true }
+        );
+
+        if (response.data.hasPendingRematch) {
+          console.log('[GameBoard] Found pending rematch via API:', response.data);
+          setRematchReceivedState({
+            requesterName: response.data.requesterName,
+            timeoutMs: response.data.timeoutMs
+          });
+          setShowRematchModal(true);
+        }
+      } catch (error) {
+        console.error('[GameBoard] Error checking pending rematch:', error);
+      }
+    };
+
+    checkPendingRematch();
+  }, [game?.id, winner, isDraw]);
+
+  // Listen for rematchRequested socket event when on the game board
+  useEffect(() => {
+    if (!socket || !game?.id) return;
+
+    const handleRematchRequested = ({ gameId, requesterId, requesterName, timeoutMs }) => {
+      if (parseInt(gameId) === parseInt(game.id)) {
+        console.log('[GameBoard] Received rematchRequested event from', requesterName);
+        setRematchReceivedState({ requesterName, timeoutMs });
+        setShowRematchModal(true);
+      }
+    };
+
+    // Also listen for rematch acceptance to navigate to new game
+    const handleRematchAccepted = ({ newGameId, originalGameId }) => {
+      if (parseInt(originalGameId) === parseInt(game.id)) {
+        console.log('[GameBoard] Rematch accepted, navigating to new game:', newGameId);
+        // Reset modal state before navigation
+        setShowRematchModal(false);
+        setRematchReceivedState(null);
+
+      }
+    };
+
+    socket.on('rematchRequested', handleRematchRequested);
+    socket.on('rematchAccepted', handleRematchAccepted);
+
+    // Join the game room to listen for game-specific events (like rematch)
+    socket.emit('joinGameRoom', game.id);
+
+    return () => {
+      socket.off('rematchRequested', handleRematchRequested);
+      socket.off('rematchAccepted', handleRematchAccepted);
+      socket.emit('leaveGameRoom', game.id);
+    };
+  }, [socket, game?.id]);
+
+  // Handle Timeout
+  const handleTimeout = async () => {
+    if (!game || winner || isDraw) return;
+
+    console.log('Timeout detected in frontend, attempting to claim...');
+    try {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+      await axios.post(
+        `${backendUrl}/game-requests/${game.id}/timeout`,
+        { userId: currentUser.user_id },
+        { withCredentials: true }
+      );
+    } catch (err) {
+      console.error('Error claiming timeout:', err);
+      // Don't show error to user immediately, backend might have beat us to it
+    }
+  };
+
 
   const handlePlayAgain = async () => {
     try {
       if (!game) return;
 
-      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
-
-      // Determine game type
-      // If current game is 'bot' type, play again as bot.
-      // If current game is 'public', create new public game.
-      // If current game type is missing, infer from joiner (if joiner is null or bot, assume bot?)
-      // Safer to default to 'public' if unknown, but try to preserve 'bot'.
-
       const gameType = game.game_type || (game.joiner_id === null ? 'bot' : 'public');
+
+      // For PvP games: Show rematch modal instead of creating new game directly
+      if (gameType === 'public' && game.joiner_id) {
+        console.log('[GameBoard] PvP game - showing rematch modal');
+        setShowRematchModal(true);
+        return;
+      }
+
+      // For Bot games: Create new game directly (existing behavior)
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
 
       const gameData = {
         gameType: gameType,
         variantId: game.variant_id,
         boardSize: game.board_size,
-        // Add other necessary fields if any (e.g. custom cones if supported)
       };
 
       const endpoint = gameType === 'bot' ? `${backendUrl}/game-requests/bot` : `${backendUrl}/game-requests`;
@@ -70,6 +159,22 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     } catch (err) {
       console.error('Error creating new game:', err);
       setError(err.response?.data?.error || 'Failed to start a new game. Please try again from the lobby.');
+    }
+  };
+
+  // Helper to create a new public game (for rematch fallback)
+  const handleCreatePublicGame = async () => {
+    try {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+      const res = await axios.post(`${backendUrl}/game-requests`, {
+        gameType: 'public',
+        variantId: game.variant_id,
+        boardSize: game.board_size,
+      }, { withCredentials: true });
+      navigate(`/game/${res.data.id}`);
+    } catch (err) {
+      console.error('Error creating public game:', err);
+      setError(err.response?.data?.error || 'Failed to create game.');
     }
   };
 
@@ -564,6 +669,9 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     // Otherwise, return null to indicate nothing should be rendered.
     if (!winner && !isDraw) return null;
 
+    // Hide overlay when rematch modal is shown to prevent blocking button clicks
+    if (showRematchModal) return null;
+
     // Show "View Result" button when overlay is dismissed
     if (!showResultOverlay) {
       return (
@@ -666,7 +774,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         </div>
         <div className={`player-info ${activePlayer === 2 ? 'active' : ''}`}>
           <strong>
-            <span className="player-indicator player2-indicator">●</span> {joinerName}
+            <span className="player-indicator player2-indicator">●</span> {joinerName || (game?.game_type === 'bot' ? 'Bot AI' : 'Waiting...')}
           </strong>
           {(variant?.rules?.allowOverwrite) && (
             <div className="legend">
@@ -693,6 +801,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
               (currentUser?.user_id === game.joiner_id && activePlayer === 2)
             }
             gameActive={game.status === 'joined'}
+            onTimeout={handleTimeout}
           />
         </div>
       )}
@@ -714,6 +823,27 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       <ErrorMessage message={error} />
       {renderGameResult()}
       {!winner && !isDraw && <button className="surrender-button" onClick={handleSurrender}>Surrender</button>}
+
+      {/* Rematch Modal for PvP games - only show when game is finished */}
+      {(winner || isDraw) && (
+        <RematchModal
+          socket={socket}
+          gameId={game?.id}
+          opponentId={currentUser?.user_id === game?.creator_id ? game?.joiner_id : game?.creator_id}
+          opponentName={currentUser?.user_id === game?.creator_id ? joinerName : creatorName}
+          currentUserId={currentUser?.user_id}
+          variantId={game?.variant_id}
+          onClose={() => {
+            setShowRematchModal(false);
+            setRematchReceivedState(null);
+
+          }}
+          onCreatePublicGame={handleCreatePublicGame}
+          isVisible={showRematchModal}
+          initialState={rematchReceivedState ? 'received' : null}
+          initialRequesterName={rematchReceivedState?.requesterName || null}
+        />
+      )}
     </div>
   );
 };

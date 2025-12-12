@@ -118,6 +118,8 @@ const NotificationList = ({ onClose }) => {
             // Validate game_id is a positive integer
             if (!isNaN(gameId) && gameId > 0) {
                 onClose();
+                // Navigate to the game - don't add ?rematch=true for old notifications
+                // Real-time rematch requests come through socket events, not from clicking old notifications
                 navigate(`/game/${gameId}`);
             }
         }

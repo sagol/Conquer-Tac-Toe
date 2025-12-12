@@ -41,6 +41,14 @@ export const NotificationProvider = ({ children }) => {
     }, [user]);
 
     const markAsRead = async (id) => {
+        // Handle synthetic notifications (IDs like "rematch_48_1234567890")
+        // These don't exist in the database, just remove them from local state
+        if (typeof id === 'string' && id.startsWith('rematch_')) {
+            setNotifications(prev => prev.filter(n => n.id !== id));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+            return;
+        }
+
         try {
             await axios.put(`${backendUrl}/notifications/${id}/read`, {}, { withCredentials: true });
 
@@ -127,9 +135,62 @@ export const NotificationProvider = ({ children }) => {
 
         socket.on('notification', handleNotification);
 
+        // Listen for rematchRequested events globally
+        // This shows a toast when user receives a rematch request while NOT viewing the game board
+        const handleRematchRequested = ({ gameId, requesterId, requesterName, timeoutMs }) => {
+            console.log('[NotificationContext] Received rematchRequested:', { gameId, requesterName });
+
+            // If user is currently viewing this game, GameBoard will handle it
+            if (String(gameId) === String(currentGameIdRef.current)) {
+                console.log('[NotificationContext] User is viewing this game, GameBoard will handle it');
+                return;
+            }
+
+            // Create a synthetic notification to show as toast
+            const syntheticNotification = {
+                id: `rematch_${gameId}_${Date.now()}`, // Temporary ID
+                type: 'rematch_request',
+                message: `${requesterName || 'A player'} wants a rematch!|game_id:${gameId}|rematch:true`,
+                is_read: false,
+                created_at: new Date().toISOString()
+            };
+
+            // Add to notifications list and show toast
+            setNotifications(prev => [syntheticNotification, ...prev]);
+            setUnreadCount(prev => prev + 1);
+            setToast(syntheticNotification);
+        };
+
+        socket.on('rematchRequested', handleRematchRequested);
+
+        // Clean up synthetic rematch notifications when rematch is resolved
+        const handleRematchResolved = ({ gameId, originalGameId }) => {
+            const targetGameId = originalGameId || gameId;
+            console.log('[NotificationContext] Rematch resolved for game:', targetGameId);
+            // Remove synthetic notifications for this game
+            setNotifications(prev => prev.filter(n => {
+                if (typeof n.id === 'string' && n.id.startsWith('rematch_')) {
+                    // Check if this notification is for the resolved game
+                    const notifGameId = n.id.split('_')[1];
+                    return notifGameId !== String(targetGameId);
+                }
+                return true;
+            }));
+        };
+
+        socket.on('rematchAccepted', handleRematchResolved);
+        socket.on('rematchDeclined', handleRematchResolved);
+        socket.on('rematchTimeout', handleRematchResolved);
+        socket.on('rematchCancelled', handleRematchResolved);
+
         return () => {
             socket.off('connect', joinUserRoom);
             socket.off('notification', handleNotification);
+            socket.off('rematchRequested', handleRematchRequested);
+            socket.off('rematchAccepted', handleRematchResolved);
+            socket.off('rematchDeclined', handleRematchResolved);
+            socket.off('rematchTimeout', handleRematchResolved);
+            socket.off('rematchCancelled', handleRematchResolved);
         };
     }, [user, backendUrl]);
 

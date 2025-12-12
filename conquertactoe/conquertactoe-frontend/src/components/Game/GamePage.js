@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Container, Box } from '@material-ui/core';
 import axios from 'axios';
 import GameBoard from '../GameBoard/GameBoard';
@@ -10,6 +10,7 @@ import socket from '../../utils/socket'; // Use shared socket instance
 
 const GamePage = () => {
   const { gameId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [game, setGame] = useState(null);
   const [creatorName, setCreatorName] = useState('');
   const [joinerName, setJoinerName] = useState('');
@@ -33,6 +34,11 @@ const GamePage = () => {
       socket.connect();
     }
 
+    // Join the game room to indicate we're viewing this game
+    // This is used to suppress in-game notifications when we're on the board
+    socket.emit('joinGameRoom', gameId);
+    console.log(`Joined game room for game ${gameId}`);
+
     // Handler for connection errors
     const handleConnectError = (err) => {
       console.error('Socket connection error:', err);
@@ -41,9 +47,12 @@ const GamePage = () => {
 
     socket.on('connect_error', handleConnectError);
 
-    const fetchGame = async () => {
+    const fetchGame = async (retryCount = 0) => {
+      const maxRetries = 3;
+      const retryDelays = [500, 1000, 2000]; // Exponential backoff: 500ms, 1s, 2s
+
       try {
-        console.log(`Fetching game data for game ID: ${gameId}`);
+        console.log(`Fetching game data for game ID: ${gameId} (attempt ${retryCount + 1}/${maxRetries + 1})`);
         const res = await axios.get(`${backendUrl}/game-requests/${gameId}`, { withCredentials: true });
         console.log('Fetched game data:', res.data);
         setGame(res.data);
@@ -62,13 +71,15 @@ const GamePage = () => {
           const capitalizedDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
           setJoinerName(`Bot AI (${capitalizedDifficulty})`);
           console.log(`Bot game detected, setting joiner name to Bot AI (${capitalizedDifficulty})`);
+        } else {
+          // No joiner yet (pending public game) - reset to empty/waiting state
+          setJoinerName('');
+          console.log('No joiner yet, reset joinerName to empty');
         }
 
         if (res.data.status === 'won' || res.data.status === 'surrendered') {
-          // REMOVED: setWinner(...) - winner is now derived from game.winner
           console.log('Winner:', res.data.winner);
         } else if (res.data.status === 'draw') {
-          // REMOVED: setIsDraw(true) - isDraw is now derived from game.status
           console.log('Game is a draw.');
         } else if (res.data.status === 'cancelled') {
           setError('The game was cancelled.');
@@ -76,6 +87,16 @@ const GamePage = () => {
 
       } catch (error) {
         console.error('Error fetching game:', error.response?.data || error.message);
+
+        // Retry logic for transient errors (e.g., race condition after rematch)
+        if (retryCount < maxRetries) {
+          const delay = retryDelays[retryCount];
+          console.log(`Retrying fetch in ${delay}ms... (attempt ${retryCount + 2}/${maxRetries + 1})`);
+          setTimeout(() => fetchGame(retryCount + 1), delay);
+          return;
+        }
+
+        // Final failure after all retries
         if (error.response && error.response.status === 403) {
           setError('Access denied: You do not have permission to view this game.');
         } else {
@@ -198,6 +219,12 @@ const GamePage = () => {
       socket.off('gameTimeout', handleGameTimeout);
       socket.off('gameSurrendered', handleGameSurrendered);
       socket.off('playerJoined', handlePlayerJoined);
+      socket.off('connect_error', handleConnectError);
+
+      // Leave game room when unmounting to indicate we're no longer viewing
+      socket.emit('leaveGameRoom', gameId);
+      console.log(`Left game room for game ${gameId}`);
+
       // Note: Socket is NOT disconnected here as it's a shared singleton instance.
       // Disconnecting would break real-time features in other components (Lobby, Notifications).
       // Socket lifecycle is managed centrally by App.js and AuthContext.
@@ -284,6 +311,9 @@ const GamePage = () => {
           isDraw={isDraw}
           gameResult={game.status}
           currentUser={auth.user}
+          socket={socket}
+          openRematchModal={searchParams.get('rematch') === 'true'}
+          onClearRematchParam={() => setSearchParams({})}
         />
       </Box>
     </Container>

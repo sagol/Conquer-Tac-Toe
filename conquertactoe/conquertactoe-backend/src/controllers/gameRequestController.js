@@ -154,37 +154,47 @@ const notifyGameDraw = async (gameId, player1Id, player2Id) => {
  */
 const notifyGameWin = async (gameId, winnerId, loserId, reason) => {
   try {
-    // 1. Notify Winner
+    // 1. Notify Winner (only if not viewing game board)
     if (winnerId) {
       try {
-        let winMsg = `You won the game!|game_id:${gameId}`;
-        if (reason === 'surrender') winMsg = `Your opponent surrendered! You won!|game_id:${gameId}`;
-        else if (reason === 'timeout') winMsg = `Your opponent ran out of time! You won!|game_id:${gameId}`;
+        // Check if winner is viewing the game - don't spam notifications
+        if (socket.isUserViewingGame && socket.isUserViewingGame(winnerId, gameId)) {
+          console.log(`User ${winnerId} is viewing game ${gameId} - skipping 'game_won' notification`);
+        } else {
+          let winMsg = `You won the game!|game_id:${gameId}`;
+          if (reason === 'surrender') winMsg = `Your opponent surrendered! You won!|game_id:${gameId}`;
+          else if (reason === 'timeout') winMsg = `Your opponent ran out of time! You won!|game_id:${gameId}`;
 
-        const winNotif = await Notification.create(winnerId, 'game_won', winMsg);
-        socket.getIo().to(`user_${winnerId}`).emit('notification', winNotif);
-        console.log(`Sent 'game_won' notification to winner ${winnerId}`);
+          const winNotif = await Notification.create(winnerId, 'game_won', winMsg);
+          socket.getIo().to(`user_${winnerId}`).emit('notification', winNotif);
+          console.log(`Sent 'game_won' notification to winner ${winnerId}`);
+        }
       } catch (e) {
         console.error('Failed to notify winner:', e);
       }
     }
 
-    // 2. Notify Loser
+    // 2. Notify Loser (only if not viewing game board)
     if (loserId) {
       try {
-        // Fetch winner's name for friendlier message
-        let winnerName = 'your opponent';
-        if (winnerId) {
-          const winnerResult = await pool.query('SELECT username FROM Users WHERE user_id = $1', [winnerId]);
-          if (winnerResult.rows.length > 0) winnerName = winnerResult.rows[0].username;
+        // Check if loser is viewing the game - don't spam notifications
+        if (socket.isUserViewingGame && socket.isUserViewingGame(loserId, gameId)) {
+          console.log(`User ${loserId} is viewing game ${gameId} - skipping 'game_lost' notification`);
+        } else {
+          // Fetch winner's name for friendlier message
+          let winnerName = 'your opponent';
+          if (winnerId) {
+            const winnerResult = await pool.query('SELECT username FROM Users WHERE user_id = $1', [winnerId]);
+            if (winnerResult.rows.length > 0) winnerName = winnerResult.rows[0].username;
+          }
+
+          let loseMsg = `Game Over - You lost to ${winnerName}|game_id:${gameId}`;
+          if (reason === 'timeout') loseMsg = `Time's up! You lost to ${winnerName}|game_id:${gameId}`;
+
+          const loseNotif = await Notification.create(loserId, 'game_lost', loseMsg);
+          socket.getIo().to(`user_${loserId}`).emit('notification', loseNotif);
+          console.log(`Sent 'game_lost' notification to loser ${loserId}`);
         }
-
-        let loseMsg = `Game Over - You lost to ${winnerName}|game_id:${gameId}`;
-        if (reason === 'timeout') loseMsg = `Time's up! You lost to ${winnerName}|game_id:${gameId}`;
-
-        const loseNotif = await Notification.create(loserId, 'game_lost', loseMsg);
-        socket.getIo().to(`user_${loserId}`).emit('notification', loseNotif);
-        console.log(`Sent 'game_lost' notification to loser ${loserId}`);
       } catch (e) {
         console.error('Failed to notify loser:', e);
       }
@@ -331,17 +341,24 @@ exports.updateGameRequest = async (req, res) => {
       console.log('Game type:', gameRequest.game_type, 'Active player:', updatedBoardState.active_player);
 
       // Send notification to the next active player in PvP games that it's their turn
+      // Only send if user is NOT currently viewing the game board (prevents notification spam)
       if (gameRequest.game_type !== 'bot' && gameRequest.joiner_id) {
         try {
           // Determine the ID of the player whose turn it is (the active player, which is updatedBoardState.active_player)
           // Notification is sent to the *next* active player (the opponent of the one who just moved).
           const activePlayerId = updatedBoardState.active_player === 1 ? gameRequest.creator_id : gameRequest.joiner_id;
-          const notificationMessage = `It's your turn!|game_id:${gameId}`;
-          const notification = await Notification.create(activePlayerId, 'your_turn', notificationMessage);
 
-          // Emit real-time notification to the active player
-          socket.getIo().to(`user_${activePlayerId}`).emit('notification', notification);
-          console.log(`Sent 'your_turn' notification to user ${activePlayerId} for game ${gameId}`);
+          // Check if user is currently viewing the game - don't spam notifications
+          if (socket.isUserViewingGame && socket.isUserViewingGame(activePlayerId, gameId)) {
+            console.log(`User ${activePlayerId} is viewing game ${gameId} - skipping 'your_turn' notification`);
+          } else {
+            const notificationMessage = `It's your turn!|game_id:${gameId}`;
+            const notification = await Notification.create(activePlayerId, 'your_turn', notificationMessage);
+
+            // Emit real-time notification to the active player
+            socket.getIo().to(`user_${activePlayerId}`).emit('notification', notification);
+            console.log(`Sent 'your_turn' notification to user ${activePlayerId} for game ${gameId}`);
+          }
         } catch (notificationError) {
           console.error('Failed to create move notification:', notificationError);
         }
@@ -889,6 +906,73 @@ exports.resetGame = async (req, res) => {
 
   } catch (err) {
     console.error('Error resetting game:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+exports.claimTimeout = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const { userId } = req.body; // Expecting userId of the person claiming the timeout (should be req.user.user_id)
+
+    // Security check: Ensure authenticated user matches the claimed user
+    if (!req.user || req.user.user_id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const game = await GameRequest.getById(gameId);
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    if (game.status !== 'joined') {
+      return res.status(400).json({ error: 'Game is not active' });
+    }
+
+    // Determine whose turn it is
+    const activePlayerId = game.active_player === 1 ? game.creator_id : game.joiner_id;
+    const opponentId = game.active_player === 1 ? game.joiner_id : game.creator_id;
+
+    // The person claiming timeout must be the OPPONENT of the active player
+    // (i.e., it's NOT their turn, they are waiting)
+    if (userId !== opponentId) {
+      // Allow the active player to claim usage if they want to concede? No.
+      // Only the waiting player can claim "Action required by opponent, time up".
+      return res.status(400).json({ error: 'It is not your turn to claim timeout' });
+    }
+
+    // Check time elapsed
+    const lastMoveTime = new Date(game.last_move_at || game.updated_at).getTime();
+    const now = Date.now();
+    const elapsedSeconds = (now - lastMoveTime) / 1000;
+    const timeoutSeconds = game.move_timeout_seconds || 300;
+
+    // Add a small grace period (e.g., 2 seconds) to account for network latency
+    if (elapsedSeconds < timeoutSeconds - 2) {
+      return res.status(400).json({ error: 'Timeout has not been reached yet' });
+    }
+
+    // Timeout CONFIRMED
+    console.log(`Timeout claimed for game ${gameId}. Winner: ${userId} (Opponent of active player)`);
+
+    // Winner is the one who claimed it (the waiting player)
+    const winnerId = userId;
+    const loserId = activePlayerId;
+    const winnerField = game.active_player === 1 ? 2 : 1; // If P1 was active, P2 wins (2). If P2 active, P1 wins (1).
+
+    // Update Game
+    await pool.query('UPDATE GameRequests SET status = $1, winner = $2 WHERE id = $3', ['won', winnerField, gameId]);
+    await updateUserStats(winnerId, loserId);
+
+    // Notify
+    socket.getIo().emit('gameWon', { gameId: parseInt(gameId, 10), winner: winnerId }); // Sending userId as winner for PvP consistency
+
+    // Send notifications
+    await notifyGameWin(gameId, winnerId, loserId, 'timeout');
+
+    res.json({ message: 'Timeout claimed successfully', winner: winnerId });
+
+  } catch (err) {
+    console.error('Error claiming timeout:', err);
     res.status(500).json({ error: err.message });
   }
 };

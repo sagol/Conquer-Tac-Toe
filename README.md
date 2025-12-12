@@ -40,6 +40,11 @@ Conquer-Tac-Toe is a strategic evolution of classic tic-tac-toe, featuring:
   - Real-time alerts for game joins
   - System-wide announcements
   - Persistent notification history
+- 🔄 **PvP Rematch System**
+  - Challenge opponents to rematches after games
+  - 60-second timed acceptance window
+  - Randomized starting player for fair play
+  - Notification fallback for offline opponents
 
 ## 🛠️ Tech Stack
 
