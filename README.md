@@ -26,16 +26,25 @@ Conquer-Tac-Toe is a strategic evolution of classic tic-tac-toe, featuring:
 - 🔒 **Authentication**
   - Google OAuth integration
   - Dev login for testing
-- � **Player Statistics**
+- 📊 **Player Statistics**
   - Separate PvP and Bot leaderboards
   - Detailed player profiles
   - Win rate tracking
 - 🌐 **Real-time Gameplay**
   - Socket.io for instant updates
   - Live game requests and moves
-- � **Game Analytics**
+- 📈 **Game Analytics**
   - ClickHouse for move logging
   - Performance metrics
+- 🔔 **Notification System**
+  - Real-time alerts for game joins
+  - System-wide announcements
+  - Persistent notification history
+- 🔄 **PvP Rematch System**
+  - Challenge opponents to rematches after games
+  - 60-second timed acceptance window
+  - Randomized starting player for fair play
+  - Notification fallback for offline opponents
 
 ## 🛠️ Tech Stack
 
@@ -237,9 +246,12 @@ cp .env.example .env
 Edit `.env` (must match backend POSTGRES_* values):
 
 ```env
+POSTGRES_HOST=conquertactoe_db
 POSTGRES_DB=conquertactoe
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_secure_password_here
+POSTGRES_HOST_PORT=5433
+POSTGRES_CONTAINER_PORT=5432
 ```
 
 #### Autoplayer (AI) Configuration
@@ -669,6 +681,28 @@ docker logs conquertactoe_db
 docker exec -it conquertactoe_db psql -U postgres -d conquertactoe -c "SELECT 1;"
 ```
 
+**If you see "database 'conquertactoe' does not exist":**
+
+This means the database wasn't initialized properly. Run these commands:
+```bash
+# Create the database
+docker exec conquertactoe_db psql -U postgres -c "CREATE DATABASE conquertactoe;"
+
+# Initialize tables
+docker exec conquertactoe_db psql -U postgres -d conquertactoe -f /docker-entrypoint-initdb.d/init.sql
+
+# Restart backend to reconnect
+cd conquertactoe/conquertactoe-backend && docker-compose restart
+```
+
+**For a complete fresh start:**
+```bash
+cd conquertactoe/conquertactoe-db
+docker-compose down -v  # Remove volumes (deletes all data)
+docker-compose up --build -d
+```
+
+
 ### Frontend Can't Connect to Backend
 
 **Check CORS settings** in `conquertactoe-backend/src/config/corsConfig.js`
@@ -740,6 +774,21 @@ curl http://localhost:8000/health
 curl -X POST http://localhost:8000/move \
   -H "Content-Type: application/json" \
   -d '{"variant_id": 1, "board": [[null,null,null],[null,null,null],[null,null,null]], "player_cones": [3,3,3], "bot_cones": [3,3,3]}'
+```
+
+### Notification System
+
+Test notification endpoints:
+
+```bash
+# Get user notifications
+curl http://localhost:5001/notifications -H "Cookie: your_session_cookie"
+
+# Mark notification as read
+curl -X PUT http://localhost:5001/notifications/1/read -H "Cookie: your_session_cookie"
+
+# Mark all as read
+curl -X PUT http://localhost:5001/notifications/read-all -H "Cookie: your_session_cookie"
 ```
 
 ## 📊 Monitoring & Logs
