@@ -69,7 +69,7 @@ echo "================================================"
 # CLEANUP
 # ------------------------------------------------
 echo "🧹 Cleaning up old Docker garbage..."
-docker system prune -f
+docker system prune -a -f
 echo "✅ Cleanup complete."
 echo "------------------------------------------------"
 
