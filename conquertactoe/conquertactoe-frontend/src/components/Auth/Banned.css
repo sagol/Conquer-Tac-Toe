@@ -1,0 +1,163 @@
+.banned-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.banned-card {
+    padding: 40px !important;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 20px !important;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37) !important;
+}
+
+.banned-icon-container {
+    margin-bottom: 20px;
+}
+
+.banned-icon {
+    font-size: 80px !important;
+    color: #e74c3c;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+.banned-title {
+    color: #2c3e50 !important;
+    font-weight: 700 !important;
+    margin-bottom: 10px !important;
+}
+
+.banned-subtitle {
+    color: #7f8c8d !important;
+    margin-bottom: 30px !important;
+}
+
+.banned-info-box {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 30px;
+    border-radius: 15px;
+    margin: 30px 0;
+    border: 2px solid #e8ecef;
+}
+
+.banned-label {
+    color: #7f8c8d !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    font-size: 0.75rem !important;
+    margin-bottom: 8px !important;
+}
+
+.banned-reason {
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+    font-size: 1.1rem !important;
+    margin-bottom: 30px !important;
+}
+
+.timer-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 30px 0 20px 0;
+}
+
+.timer-icon {
+    color: #3498db !important;
+    font-size: 28px !important;
+}
+
+.timer-label {
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+}
+
+.countdown-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.countdown-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: white;
+    padding: 15px 20px;
+    border-radius: 12px;
+    min-width: 70px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.countdown-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #3498db;
+    line-height: 1;
+}
+
+.countdown-label {
+    font-size: 0.75rem;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    margin-top: 8px;
+    font-weight: 600;
+}
+
+.expiry-date {
+    color: #7f8c8d !important;
+    margin-top: 20px !important;
+    font-style: italic;
+}
+
+.permanent-ban {
+    color: #e74c3c !important;
+    font-weight: 700 !important;
+    margin: 20px 0 !important;
+    padding: 15px;
+    background: rgba(231, 76, 60, 0.1);
+    border-radius: 10px;
+}
+
+.support-text {
+    color: #95a5a6 !important;
+    margin: 25px 0 !important;
+    font-size: 0.9rem !important;
+}
+
+.back-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    padding: 12px 40px !important;
+    border-radius: 25px !important;
+    text-transform: none !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    box-shadow: 0 4px 15px 0 rgba(102, 126, 234, 0.4) !important;
+    transition: all 0.3s ease !important;
+}
+
+.back-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(102, 126, 234, 0.6) !important;
+}

@@ -1,0 +1,18 @@
+services:
+  autoplayer:
+    build: .
+    container_name: ${AUTOPLAYER_CONTAINER_NAME}
+    ports:
+      - "${AUTOPLAYER_PORT}:8000"
+    environment:
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_NATIVE_PORT} # Internal port 9000
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+    networks:
+      - conquer-network
+
+networks:
+  conquer-network:
+    external: true

@@ -1,0 +1,15 @@
+# Backup Schedule for Conquer-Tac-Toe Database
+# Runs daily at 2:00 AM
+# Keeps last 7 backups automatically
+
+# To install this crontab:
+# 1. Edit this file with your actual path
+# 2. Run: crontab crontab.txt
+#
+# To verify: crontab -l
+
+# Daily backup at 2:00 AM
+0 2 * * * /Users/sagol/Development/Projects/Conquer-Tac-Toe/Conquer-Tac-Toe/scripts/backup-db.sh >> /Users/sagol/Development/Projects/Conquer-Tac-Toe/Conquer-Tac-Toe/backups/backup.log 2>&1
+
+# Optional: Weekly verification backup on Sunday at 3:00 AM
+# 0 3 * * 0 /Users/sagol/Development/Projects/Conquer-Tac-Toe/Conquer-Tac-Toe/scripts/backup-db.sh >> /Users/sagol/Development/Projects/Conquer-Tac-Toe/Conquer-Tac-Toe/backups/backup.log 2>&1

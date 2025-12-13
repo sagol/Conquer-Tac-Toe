@@ -6,6 +6,9 @@ ALTER TABLE Users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP;
 ALTER TABLE Users ADD COLUMN IF NOT EXISTS login_count INT DEFAULT 0;
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS password VARCHAR(255);
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS ban_expires_at TIMESTAMP;
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS ban_reason TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_users_role ON Users(role);
 CREATE INDEX IF NOT EXISTS idx_users_banned ON Users(is_banned);
@@ -63,14 +66,15 @@ CREATE INDEX IF NOT EXISTS idx_system_logs_service ON SystemLogs(service);
 
 -- 5. Insert a default admin user (change password after first login!)
 -- Password: admin123 (hashed with bcrypt)
-INSERT INTO Users (username, email, password, role, created_at, updated_at)
+INSERT INTO Users (username, email, password, role, created_at, updated_at, oauth_id)
 VALUES (
     'admin',
     'admin@conquertactoe.com',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5eo0Y.hGv7SMe',
+    '$2b$10$7gNMH4eSsExe9IrCkCUoluYvr47yN3TpDwir4nVCTHdwT0FpRyvoS',
     'super_admin',
     NOW(),
-    NOW()
+    NOW(),
+    'admin-local'
 )
 ON CONFLICT (email) DO NOTHING;
 

@@ -4,9 +4,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Box, Button, Table, TableBody, TableCell, TableHead, TableRow, Snackbar, Typography, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
 import Pagination from '@material-ui/lab/Pagination';
 import axios from 'axios';
-import { io } from 'socket.io-client';
+import socket from '../../utils/socket'; // Use shared socket instance
 import { fetchActiveGameRequests, addGameRequest, updateGameRequest } from '../../redux/actions/gameRequestActions';
 import CreateGameModal from './CreateGameModal';
+import SEO from '../Common/SEO';
 import '../Common/SharedModernStyles.css';
 import './Lobby.css';
 
@@ -15,7 +16,7 @@ const Lobby = () => {
   const navigate = useNavigate();
   const gameRequests = useSelector(state => state.gameRequests.gameRequests);
   const auth = useSelector(state => state.auth);
-  const [socket, setSocket] = useState(null);
+  // socket state is removed, use imported socket directly
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
   const [userStats, setUserStats] = useState({ wins: 0, losses: 0, draws: 0 });
@@ -63,36 +64,65 @@ const Lobby = () => {
       fetchStats();
       console.log('Fetching all game requests');
       dispatch(fetchActiveGameRequests());
-      const newSocket = io(backendUrl);
-      setSocket(newSocket);
 
-      newSocket.on('gameRequestCreated', (gameRequest) => {
+      // Ensure socket is connected if not already
+      if (!socket.connected) {
+        socket.connect();
+      }
+
+      const handleConnectError = (err) => {
+        console.error('Lobby socket connection error:', err);
+        setError('Lost connection to game server. Trying to reconnect...');
+      };
+
+      socket.on('connect_error', handleConnectError);
+
+      // Event Listeners
+      const handleGameRequestCreated = (gameRequest) => {
         dispatch(addGameRequest(gameRequest));
-      });
+      };
 
-      newSocket.on('gameRequestJoined', (gameRequest) => {
+      const handleGameRequestJoined = (gameRequest) => {
         dispatch(updateGameRequest(gameRequest));
-      });
+      };
 
-      newSocket.on('gameRequestCancelled', (gameRequest) => {
+      const handleGameRequestCancelled = (gameRequest) => {
         dispatch({ type: 'REMOVE_GAME_REQUEST', payload: gameRequest.id });
-      });
+      };
 
-      return () => newSocket.close();
+      socket.on('gameRequestCreated', handleGameRequestCreated);
+      socket.on('gameRequestJoined', handleGameRequestJoined);
+      socket.on('gameRequestCancelled', handleGameRequestCancelled);
+
+      // Cleanup listeners on unmount
+      return () => {
+        socket.off('gameRequestCreated', handleGameRequestCreated);
+        socket.off('gameRequestJoined', handleGameRequestJoined);
+        socket.off('gameRequestCancelled', handleGameRequestCancelled);
+        socket.off('connect_error', handleConnectError);
+      };
     }
-  }, [dispatch, backendUrl, auth.user]); // Removed 'page' dependency
-
-
-
+  }, [auth.user, dispatch, backendUrl]);
   const createGameRequest = async (gameData) => {
     try {
       const { gameType } = gameData;
-      const endpoint = gameType === 'bot' ? `${backendUrl}/bot-game` : `${backendUrl}/game-requests`;
+      const endpoint = gameType === 'bot' ? `${backendUrl}/game-requests/bot` : `${backendUrl}/game-requests`;
 
       const res = await axios.post(endpoint, gameData, { withCredentials: true });
       navigate(`/game/${res.data.id}`);
     } catch (error) {
-      setError(error.response?.data.error || error.message);
+      // Extract user-friendly error message
+      let errorMessage = 'Failed to create game. Please try again.';
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Game creation is currently disabled by the administrator.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Unable to create game. Please try again.';
+      }
+
+      setError(errorMessage);
       setOpen(true);
     }
   };
@@ -102,7 +132,15 @@ const Lobby = () => {
       const res = await axios.post(`${backendUrl}/game-requests/${requestId}/join`, {}, { withCredentials: true });
       navigate(`/game/${res.data.id}`);
     } catch (error) {
-      setError(error.response?.data.error || error.message);
+      let errorMessage = 'Failed to join game. Please try again.';
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Unable to join this game.';
+      }
+
+      setError(errorMessage);
       setOpen(true);
     }
   };
@@ -112,7 +150,13 @@ const Lobby = () => {
       await axios.delete(`${backendUrl}/game-requests/${requestId}`, { withCredentials: true });
       dispatch({ type: 'REMOVE_GAME_REQUEST', payload: requestId });
     } catch (error) {
-      setError(error.response?.data.error || error.message);
+      let errorMessage = 'Failed to delete game. Please try again.';
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
+      setError(errorMessage);
       setOpen(true);
     }
   };
@@ -171,16 +215,23 @@ const Lobby = () => {
     });
 
   return (
-    <div className="lobby-container">
-      <div className="lobby-box">
-        <h5 className="modern-title">Lobby</h5>
-
+    <div className="lobby-container modern-container">
+      <SEO
+        title="Game Lobby"
+        description="Join open games or create a new challenge in the Conquer-Tac-Toe lobby. Play vs AI or human opponents."
+      />
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+        <Typography variant="h2" className="modern-title" style={{ margin: 0 }}>
+          Game Lobby
+        </Typography>
         {!userPendingOrJoined && (
-          <Button variant="contained" color="primary" onClick={() => setCreateModalOpen(true)} className="lobby-button" style={{ marginBottom: '20px' }} data-testid="create-game-request-button">
+          <Button variant="contained" color="primary" onClick={() => setCreateModalOpen(true)} className="lobby-button" data-testid="create-game-request-button">
             Create Game Request
           </Button>
         )}
+      </Box>
 
+      <div className="lobby-box">
         <Tabs
           value={activeTab}
           onChange={handleTabChange}
@@ -222,27 +273,27 @@ const Lobby = () => {
                     style={{ cursor: 'pointer' }}
                     className={request.status === 'pending' ? 'pending-game' : ''}
                   >
-                    <TableCell>{request.creator_name}</TableCell>
+                    <TableCell className="col-creator">{request.creator_name}</TableCell>
                     {activeTab === 0 ? (
                       <>
-                        <TableCell>{request.game_type}</TableCell>
-                        <TableCell>{request.variant_display_name || 'Unknown'}</TableCell>
+                        <TableCell className="col-type">{request.game_type}</TableCell>
+                        <TableCell className="col-variant">{request.variant_display_name || 'Unknown'}</TableCell>
                       </>
                     ) : (
-                      <TableCell>{request.variant_display_name || 'Unknown'}</TableCell>
+                      <TableCell className="col-variant">{request.variant_display_name || 'Unknown'}</TableCell>
                     )}
-                    <TableCell>{getUserGameStatus(request)}</TableCell>
-                    <TableCell>{formatTimestamp(request.created_at)}</TableCell>
-                    <TableCell>
+                    <TableCell className="col-status">{getUserGameStatus(request)}</TableCell>
+                    <TableCell className="col-created">{formatTimestamp(request.created_at)}</TableCell>
+                    <TableCell className="col-action">
                       {canJoin(request) ? (
                         <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); joinGameRequest(request.id); }} className="lobby-button">Join</Button>
                       ) : (request.creator_id === auth.user?.user_id && request.status === 'pending') ? (
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go to Game</Button>
-                          <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); deleteGameRequest(request.id); }} className="lobby-button">Delete</Button>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                          <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button" aria-label="Go to game">Go</Button>
+                          <Button variant="contained" color="secondary" onClick={(e) => { e.stopPropagation(); deleteGameRequest(request.id); }} className="lobby-button" aria-label="Delete game">Del</Button>
                         </div>
                       ) : (request.creator_id === auth.user?.user_id || request.joiner_id === auth.user?.user_id) ? (
-                        <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go to Game</Button>
+                        <Button variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); navigate(`/game/${request.id}`); }} className="lobby-button">Go</Button>
                       ) : null}
                     </TableCell>
                   </TableRow>

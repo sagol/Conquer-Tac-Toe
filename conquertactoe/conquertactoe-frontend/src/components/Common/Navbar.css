@@ -1,0 +1,97 @@
+/* Navbar Mobile Styles */
+
+.navbar .MuiToolbar-root {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.navbar-title {
+    flex-grow: 1;
+    font-weight: 700 !important;
+}
+
+/* Hamburger Menu Button */
+.menu-button {
+    margin-left: 8px !important;
+}
+
+/* Mobile Drawer */
+/* Use global class selector applied via PaperProps */
+.drawer-paper {
+    width: 280px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.mobile-drawer {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.drawer-header .MuiTypography-root {
+    color: white;
+    font-weight: 700;
+}
+
+.drawer-header .MuiIconButton-root {
+    color: white;
+}
+
+/* Drawer Items */
+.drawer-item {
+    padding: 16px 24px !important;
+    transition: background 0.2s ease !important;
+}
+
+.drawer-item:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.drawer-item .MuiListItemText-primary {
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.drawer-item.logout-item {
+    margin-top: auto;
+}
+
+.drawer-item.logout-item .MuiListItemText-primary {
+    color: #ff7e5f;
+    font-weight: 600;
+}
+
+/* Divider in drawer */
+.mobile-drawer .MuiDivider-root {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .navbar .MuiToolbar-root {
+        padding: 8px 12px;
+        min-height: 56px;
+    }
+
+    .navbar-title {
+        font-size: 1.1rem !important;
+    }
+}
+
+@media (max-width: 375px) {
+    .navbar-title {
+        font-size: 1rem !important;
+    }
+
+    .drawer-paper {
+        width: 250px !important;
+    }
+}

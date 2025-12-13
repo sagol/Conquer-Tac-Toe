@@ -1,10 +1,16 @@
 import React from 'react';
 import '../Common/SharedModernStyles.css';
+import SEO from '../Common/SEO';
 import './Rules.css';
 
 const Rules = () => {
     return (
         <div className="rules-container modern-container">
+            <SEO
+                title="Game Rules"
+                description="Learn the rules of Conquer-Tac-Toe, Gomoku, and Classic Tic-Tac-Toe. Master cone sizes and winning strategies."
+                keywords="game rules, how to play, gomoku rules, tic tac toe rules, strategy guide"
+            />
             <h1 className="modern-title">Game Rules</h1>
 
             <div className="rules-section">

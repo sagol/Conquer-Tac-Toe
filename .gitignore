@@ -5,3 +5,16 @@ __pycache__/
 
 # ClickHouse configuration with sensitive data
 **/clickhouse-config/users.xml
+
+# Database data directories (stored on host, not in git)
+**/data/postgres/
+**/data/clickhouse/
+
+# Backup files
+backups/
+*.sql.gz
+*.tar.gz
+
+# Postgres data
+pgdata/
+**/pgdata/

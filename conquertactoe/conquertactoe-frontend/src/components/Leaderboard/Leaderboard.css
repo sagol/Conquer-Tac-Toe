@@ -264,6 +264,50 @@
   }
 }
 
+/* Mobile phones and Tablets */
+@media (max-width: 800px) {
+  .leaderboard-box {
+    padding: 15px 10px;
+  }
+
+  .col-games,
+  .col-losses,
+  .col-draws {
+    display: none !important;
+  }
+
+  .col-rank {
+    width: 15% !important;
+    padding: 8px 4px !important;
+    text-align: center !important;
+  }
+
+  .col-username {
+    width: 40% !important;
+    padding: 8px 4px !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100px;
+  }
+
+  .col-wins {
+    width: 20% !important;
+    padding: 8px 4px !important;
+    text-align: center !important;
+  }
+
+  .col-winrate {
+    width: 25% !important;
+    padding: 8px 4px !important;
+    text-align: right !important;
+  }
+
+  .leaderboard-box h3 {
+    font-size: 1.2rem;
+  }
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;

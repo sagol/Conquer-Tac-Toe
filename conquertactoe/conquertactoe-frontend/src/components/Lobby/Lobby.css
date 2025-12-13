@@ -174,18 +174,20 @@
   margin-bottom: 20px;
 }
 
-/* Responsive */
+/* Responsive - Tablets */
 @media (max-width: 768px) {
   .lobby-container {
     padding: 20px 10px;
   }
 
   .lobby-box {
-    padding: 20px;
+    padding: 20px 15px;
+    border-radius: 20px;
   }
 
   .lobby-box h5 {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+    margin-bottom: 20px;
   }
 
   .table-container .MuiTableCell-root {
@@ -194,9 +196,155 @@
   }
 
   .lobby-tabs .MuiTab-root {
-    min-width: 120px !important;
-    padding: 10px 20px !important;
+    min-width: 100px !important;
+    padding: 8px 15px !important;
+    font-size: 0.85rem !important;
+    margin: 0 3px;
+  }
+
+  .lobby-button {
+    padding: 10px 24px !important;
     font-size: 0.9rem !important;
+  }
+}
+
+/* Responsive - Mobile/Tablet (Card View) */
+@media (max-width: 800px) {
+  .lobby-container {
+    padding: 10px 5px;
+  }
+
+  .lobby-box {
+    padding: 15px 10px;
+    border-radius: 15px;
+  }
+
+  .lobby-box h5 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+  }
+
+  .lobby-tabs {
+    margin-bottom: 15px !important;
+  }
+
+  .lobby-tabs .MuiTab-root {
+    min-width: 80px !important;
+    padding: 6px 12px !important;
+    font-size: 0.75rem !important;
+    margin: 0 2px;
+  }
+
+  .table-container {
+    margin-top: 15px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Mobile table improvements */
+  .table-container .MuiTable-root {
+    display: block;
+  }
+
+  .table-container .MuiTableHead-root {
+    display: none !important;
+  }
+
+  .table-container .MuiTableBody-root {
+    display: block;
+  }
+
+  .table-container .MuiTableBody-root .MuiTableRow-root {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    border-bottom: none !important;
+    position: relative;
+  }
+
+  .table-container .MuiTableCell-root {
+    border-bottom: none !important;
+    padding: 4px 8px !important;
+    display: flex;
+    align-items: center;
+    font-size: 0.8rem !important;
+  }
+
+  /* Creator name - full width */
+  .table-container .col-creator {
+    width: 100%;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    color: #2c3e50 !important;
+    margin-bottom: 4px;
+    order: 1;
+  }
+
+  /* Variant & Status - shared row */
+  .table-container .col-variant {
+    width: 50%;
+    order: 2;
+    color: #555 !important;
+  }
+
+  .table-container .col-status {
+    width: 50%;
+    order: 3;
+    justify-content: flex-end;
+    font-weight: 600 !important;
+  }
+
+  /* Hide less critical columns on mobile to save space */
+  .table-container .col-type,
+  .table-container .col-created {
+    display: none !important;
+  }
+
+  /* Action button - full width at bottom */
+  .table-container .col-action {
+    width: 100%;
+    justify-content: center;
+    margin-top: 8px;
+    order: 4;
+  }
+
+  .table-container .MuiTableCell-root .lobby-button {
+    width: 100%;
+    padding: 8px !important;
+    margin: 0 !important;
+  }
+
+  .lobby-button {
+    padding: 8px 16px !important;
+    font-size: 0.85rem !important;
+  }
+
+  .lobby-box .MuiPagination-root {
+    margin-top: 20px;
+  }
+
+  .lobby-box .MuiPaginationItem-root {
+    min-width: 32px !important;
+    height: 32px !important;
+    font-size: 0.85rem !important;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 375px) {
+  .lobby-tabs .MuiTab-root {
+    min-width: 70px !important;
+    padding: 5px 8px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .lobby-box h5 {
+    font-size: 1rem;
+  }
+
+  .table-container .MuiTableCell-root:nth-child(1) {
+    font-size: 0.85rem !important;
   }
 }
 

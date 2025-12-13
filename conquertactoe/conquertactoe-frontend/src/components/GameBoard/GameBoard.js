@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../Common/SharedModernStyles.css';
+import axios from 'axios';
+import CloseIcon from '@material-ui/icons/Close';
+
 import './GameBoard.css';
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
+import MoveTimer from './MoveTimer';
+import RematchModal from './RematchModal';
 
-const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser }) => {
+const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser, socket, openRematchModal, onClearRematchParam }) => {
   const navigate = useNavigate();
   const [board, setBoard] = useState([]);
   const [boardSize, setBoardSize] = useState(3); // Default to 3x3
@@ -16,33 +19,132 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [selectedCone1, setSelectedCone1] = useState(2);
   const [selectedCone2, setSelectedCone2] = useState(2);
   const activePlayer = parseInt(game?.active_player) || 1;
+  const prevStatusRef = useRef(game?.status);
 
   // Randomization State
   const [isRandomizing, setIsRandomizing] = useState(false);
   const [randomizingName, setRandomizingName] = useState('');
   const [showFinalName, setShowFinalName] = useState(false);
+  const [showResultOverlay, setShowResultOverlay] = useState(false); // Controls the game over modal
+
+  // Effect to show overlay when game ends
+  useEffect(() => {
+    if (winner || isDraw) {
+      setShowResultOverlay(true);
+    }
+  }, [winner, isDraw]);
   const [hasRandomized, setHasRandomized] = useState(false);
   const [frozenBoard, setFrozenBoard] = useState(null); // Holds empty board during randomization
+  const [isSubmitting, setIsSubmitting] = useState(false); // Lock during backend processing
+
+  // Rematch Modal State (for PvP games)
+  const [showRematchModal, setShowRematchModal] = useState(false);
+  const [rematchReceivedState, setRematchReceivedState] = useState(null); // { requesterName, timeoutMs }
+
+  // Check for pending rematch via REST API when a finished game loads
+  // This is a fallback for when socket authentication fails
+  useEffect(() => {
+    if (!game?.id || (!winner && !isDraw)) return;
+
+    const checkPendingRematch = async () => {
+      try {
+        const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+        const response = await axios.get(
+          `${backendUrl}/game-requests/${game.id}/pending-rematch`,
+          { withCredentials: true }
+        );
+
+        if (response.data.hasPendingRematch) {
+          console.log('[GameBoard] Found pending rematch via API:', response.data);
+          setRematchReceivedState({
+            requesterName: response.data.requesterName,
+            timeoutMs: response.data.timeoutMs
+          });
+          setShowRematchModal(true);
+        }
+      } catch (error) {
+        console.error('[GameBoard] Error checking pending rematch:', error);
+      }
+    };
+
+    checkPendingRematch();
+  }, [game?.id, winner, isDraw]);
+
+  // Listen for rematchRequested socket event when on the game board
+  useEffect(() => {
+    if (!socket || !game?.id) return;
+
+    const handleRematchRequested = ({ gameId, requesterId, requesterName, timeoutMs }) => {
+      if (parseInt(gameId) === parseInt(game.id)) {
+        console.log('[GameBoard] Received rematchRequested event from', requesterName);
+        setRematchReceivedState({ requesterName, timeoutMs });
+        setShowRematchModal(true);
+      }
+    };
+
+    // Also listen for rematch acceptance to navigate to new game
+    const handleRematchAccepted = ({ newGameId, originalGameId }) => {
+      if (parseInt(originalGameId) === parseInt(game.id)) {
+        console.log('[GameBoard] Rematch accepted, navigating to new game:', newGameId);
+        // Reset modal state before navigation
+        setShowRematchModal(false);
+        setRematchReceivedState(null);
+
+      }
+    };
+
+    socket.on('rematchRequested', handleRematchRequested);
+    socket.on('rematchAccepted', handleRematchAccepted);
+
+    // Join the game room to listen for game-specific events (like rematch)
+    socket.emit('joinGameRoom', game.id);
+
+    return () => {
+      socket.off('rematchRequested', handleRematchRequested);
+      socket.off('rematchAccepted', handleRematchAccepted);
+      socket.emit('leaveGameRoom', game.id);
+    };
+  }, [socket, game?.id]);
+
+  // Handle Timeout
+  const handleTimeout = async () => {
+    if (!game || winner || isDraw) return;
+
+    console.log('Timeout detected in frontend, attempting to claim...');
+    try {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+      await axios.post(
+        `${backendUrl}/game-requests/${game.id}/timeout`,
+        { userId: currentUser.user_id },
+        { withCredentials: true }
+      );
+    } catch (err) {
+      console.error('Error claiming timeout:', err);
+      // Don't show error to user immediately, backend might have beat us to it
+    }
+  };
+
 
   const handlePlayAgain = async () => {
     try {
       if (!game) return;
 
-      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
-
-      // Determine game type
-      // If current game is 'bot' type, play again as bot.
-      // If current game is 'public', create new public game.
-      // If current game type is missing, infer from joiner (if joiner is null or bot, assume bot?)
-      // Safer to default to 'public' if unknown, but try to preserve 'bot'.
-
       const gameType = game.game_type || (game.joiner_id === null ? 'bot' : 'public');
+
+      // For PvP games: Show rematch modal instead of creating new game directly
+      if (gameType === 'public' && game.joiner_id) {
+        console.log('[GameBoard] PvP game - showing rematch modal');
+        setShowRematchModal(true);
+        return;
+      }
+
+      // For Bot games: Create new game directly (existing behavior)
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
 
       const gameData = {
         gameType: gameType,
         variantId: game.variant_id,
         boardSize: game.board_size,
-        // Add other necessary fields if any (e.g. custom cones if supported)
       };
 
       const endpoint = gameType === 'bot' ? `${backendUrl}/game-requests/bot` : `${backendUrl}/game-requests`;
@@ -57,6 +159,22 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     } catch (err) {
       console.error('Error creating new game:', err);
       setError(err.response?.data?.error || 'Failed to start a new game. Please try again from the lobby.');
+    }
+  };
+
+  // Helper to create a new public game (for rematch fallback)
+  const handleCreatePublicGame = async () => {
+    try {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+      const res = await axios.post(`${backendUrl}/game-requests`, {
+        gameType: 'public',
+        variantId: game.variant_id,
+        boardSize: game.board_size,
+      }, { withCredentials: true });
+      navigate(`/game/${res.data.id}`);
+    } catch (err) {
+      console.error('Error creating public game:', err);
+      setError(err.response?.data?.error || 'Failed to create game.');
     }
   };
 
@@ -168,18 +286,21 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       return;
     }
 
-    // CHECK: Only show animation if game was just created (< 10 seconds ago)
-    // This prevents animation on hard refresh of older games
+    // CHECK: Only show animation if game was just created (< 10 seconds ago) OR if we just transitioned from pending to joined
+    // This prevents animation on hard refresh of older games, but ensures it runs when a player joins a waiting lobby
+    const prevStatus = prevStatusRef.current;
+    const isJustJoined = prevStatus === 'pending' && game.status === 'joined';
+
     if (game.created_at) {
       const createdAt = new Date(game.created_at);
       const now = new Date();
       const ageInSeconds = (now - createdAt) / 1000;
 
-      if (ageInSeconds > 10) {
-        console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, skipping randomization animation`);
+      if (ageInSeconds > 10 && !isJustJoined) {
+        console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old and not just joined (prev=${prevStatus}), skipping randomization animation`);
         return;
       }
-      console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, showing randomization animation`);
+      console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, showing randomization animation (isJustJoined=${isJustJoined})`);
     }
 
     // Start randomization immediately when game is joined
@@ -203,11 +324,13 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
     let interval;
     let counter = 0;
-    // For bot games, player 2 is the bot, so use proper names
+    // Use proper fallback names based on game type
     const player1Name = creatorName || 'Player 1';
-    const player2Name = joinerName || 'Bot';
+    // Fallback: 'Bot AI' for bot games, 'Opponent' for PvP games
+    const isBotGame = game?.game_type === 'bot';
+    const player2Name = joinerName || (isBotGame ? 'Bot AI' : 'Opponent');
     const names = [player1Name, player2Name];
-    console.log('Names array:', names);
+    console.log('Names array:', names, 'Game type:', game?.game_type);
     const duration = 1500; // 1.5 seconds total (reduced from 2s)
     const speed = 80; // Switch every 80ms (slightly faster)
 
@@ -244,7 +367,18 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     }
   }, [game?.id]);
 
+  // Update prevStatusRef
+  useEffect(() => {
+    prevStatusRef.current = game?.status;
+  }, [game?.status]);
+
   const handleCellClick = async (row, col) => {
+    // Block if already processing a move
+    if (isSubmitting) {
+      console.log('[Click] Blocked: Already submitting a move');
+      return;
+    }
+
     // Ensure that the game isn't won or drawn before this move
     if (winner) {
       setError('The game has already been won. No further moves can be made.');
@@ -332,20 +466,37 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
     try {
       console.log('Updating game with move:', { row, col, selectedCone });
-      // IMPORTANT: Send ORIGINAL board state, let backend apply and validate the move
-      await updateGame(board, activePlayer, player1Cones, player2Cones, row, col, selectedCone);
+
+      // Lock the board to prevent multiple clicks
+      setIsSubmitting(true);
+
+      // OPTIMISTIC UPDATE: Update UI immediately for responsive feel
       setBoard(newBoard);
-      // REMOVED: setActivePlayer(activePlayer === 1 ? 2 : 1);
-      // activePlayer is now derived from game.active_player, backend will update it
       if (activePlayer === 1) {
         setPlayer1Cones(newCones);
       } else {
         setPlayer2Cones(newCones);
       }
       setError(null);
+
+      // IMPORTANT: Send ORIGINAL board state, let backend apply and validate the move
+      // For bot games, this will wait for bot's response, but UI already updated optimistically
+      await updateGame(board, activePlayer, player1Cones, player2Cones, row, col, selectedCone);
+
+      // Backend response will update game state via socket, which will sync the board
     } catch (error) {
       console.error('Error updating game:', error.response?.data || error.message);
+      // Revert optimistic update on error
+      setBoard(board);
+      if (activePlayer === 1) {
+        setPlayer1Cones(player1Cones);
+      } else {
+        setPlayer2Cones(player2Cones);
+      }
       setError(error.response?.data.error || error.message);
+    } finally {
+      // Always unlock the board when done
+      setIsSubmitting(false);
     }
   };
 
@@ -432,30 +583,43 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       }
     }
 
-    // Determine who started first for X/O assignment
-    // Count moves for each player - whoever has more moves (or equal if even total) started first
+    // Determine who started first for X/O assignment in Classic Tic-Tac-Toe
+    // Derive strictly from server state (game.board and game.active_player) to ensure stability
     let firstPlayer = 1; // default
-    if (isClassicTicTacToe && currentBoard) {
+    if (isClassicTicTacToe && game) {
       let player1Moves = 0;
       let player2Moves = 0;
 
-      currentBoard.forEach(row => {
-        row.forEach(cell => {
-          if (cell && cell.player === 1) player1Moves++;
-          if (cell && cell.player === 2) player2Moves++;
-        });
-      });
+      // Parse game.board if it's a string
+      let gameBoard = game.board;
+      if (typeof gameBoard === 'string') {
+        try {
+          gameBoard = JSON.parse(gameBoard);
+        } catch (e) {
+          // Ignore parse error, default to 0-0
+        }
+      }
 
-      // Whoever has more moves started first
-      // If equal, check active player (next to move means they started the round)
+      if (gameBoard && Array.isArray(gameBoard)) {
+        gameBoard.forEach(row => {
+          row.forEach(cell => {
+            if (cell && cell.player === 1) player1Moves++;
+            if (cell && cell.player === 2) player2Moves++;
+          });
+        });
+      }
+
       if (player1Moves > player2Moves) {
+        // Player 1 has more moves -> P1 started
         firstPlayer = 1;
       } else if (player2Moves > player1Moves) {
+        // Player 2 has more moves -> P2 started
         firstPlayer = 2;
       } else {
-        // Equal moves - check who's active
-        // If moves are equal (e.g., 0-0, 1-1), the player whose turn it is MUST be the one who started
-        firstPlayer = activePlayer;
+        // Equal moves (0-0, 1-1, etc.)
+        // If moves are equal, it is the starting player's turn!
+        // So starting player is whoever is currently active.
+        firstPlayer = parseInt(game.active_player) || 1;
       }
     }
 
@@ -501,69 +665,78 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   );
 
   const renderGameResult = () => {
-    if (winner) {
-      console.log('Rendering winner with details:', { winner, gameResult, gameType: game.game_type });
+    // Only render the game result if the game has ended (winner or draw).
+    // Otherwise, return null to indicate nothing should be rendered.
+    if (!winner && !isDraw) return null;
 
-      // For bot games, winner is player number (1 or 2), not user_id
+    // Hide overlay when rematch modal is shown to prevent blocking button clicks
+    if (showRematchModal) return null;
+
+    // Show "View Result" button when overlay is dismissed
+    if (!showResultOverlay) {
+      return (
+        <div className="result-minimized">
+          <button className="view-result-button" onClick={() => setShowResultOverlay(true)}>
+            View Game Result
+          </button>
+        </div>
+      );
+    }
+
+    let message;
+    let bannerClass = "winner-banner glass-panel"; // Default base class
+
+    if (winner) {
+
       let winnerName;
       let isCurrentUserWinner;
       let isCurrentUserLoser;
 
-      console.log('Winner type:', typeof winner, 'Value:', winner);
-      console.log('Game type:', game.game_type);
-
       if (game.game_type === 'bot') {
-        // Bot game: winner is 1 (player) or 2 (bot)
-        // Use loose equality (==) to handle string/number mismatch
         winnerName = winner == 1 ? creatorName : joinerName;
         isCurrentUserWinner = winner == 1;
         isCurrentUserLoser = winner == 2;
-        console.log('Bot game logic:', { winnerName, isCurrentUserWinner, isCurrentUserLoser });
       } else {
-        // PvP game: winner is user_id
         winnerName = winner === game.creator_id ? creatorName : joinerName;
         isCurrentUserWinner = currentUser?.user_id === winner;
         isCurrentUserLoser = currentUser?.user_id === (winner === game.creator_id ? game.joiner_id : game.creator_id);
       }
 
-      let message;
-
       if (isCurrentUserWinner) {
         message = `🎉 Congratulations! ${winnerName} wins! 🎉`;
+        bannerClass += " win";
       } else if (isCurrentUserLoser) {
-        message = `${winnerName} wins! Better luck next time.`;
+        message = `${winnerName} wins. Better luck next time!`;
+        bannerClass += " loss";
       } else {
         message = `${winnerName} has won the game!`;
+        bannerClass += " win";
       }
 
       if (gameResult === 'surrendered') {
-        message += ` The game was won by surrender.`;
+        message += ` (Surrender)`;
       }
-
-      return (
-        <div className="winner-banner">
-          {message}
-          <div className="play-again-container">
-            <button className="play-again-button" onClick={handlePlayAgain}>
-              Play Again
-            </button>
-          </div>
-        </div>
-      );
-    } else if (isDraw) {
-      return (
-        <div className="draw-banner">
-          The game has ended in a draw.
-          <div className="play-again-container">
-            <button className="play-again-button" onClick={handlePlayAgain}>
-              Play Again
-            </button>
-          </div>
-        </div>
-      );
+    } else {
+      // Draw
+      message = "The game has ended in a draw.";
+      bannerClass = "draw-banner glass-panel draw";
     }
 
-    return null;
+    return (
+      <div className="game-result-overlay">
+        <div className={bannerClass}>
+          <button className="close-overlay-button" onClick={() => setShowResultOverlay(false)} aria-label="Close">
+            <CloseIcon />
+          </button>
+          <div className="banner-message">{message}</div>
+          <div className="play-again-container">
+            <button className="play-again-button" onClick={handlePlayAgain}>
+              Play Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -601,7 +774,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         </div>
         <div className={`player-info ${activePlayer === 2 ? 'active' : ''}`}>
           <strong>
-            <span className="player-indicator player2-indicator">●</span> {joinerName}
+            <span className="player-indicator player2-indicator">●</span> {joinerName || (game?.game_type === 'bot' ? 'Bot AI' : 'Waiting...')}
           </strong>
           {(variant?.rules?.allowOverwrite) && (
             <div className="legend">
@@ -616,6 +789,23 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
           )}
         </div>
       </div>
+
+      {/* Move Timer - only show for PvP games that are active */}
+      {game?.game_type !== 'bot' && game?.joiner_id && !winner && !isDraw && game?.status === 'joined' && (
+        <div className="timer-container">
+          <MoveTimer
+            lastMoveAt={game.last_move_at}
+            timeoutSeconds={game.move_timeout_seconds || 300}
+            isMyTurn={
+              (currentUser?.user_id === game.creator_id && activePlayer === 1) ||
+              (currentUser?.user_id === game.joiner_id && activePlayer === 2)
+            }
+            gameActive={game.status === 'joined'}
+            onTimeout={handleTimeout}
+          />
+        </div>
+      )}
+
       <div
         key={boardSize} /* Force re-creation of DOM element when size changes to ensure grid style applies */
         className={`game-board ${boardSize > 10 ? 'large-board' : ''}`}
@@ -633,6 +823,27 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       <ErrorMessage message={error} />
       {renderGameResult()}
       {!winner && !isDraw && <button className="surrender-button" onClick={handleSurrender}>Surrender</button>}
+
+      {/* Rematch Modal for PvP games - only show when game is finished */}
+      {(winner || isDraw) && (
+        <RematchModal
+          socket={socket}
+          gameId={game?.id}
+          opponentId={currentUser?.user_id === game?.creator_id ? game?.joiner_id : game?.creator_id}
+          opponentName={currentUser?.user_id === game?.creator_id ? joinerName : creatorName}
+          currentUserId={currentUser?.user_id}
+          variantId={game?.variant_id}
+          onClose={() => {
+            setShowRematchModal(false);
+            setRematchReceivedState(null);
+
+          }}
+          onCreatePublicGame={handleCreatePublicGame}
+          isVisible={showRematchModal}
+          initialState={rematchReceivedState ? 'received' : null}
+          initialRequesterName={rematchReceivedState?.requesterName || null}
+        />
+      )}
     </div>
   );
 };
