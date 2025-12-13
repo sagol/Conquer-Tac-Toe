@@ -17,7 +17,12 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - conquer-network    
+      - conquer-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
 
 networks:
   conquer-network:

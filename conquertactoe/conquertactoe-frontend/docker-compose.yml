@@ -9,6 +9,11 @@ services:
       - "3001:3000"
     networks:
       - conquer-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
 
 networks:
   conquer-network:

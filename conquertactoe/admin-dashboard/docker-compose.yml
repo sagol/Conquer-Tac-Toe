@@ -26,6 +26,11 @@ services:
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
 
   admin-frontend:
     build: ./frontend
@@ -40,6 +45,12 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
     depends_on:
       - admin-backend
 
