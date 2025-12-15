@@ -108,7 +108,7 @@ class GomokuStrategy:
 
         # Move 3-4: Build towards pattern
         elif piece_count <= 3:
-            # Find our pieces and extend them
+            # Find our pieces and extend them ADJACENTLY
             our_pieces = []
             for r in range(actual_board_size):
                 for c in range(actual_board_size):
@@ -116,10 +116,10 @@ class GomokuStrategy:
                         our_pieces.append((r, c))
 
             if our_pieces:
-                # Try to extend from first piece in a diagonal or straight line
+                # Try to extend adjacently first (distance 1), then further
                 base_r, base_c = our_pieces[0]
-                for dr, dc in [(1, 1), (1, 0), (0, 1), (1, -1)]:
-                    for dist in [2, 1, -1, -2]:
+                for dist in [1, -1, 2, -2]:  # Adjacent first!
+                    for dr, dc in [(1, 1), (1, 0), (0, 1), (1, -1)]:
                         nr, nc = base_r + dr * dist, base_c + dc * dist
                         if 0 <= nr < actual_board_size and 0 <= nc < actual_board_size:
                             if board[nr][nc] is None:
