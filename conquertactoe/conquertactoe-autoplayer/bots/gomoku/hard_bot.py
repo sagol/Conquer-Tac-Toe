@@ -104,7 +104,7 @@ class GomokuHardBot(IBot):
             board[r][c] = None
 
         # 4. VCF Search (Deep) - Look for forced win sequence
-        vcf_move = self.find_vcf_sequence(board, player, board_size, max_depth=10)
+        vcf_move = self.find_vcf_sequence(board, player, board_size, max_depth=14)
         if vcf_move:
             return vcf_move
 
@@ -140,7 +140,7 @@ class GomokuHardBot(IBot):
         best_score = float('-inf')
 
         # Start with depth 2, increase until time runs out
-        for depth in range(2, 12):
+        for depth in range(2, 16):  # Deeper search for Hard
             if time.time() - start_time > self.max_time * 0.8:
                 break
 

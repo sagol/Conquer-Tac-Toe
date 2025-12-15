@@ -93,7 +93,7 @@ class GomokuMediumBot(IBot):
 
             # COMBINATION BONUS: block AND attack = strongest
             if offense_bonus >= 5000 and defense_bonus >= 60000:
-                score += 25000  # Strong combo
+                score += 15000  # Medium gets smaller combo bonus
 
             scored_moves.append(((r, c), score))
 
