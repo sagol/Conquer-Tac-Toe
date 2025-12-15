@@ -284,17 +284,22 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     }
     if (!gameBoard || !Array.isArray(gameBoard)) return;
 
-    // For bot games, use the stored last_move from backend
-    if (game.game_type === 'bot' && activePlayer === 1) {
-      if (game.last_move) {
-        let move = game.last_move;
-        if (typeof move === 'string') {
-          try { move = JSON.parse(move); } catch (e) { move = null; }
-        }
-        if (move && typeof move.row === 'number' && typeof move.col === 'number') {
-          setLastBotMove(move);
-        }
+    // Generalize highlighting: Show opponent's last move when it's my turn
+    const myPlayerNumber = (currentUser && game.creator_id === currentUser.user_id) ? 1 : 2;
+    const isMyTurn = activePlayer === myPlayerNumber;
+
+    if (isMyTurn && game.last_move) {
+      let move = game.last_move;
+      if (typeof move === 'string') {
+        try { move = JSON.parse(move); } catch (e) { move = null; }
       }
+      if (move && typeof move.row === 'number' && typeof move.col === 'number') {
+        setLastBotMove(move);
+      } else {
+        setLastBotMove(null);
+      }
+    } else {
+      setLastBotMove(null);
     }
 
     // Compute winning cells when game ends
