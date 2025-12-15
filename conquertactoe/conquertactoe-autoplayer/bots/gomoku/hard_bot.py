@@ -306,28 +306,28 @@ class GomokuHardBot(IBot):
             if self.strategy.check_win(board, player, board_size):
                 score += 1000000  # Guaranteed win
 
-            # Evaluate threat value of this move
+            # Evaluate threat value of this move (OFFENSE)
             eval_score = self.strategy.evaluate_board(board, player, board_size)
             if eval_score > 50000:  # Creates four or better
                 score += 50000
             elif eval_score > 2000:  # Creates open three
-                score += 2000
+                score += 5000  # Increased from 2000
 
             board[r][c] = None
 
-            # === CRITICAL: Check if this blocks opponent threat ===
+            # === DEFENSE IS MORE IMPORTANT THAN OFFENSE ===
             board[r][c] = {"player": opponent, "size": 0}
 
-            # Block opponent's immediate win
+            # Block opponent's immediate win - critical!
             if self.strategy.check_win(board, opponent, board_size):
                 score += 500000  # Must block
 
-            # Evaluate opponent threat value
+            # Evaluate opponent threat value (DEFENSE > OFFENSE)
             opp_eval = self.strategy.evaluate_board(board, opponent, board_size)
             if opp_eval > 50000:  # Blocks opponent's four
-                score += 40000
+                score += 100000  # Increased from 40000 - higher than offense!
             elif opp_eval > 2000:  # Blocks opponent's three
-                score += 1500
+                score += 60000  # Increased from 10000 - MUST be higher than creates four!
 
             board[r][c] = None
 

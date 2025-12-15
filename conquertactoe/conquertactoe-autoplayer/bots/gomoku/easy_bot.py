@@ -69,7 +69,7 @@ class GomokuEasyBot(IBot):
         for r, c in candidates:
             score = 0
 
-            # Check our move value
+            # Check our move value (OFFENSE)
             board[r][c] = {"player": player, "size": 0}
             if self.strategy.check_win(board, player, board_size):
                 score += 1000000  # Immediate win
@@ -77,18 +77,18 @@ class GomokuEasyBot(IBot):
             if eval_score > 50000:
                 score += 50000  # Creates four
             elif eval_score > 2000:
-                score += 2000  # Creates three
+                score += 5000  # Creates three (increased)
             board[r][c] = None
 
-            # Check if blocks opponent threat
+            # Check if blocks opponent threat (DEFENSE > OFFENSE)
             board[r][c] = {"player": opponent, "size": 0}
             if self.strategy.check_win(board, opponent, board_size):
                 score += 500000  # Must block
             opp_eval = self.strategy.evaluate_board(board, opponent, board_size)
             if opp_eval > 50000:
-                score += 40000  # Blocks four
+                score += 100000  # Blocks four (higher than offense!)
             elif opp_eval > 2000:
-                score += 1500  # Blocks three
+                score += 60000  # Blocks three - MUST exceed creates four!
             board[r][c] = None
 
             scored_moves.append(((r, c), score))
