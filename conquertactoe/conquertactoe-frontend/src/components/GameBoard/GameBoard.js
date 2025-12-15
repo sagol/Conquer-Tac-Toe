@@ -41,6 +41,11 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [showRematchModal, setShowRematchModal] = useState(false);
   const [rematchReceivedState, setRematchReceivedState] = useState(null); // { requesterName, timeoutMs }
 
+  // Bot UI State
+  const [isBotThinking, setIsBotThinking] = useState(false);
+  const [lastBotMove, setLastBotMove] = useState(null); // { row, col }
+  const [winningCells, setWinningCells] = useState([]); // Array of { row, col }
+
   // Check for pending rematch via REST API when a finished game loads
   // This is a fallback for when socket authentication fails
   useEffect(() => {
@@ -267,6 +272,33 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     setError(null);
   }, [activePlayer, gameResult, winner, isDraw]);
 
+  // Track last bot move and winning cells
+  useEffect(() => {
+    if (!game) return;
+
+    // Track last bot move for highlighting (bot is always player 2)
+    if (game.last_move && game.game_type === 'bot') {
+      const lastMove = typeof game.last_move === 'string'
+        ? JSON.parse(game.last_move)
+        : game.last_move;
+
+      // Only highlight if it was bot's move (active player changed to 1 = player's turn now)
+      if (lastMove && activePlayer === 1) {
+        setLastBotMove({ row: lastMove.row, col: lastMove.col });
+      }
+    }
+
+    // Track winning cells from game state
+    if ((winner || isDraw) && game.winning_cells) {
+      const cells = typeof game.winning_cells === 'string'
+        ? JSON.parse(game.winning_cells)
+        : game.winning_cells;
+      if (Array.isArray(cells)) {
+        setWinningCells(cells);
+      }
+    }
+  }, [game, activePlayer, winner, isDraw]);
+
   // Randomization Effect
   useEffect(() => {
     // Only randomize if:
@@ -479,11 +511,18 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       }
       setError(null);
 
+      // For bot games, show thinking indicator
+      const isBotGame = game?.game_type === 'bot';
+      if (isBotGame) {
+        setIsBotThinking(true);
+      }
+
       // IMPORTANT: Send ORIGINAL board state, let backend apply and validate the move
       // For bot games, this will wait for bot's response, but UI already updated optimistically
       await updateGame(board, activePlayer, player1Cones, player2Cones, row, col, selectedCone);
 
       // Backend response will update game state via socket, which will sync the board
+      // The bot's move will come via socket update
     } catch (error) {
       console.error('Error updating game:', error.response?.data || error.message);
       // Revert optimistic update on error
@@ -497,6 +536,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     } finally {
       // Always unlock the board when done
       setIsSubmitting(false);
+      setIsBotThinking(false);
     }
   };
 
@@ -562,6 +602,18 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
     // Check if this is Classic Tic-Tac-Toe (variant ID 1)
     const isClassicTicTacToe = game?.variant_id === 1;
+
+    // Check if this cell is part of the winning line
+    const isWinningCell = winningCells.some(c => c.row === row && c.col === col);
+    if (isWinningCell) {
+      cellClass += ' winning-cell';
+    }
+
+    // Check if this is the last bot move
+    const isLastBotMoveCell = lastBotMove && lastBotMove.row === row && lastBotMove.col === col;
+    if (isLastBotMoveCell) {
+      cellClass += ' last-move';
+    }
 
     if (cellValue) {
       const { player, size } = cellValue;
@@ -803,6 +855,14 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
             gameActive={game.status === 'joined'}
             onTimeout={handleTimeout}
           />
+        </div>
+      )}
+
+      {/* Bot Thinking Indicator */}
+      {isBotThinking && (
+        <div className="bot-thinking-indicator">
+          <div className="bot-thinking-spinner"></div>
+          <span>Bot is thinking...</span>
         </div>
       )}
 
