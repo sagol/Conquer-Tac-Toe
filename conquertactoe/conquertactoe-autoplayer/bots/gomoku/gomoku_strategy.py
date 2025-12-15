@@ -1,5 +1,4 @@
-import random
-from typing import List, Dict, Tuple, Optional, Set
+from typing import List, Dict, Tuple, Optional
 
 # Direction vectors: (dr, dc)
 DIRECTIONS = [(0, 1), (1, 0), (1, 1), (1, -1)]
@@ -8,7 +7,7 @@ class GomokuStrategy:
     """
     Shared strategy logic for Gomoku bots.
     Implements pattern recognition, evaluation, and move generation.
-    
+
     Optimized version with:
     - Pre-compiled pattern scores
     - Faster line evaluation using counting
@@ -27,7 +26,7 @@ class GomokuStrategy:
             'open_two': 50,
             'two': 15
         }
-        
+
         # Pre-compile pattern matchers for faster lookup
         self._init_pattern_scores()
 
@@ -53,7 +52,7 @@ class GomokuStrategy:
             ('__XX', self.SCORES['two']),
             ('XX__', self.SCORES['two']),
         ]
-        
+
         # Opponent patterns (same structure, used for defense)
         self.opponent_patterns = [
             ('OOOOO', self.SCORES['five']),
@@ -78,17 +77,17 @@ class GomokuStrategy:
     def get_opening_move(self, board: List[List[Optional[Dict]]], player: int, board_size: int) -> Optional[Dict[str, int]]:
         """Get a strategic opening move."""
         actual_board_size = len(board)
-        
+
         # Count pieces
         piece_count = sum(1 for r in range(actual_board_size) for c in range(actual_board_size)
                          if r < len(board) and c < len(board[r]) and board[r][c] is not None)
-        
+
         center = actual_board_size // 2
-        
+
         # Move 1: Center
         if piece_count == 0:
             return {"row": center, "col": center, "cone_size": 0}
-        
+
         # Move 2: Near center
         elif piece_count == 1:
             if board[center][center] is not None:
@@ -106,7 +105,7 @@ class GomokuStrategy:
                         return {"row": r, "col": c, "cone_size": 0}
             else:
                 return {"row": center, "col": center, "cone_size": 0}
-        
+
         # Move 3-4: Build towards pattern
         elif piece_count <= 3:
             # Find our pieces and extend them
@@ -115,7 +114,7 @@ class GomokuStrategy:
                 for c in range(actual_board_size):
                     if board[r][c] and board[r][c]['player'] == player:
                         our_pieces.append((r, c))
-            
+
             if our_pieces:
                 # Try to extend from first piece in a diagonal or straight line
                 base_r, base_c = our_pieces[0]
@@ -125,7 +124,7 @@ class GomokuStrategy:
                         if 0 <= nr < actual_board_size and 0 <= nc < actual_board_size:
                             if board[nr][nc] is None:
                                 return {"row": nr, "col": nc, "cone_size": 0}
-                
+
         return None
 
     def evaluate_board(self, board: List[List[Optional[Dict]]], player: int, board_size: int) -> int:
@@ -135,20 +134,20 @@ class GomokuStrategy:
         """
         score = 0
         opponent = 1 if player == 2 else 2
-        
+
         # Collect all lines to evaluate
         lines = []
-        
+
         # Horizontal
         for r in range(board_size):
             if r < len(board):
                 lines.append(board[r][:board_size])
-        
+
         # Vertical
         for c in range(board_size):
             col = [board[r][c] if r < len(board) and c < len(board[r]) else None for r in range(board_size)]
             lines.append(col)
-        
+
         # Diagonals (only those with length >= 5)
         for start_r in range(board_size):
             # Down-right from left edge
@@ -161,7 +160,7 @@ class GomokuStrategy:
                 c += 1
             if len(line) >= 5:
                 lines.append(line)
-        
+
         for start_c in range(1, board_size):
             # Down-right from top edge
             line = []
@@ -173,7 +172,7 @@ class GomokuStrategy:
                 c += 1
             if len(line) >= 5:
                 lines.append(line)
-        
+
         for start_r in range(board_size):
             # Down-left from right edge
             line = []
@@ -185,7 +184,7 @@ class GomokuStrategy:
                 c -= 1
             if len(line) >= 5:
                 lines.append(line)
-        
+
         for start_c in range(board_size - 2, -1, -1):
             # Down-left from top edge
             line = []
@@ -197,11 +196,11 @@ class GomokuStrategy:
                 c -= 1
             if len(line) >= 5:
                 lines.append(line)
-        
+
         # Evaluate all lines
         for line in lines:
             score += self._evaluate_line_fast(line, player, opponent)
-        
+
         return int(score)
 
     def _evaluate_line_fast(self, line: List[Optional[Dict]], player: int, opponent: int) -> float:
@@ -211,7 +210,7 @@ class GomokuStrategy:
         length = len(line)
         if length < 5:
             return 0
-        
+
         # Convert to string representation
         chars = []
         for cell in line:
@@ -221,21 +220,21 @@ class GomokuStrategy:
                 chars.append('X')
             else:
                 chars.append('O')
-        
+
         s = ''.join(chars)
         score = 0.0
-        
+
         # Check player patterns
         for pattern, value in self.player_patterns:
             if pattern in s:
                 score += value
-        
+
         # Check opponent patterns (defensive - weighted higher)
         defense_weight = 1.15
         for pattern, value in self.opponent_patterns:
             if pattern in s:
                 score -= value * defense_weight
-        
+
         return score
 
     def generate_candidate_moves(self, board: List[List[Optional[Dict]]], board_size: int) -> List[Tuple[int, int]]:
@@ -246,7 +245,7 @@ class GomokuStrategy:
         candidates = set()
         actual_board_size = len(board)
         center = actual_board_size // 2
-        
+
         has_pieces = False
         for r in range(actual_board_size):
             for c in range(actual_board_size):
@@ -261,22 +260,22 @@ class GomokuStrategy:
                             if 0 <= nr < actual_board_size and 0 <= nc < actual_board_size:
                                 if board[nr][nc] is None:
                                     candidates.add((nr, nc))
-        
+
         if not has_pieces:
             return [(center, center)]
-        
+
         # Sort candidates by distance to center (prefer central moves)
         sorted_candidates = sorted(
             candidates,
             key=lambda pos: abs(pos[0] - center) + abs(pos[1] - center)
         )
-        
+
         return sorted_candidates
 
     def check_win(self, board: List[List[Optional[Dict]]], player: int, board_size: int) -> bool:
         """Check if 'player' has won."""
         actual_size = min(board_size, len(board))
-        
+
         # Horizontal
         for r in range(actual_size):
             count = 0
@@ -287,7 +286,7 @@ class GomokuStrategy:
                         return True
                 else:
                     count = 0
-        
+
         # Vertical
         for c in range(actual_size):
             count = 0
@@ -298,7 +297,7 @@ class GomokuStrategy:
                         return True
                 else:
                     count = 0
-        
+
         # Diagonal (down-right)
         for start in range(actual_size):
             # From top row
@@ -313,7 +312,7 @@ class GomokuStrategy:
                     count = 0
                 r += 1
                 c += 1
-            
+
             # From left column
             if start > 0:
                 count = 0
@@ -327,7 +326,7 @@ class GomokuStrategy:
                         count = 0
                     r += 1
                     c += 1
-        
+
         # Diagonal (down-left)
         for start in range(actual_size):
             # From top row
@@ -342,7 +341,7 @@ class GomokuStrategy:
                     count = 0
                 r += 1
                 c -= 1
-            
+
             # From right column
             if start < actual_size - 1:
                 count = 0
@@ -356,7 +355,7 @@ class GomokuStrategy:
                         count = 0
                     r += 1
                     c -= 1
-        
+
         return False
 
     def get_threat_level(self, board: List[List[Optional[Dict]]], player: int, board_size: int) -> int:

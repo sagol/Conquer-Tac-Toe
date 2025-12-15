@@ -32,29 +32,29 @@ def startup_event():
     except Exception as e:
         print(f"Warning: Failed to initialize ClickHouse: {e}")
         print("Continuing without database logging...")
-    
+
     print("[BotFactory] Registering all bots (5 variants × 3 difficulties = 15 bots)")
-    
+
     # Variant 1: Classic Tic-Tac-Toe
     BotFactory.register_bot(1, 'easy', ClassicEasyBot())
     BotFactory.register_bot(1, 'medium', ClassicMediumBot())
     BotFactory.register_bot(1, 'hard', ClassicHardBot())
-    
+
     # Variant 2: Gomoku (5-in-Line)
     BotFactory.register_bot(2, 'easy', GomokuEasyBot())
     BotFactory.register_bot(2, 'medium', GomokuMediumBot())
     BotFactory.register_bot(2, 'hard', GomokuHardBot())
-    
+
     # Variants 3-5: Conquer variants (all use same bots)
     conquer_easy = ConquerEasyBot()
     conquer_medium = ConquerMediumBot()
     conquer_hard = ConquerHardBot()
-    
+
     for variant_id in [3, 4, 5]:
         BotFactory.register_bot(variant_id, 'easy', conquer_easy)
         BotFactory.register_bot(variant_id, 'medium', conquer_medium)
         BotFactory.register_bot(variant_id, 'hard', conquer_hard)
-    
+
     print("[BotFactory] ✓ All 15 bots registered successfully")
     print("[BotFactory] Registered bots:", BotFactory.list_bots())
 
@@ -80,16 +80,16 @@ def get_move(request: MoveRequest):
     try:
         print(f"[Autoplayer] Received move request for variant {request.variant_id}")
         print(f"[Autoplayer] Board size: {len(request.board)}x{len(request.board[0]) if request.board else 0}")
-        
+
         # Get appropriate bot from factory (with difficulty)
         bot = BotFactory.get_bot(request.variant_id, request.difficulty)
-        
+
         if not bot:
             print(f"[Autoplayer] No bot registered for variant {request.variant_id}, difficulty '{request.difficulty}'")
             raise HTTPException(status_code=400, detail=f"No bot available for variant {request.variant_id} with difficulty '{request.difficulty}'")
-            
+
         print(f"[Autoplayer] Using bot: {bot.name}")
-        
+
         # Prepare game state dictionary
         game_state = {
             "board": request.board,
@@ -99,7 +99,7 @@ def get_move(request: MoveRequest):
             "variant_id": request.variant_id,
             "board_size": request.board_size
         }
-        
+
         try:
             move = bot.get_move(game_state)
         except Exception as bot_error:
@@ -107,22 +107,22 @@ def get_move(request: MoveRequest):
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Bot logic failed: {str(bot_error)}")
-        
+
         if not move:
             print("[Autoplayer] No valid move found")
             raise HTTPException(status_code=400, detail="No valid moves available")
-        
+
         print(f"[Autoplayer] Bot selected move: {move}")
-        
+
         # Log to ClickHouse
         game_id = request.game_id or str(uuid.uuid4())
         try:
             log_move(
-                game_id, 
-                request.board, 
-                request.player_cones, 
-                request.bot_cones, 
-                move, 
+                game_id,
+                request.board,
+                request.player_cones,
+                request.bot_cones,
+                move,
                 request.difficulty,
                 request.variant_id,
                 request.board_size

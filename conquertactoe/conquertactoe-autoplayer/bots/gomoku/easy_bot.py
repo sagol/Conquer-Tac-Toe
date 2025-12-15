@@ -12,7 +12,7 @@ class GomokuEasyBot(IBot):
     - No VCF
     - Adds randomness to simulate mistakes
     """
-    
+
     def __init__(self):
         self.strategy = GomokuStrategy()
         self.max_depth = 2
@@ -22,15 +22,15 @@ class GomokuEasyBot(IBot):
     @property
     def name(self) -> str:
         return "Easy Gomoku Bot"
-    
+
     def get_move(self, game_state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         board = game_state.get("board")
         if not board:
             return None
-            
+
         board_size = len(board)
         player = 2  # Bot is always player 2
-        
+
         # 1. Opening Move
         opening_move = self.strategy.get_opening_move(board, player, board_size)
         if opening_move:
@@ -56,12 +56,12 @@ class GomokuEasyBot(IBot):
 
     def minimax_search(self, board, player, board_size):
         start_time = time.time()
-        
+
         # Generate candidates
         candidates = self.strategy.generate_candidate_moves(board, board_size)
         if not candidates:
             return None
-            
+
         # Score moves shallowly first for ordering
         scored_moves = []
         for r, c in candidates:
@@ -70,59 +70,59 @@ class GomokuEasyBot(IBot):
             score = self.strategy.evaluate_board(board, player, board_size)
             board[r][c] = None
             scored_moves.append(((r, c), score))
-        
+
         # Sort and take top 20 to search
         scored_moves.sort(key=lambda x: x[1], reverse=True)
         top_moves = [m[0] for m in scored_moves[:20]]
-        
+
         best_score = float('-inf')
         best_moves = []
         alpha = float('-inf')
         beta = float('inf')
-        
+
         for r, c in top_moves:
             if time.time() - start_time > self.max_time:
                 break
-                
+
             board[r][c] = {"player": player, "size": 0}
             score = self.minimax(board, self.max_depth - 1, False, alpha, beta, player, board_size, start_time)
             board[r][c] = None
-            
+
             if score > best_score:
                 best_score = score
                 best_moves = [(r, c)]
             elif score == best_score:
                 best_moves.append((r, c))
-                
+
             alpha = max(alpha, score)
-        
+
         if best_moves:
             # Easy bot randomness: pick from top moves or sometimes a random valid move
             if random.random() < self.randomness and len(top_moves) > 1:
                 # Pick a random move from the top 5 candidates (suboptimal but not terrible)
                 choice = random.choice(top_moves[:5])
                 return {"row": choice[0], "col": choice[1], "cone_size": 0}
-            
+
             # Otherwise pick one of the best moves
             choice = random.choice(best_moves)
             return {"row": choice[0], "col": choice[1], "cone_size": 0}
-            
+
         return None
 
     def minimax(self, board, depth, is_maximizing, alpha, beta, bot_player, board_size, start_time):
         if depth == 0 or time.time() - start_time > self.max_time:
             return self.strategy.evaluate_board(board, bot_player, board_size)
-            
+
         opponent = 1 if bot_player == 2 else 2
         current_player = bot_player if is_maximizing else opponent
-        
+
         # Check for win
         if self.strategy.check_win(board, 1 if current_player == 2 else 2, board_size):
              # Previous move won
             return -100000 if is_maximizing else 100000
 
         candidates = self.strategy.generate_candidate_moves(board, board_size)
-        
+
         if is_maximizing:
             max_eval = float('-inf')
             for r, c in candidates[:10]: # Limit branching
