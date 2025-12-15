@@ -283,21 +283,29 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     }
     if (!gameBoard || !Array.isArray(gameBoard)) return;
 
-    // For bot games, track last bot move (find the most recent player 2 piece)
-    // We detect this by comparing against our local board state
-    if (game.game_type === 'bot' && activePlayer === 1) {
-      // Find the cell that's different between gameBoard and our local board
+    // For bot games, when it becomes player's turn, highlight bot's last move
+    // Simple approach: find all player 2 cells and highlight the one that matches game state
+    if (game.game_type === 'bot' && activePlayer === 1 && !lastBotMove) {
+      // Count player 1 and player 2 moves
+      let p1Count = 0, p2Count = 0;
+      let lastP2Cell = null;
+
       for (let r = 0; r < gameBoard.length; r++) {
         for (let c = 0; c < gameBoard[r].length; c++) {
-          const gameCell = gameBoard[r][c];
-          const localCell = board[r] && board[r][c];
-
-          // If game has a cell that local doesn't, it's the new move
-          if (gameCell && gameCell.player === 2 && (!localCell || localCell.player !== 2)) {
-            setLastBotMove({ row: r, col: c });
-            break;
+          const cell = gameBoard[r][c];
+          if (cell) {
+            if (cell.player === 1) p1Count++;
+            if (cell.player === 2) {
+              p2Count++;
+              lastP2Cell = { row: r, col: c };
+            }
           }
         }
+      }
+
+      // If bot has moved (p2Count > 0) and it's player's turn, highlight last bot move
+      if (p2Count > 0 && lastP2Cell) {
+        setLastBotMove(lastP2Cell);
       }
     }
 
@@ -308,7 +316,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         setWinningCells(cells);
       }
     }
-  }, [game, activePlayer, winner, board]);
+  }, [game, activePlayer, winner, lastBotMove]);
 
   // Helper function to find winning 5-in-row cells
   const findWinningCells = (board, size) => {
@@ -544,6 +552,9 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
     try {
       console.log('Updating game with move:', { row, col, selectedCone });
+
+      // Clear last bot move highlight when player makes their move
+      setLastBotMove(null);
 
       // Lock the board to prevent multiple clicks
       setIsSubmitting(true);
