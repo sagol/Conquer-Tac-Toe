@@ -103,12 +103,25 @@ class GomokuHardBot(IBot):
                 return {"row": r, "col": c, "cone_size": 0}
             board[r][c] = None
 
-        # 4. VCF Search (Deep) - Look for forced win sequence
+        # 4. ADVANCED: Detect fork moves (four-three or double-three)
+        # These create multiple threats that opponent can't block
+        fork_move = self.find_fork_move(board, player, board_size, candidates)
+        if fork_move:
+            return fork_move
+
+        # 4.5 ADVANCED (HARD ONLY): Block opponent's potential fork
+        # This is what makes Hard stronger - preemptive blocking
+        opponent_fork = self.find_fork_move(board, opponent, board_size, candidates)
+        if opponent_fork:
+            # Block opponent's fork square
+            return opponent_fork
+
+        # 5. VCF Search (Deep) - Look for forced win sequence
         vcf_move = self.find_vcf_sequence(board, player, board_size, max_depth=14)
         if vcf_move:
             return vcf_move
 
-        # 5. Iterative Deepening Search
+        # 6. Iterative Deepening Search
         best_move = self.iterative_deepening_search(board, player, board_size)
         return best_move
 
@@ -464,3 +477,91 @@ class GomokuHardBot(IBot):
         if len(blocking_moves) == 1:
             return blocking_moves[0]
         return None
+
+    def find_fork_move(self, board, player, board_size, candidates):
+        """
+        ADVANCED: Find moves that create multiple threats simultaneously.
+        Four-Three Fork: Creates a four AND an open three = guaranteed win
+        Double-Three: Creates two open threes = almost guaranteed win
+        """
+        best_fork = None
+        best_fork_score = 0
+        
+        for r, c in candidates:
+            board[r][c] = {"player": player, "size": 0}
+            
+            # Count distinct threats created by this move
+            threat_count = self.count_threats(board, player, board_size, r, c)
+            
+            # Four-three fork (has four + has three) or double-four = immediate win
+            if threat_count['fours'] >= 1 and threat_count['threes'] >= 1:
+                board[r][c] = None
+                return {"row": r, "col": c, "cone_size": 0}  # Guaranteed win!
+            
+            # Double four = immediate win
+            if threat_count['fours'] >= 2:
+                board[r][c] = None
+                return {"row": r, "col": c, "cone_size": 0}
+            
+            # Double three = very strong (opponent can only block one)
+            if threat_count['threes'] >= 2:
+                if threat_count['threes'] > best_fork_score:
+                    best_fork_score = threat_count['threes']
+                    best_fork = (r, c)
+            
+            board[r][c] = None
+        
+        if best_fork:
+            return {"row": best_fork[0], "col": best_fork[1], "cone_size": 0}
+        return None
+
+    def count_threats(self, board, player, board_size, placed_r, placed_c):
+        """
+        Count distinct threat patterns created by the stone at (placed_r, placed_c).
+        Returns dict with 'fours' and 'threes' counts.
+        """
+        threats = {'fours': 0, 'threes': 0}
+        directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # horizontal, vertical, diagonals
+        
+        for dr, dc in directions:
+            # Count stones in this line through placed position
+            count = 1  # The placed stone
+            open_ends = 0
+            
+            # Check positive direction
+            for i in range(1, 5):
+                nr, nc = placed_r + dr * i, placed_c + dc * i
+                if 0 <= nr < board_size and 0 <= nc < board_size:
+                    cell = board[nr][nc]
+                    if cell and cell.get('player') == player:
+                        count += 1
+                    elif cell is None:
+                        open_ends += 1
+                        break
+                    else:
+                        break
+                else:
+                    break
+            
+            # Check negative direction
+            for i in range(1, 5):
+                nr, nc = placed_r - dr * i, placed_c - dc * i
+                if 0 <= nr < board_size and 0 <= nc < board_size:
+                    cell = board[nr][nc]
+                    if cell and cell.get('player') == player:
+                        count += 1
+                    elif cell is None:
+                        open_ends += 1
+                        break
+                    else:
+                        break
+                else:
+                    break
+            
+            # Classify the threat
+            if count >= 4:
+                threats['fours'] += 1
+            elif count >= 3 and open_ends >= 2:
+                threats['threes'] += 1  # Open three
+        
+        return threats
