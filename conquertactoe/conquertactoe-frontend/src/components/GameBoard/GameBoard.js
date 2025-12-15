@@ -273,31 +273,14 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     setError(null);
   }, [activePlayer, gameResult, winner, isDraw]);
 
-  // Effect 1: Handle Last Move Highlighting
+  // Effect 1: Handle Last Move Tracking
   useEffect(() => {
-    if (!game) return;
-
-    // Robust ID comparison (handle potential string/number mismatch)
-    // If I am creator, I am Player 1. Otherwise Player 2.
-    // Use loose equality (==) for user_id check to be safe
-    const isCreator = currentUser && (game.creator_id == currentUser.user_id);
-    const myPlayerNumber = isCreator ? 1 : 2;
-
-    // Highlight if it's my turn (meaning opponent/bot just moved)
-    // OR if I just won (so I can see my winning move)? 
-    // User asked "highlight should disappear only after the players move".
-    // This implies persistent highlight until I take action.
-    const isMyTurn = activePlayer === myPlayerNumber;
-
-    if (isMyTurn && game.last_move) {
+    if (game?.last_move) {
       let move = game.last_move;
-      // Ensure move is an object
       if (typeof move === 'string') {
         try { move = JSON.parse(move); } catch (e) { move = null; }
       }
-
       if (move && typeof move.row === 'number' && typeof move.col === 'number') {
-        // Only update if changed to avoid loops (though equality check inside setter handles it usually)
         setLastBotMove(prev => (prev?.row === move.row && prev?.col === move.col ? prev : move));
       } else {
         setLastBotMove(null);
@@ -305,7 +288,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     } else {
       setLastBotMove(null);
     }
-  }, [game, activePlayer, currentUser]);
+  }, [game?.last_move]);
 
   // Effect 2: Handle Winning Line Highlighting
   useEffect(() => {
@@ -673,7 +656,13 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
     // Check if this is the last bot move
     const isLastBotMoveCell = lastBotMove && lastBotMove.row === row && lastBotMove.col === col;
-    if (isLastBotMoveCell) {
+
+    // Determine if we should show the highlight (only when it is my turn, i.e. opponent just moved)
+    const isCreator = currentUser && (game?.creator_id == currentUser?.user_id);
+    const myPlayerNumber = isCreator ? 1 : 2;
+    const showLastMoveHighlight = activePlayer === myPlayerNumber;
+
+    if (isLastBotMoveCell && showLastMoveHighlight) {
       cellClass += ' last-move';
     }
 
