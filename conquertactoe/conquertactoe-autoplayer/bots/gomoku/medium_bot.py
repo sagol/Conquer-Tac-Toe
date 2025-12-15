@@ -58,16 +58,39 @@ class GomokuMediumBot(IBot):
         if not candidates:
             return None
 
-        # Score and sort moves
+        # Score and sort moves - evaluate both our threats and opponent's
         scored_moves = []
+        opponent = 1 if player == 2 else 2
+
         for r, c in candidates:
+            score = 0
+
+            # Check our move value
             board[r][c] = {"player": player, "size": 0}
-            score = self.strategy.evaluate_board(board, player, board_size)
+            if self.strategy.check_win(board, player, board_size):
+                score += 1000000  # Immediate win
+            eval_score = self.strategy.evaluate_board(board, player, board_size)
+            if eval_score > 50000:
+                score += 50000  # Creates four
+            elif eval_score > 2000:
+                score += 2000  # Creates three
             board[r][c] = None
+
+            # Check if blocks opponent threat
+            board[r][c] = {"player": opponent, "size": 0}
+            if self.strategy.check_win(board, opponent, board_size):
+                score += 500000  # Must block
+            opp_eval = self.strategy.evaluate_board(board, opponent, board_size)
+            if opp_eval > 50000:
+                score += 40000  # Blocks four
+            elif opp_eval > 2000:
+                score += 1500  # Blocks three
+            board[r][c] = None
+
             scored_moves.append(((r, c), score))
 
         scored_moves.sort(key=lambda x: x[1], reverse=True)
-        top_moves = [m[0] for m in scored_moves[:25]] # Top 25
+        top_moves = [m[0] for m in scored_moves[:25]]  # Top 25
 
         best_score = float('-inf')
         best_moves = []
