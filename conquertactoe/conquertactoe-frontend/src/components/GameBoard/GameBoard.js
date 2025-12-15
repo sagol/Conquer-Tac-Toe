@@ -276,28 +276,72 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   useEffect(() => {
     if (!game) return;
 
-    // Track last bot move for highlighting (bot is always player 2)
-    if (game.last_move && game.game_type === 'bot') {
-      const lastMove = typeof game.last_move === 'string'
-        ? JSON.parse(game.last_move)
-        : game.last_move;
+    // Parse the game board
+    let gameBoard = game.board;
+    if (typeof gameBoard === 'string') {
+      try { gameBoard = JSON.parse(gameBoard); } catch (e) { return; }
+    }
+    if (!gameBoard || !Array.isArray(gameBoard)) return;
 
-      // Only highlight if it was bot's move (active player changed to 1 = player's turn now)
-      if (lastMove && activePlayer === 1) {
-        setLastBotMove({ row: lastMove.row, col: lastMove.col });
+    // For bot games, track last bot move (find the most recent player 2 piece)
+    // We detect this by comparing against our local board state
+    if (game.game_type === 'bot' && activePlayer === 1) {
+      // Find the cell that's different between gameBoard and our local board
+      for (let r = 0; r < gameBoard.length; r++) {
+        for (let c = 0; c < gameBoard[r].length; c++) {
+          const gameCell = gameBoard[r][c];
+          const localCell = board[r] && board[r][c];
+
+          // If game has a cell that local doesn't, it's the new move
+          if (gameCell && gameCell.player === 2 && (!localCell || localCell.player !== 2)) {
+            setLastBotMove({ row: r, col: c });
+            break;
+          }
+        }
       }
     }
 
-    // Track winning cells from game state
-    if ((winner || isDraw) && game.winning_cells) {
-      const cells = typeof game.winning_cells === 'string'
-        ? JSON.parse(game.winning_cells)
-        : game.winning_cells;
-      if (Array.isArray(cells)) {
+    // Compute winning cells when game ends
+    if (winner && winningCells.length === 0) {
+      const cells = findWinningCells(gameBoard, gameBoard.length);
+      if (cells.length > 0) {
         setWinningCells(cells);
       }
     }
-  }, [game, activePlayer, winner, isDraw]);
+  }, [game, activePlayer, winner, board]);
+
+  // Helper function to find winning 5-in-row cells
+  const findWinningCells = (board, size) => {
+    const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const cell = board[r][c];
+        if (!cell) continue;
+        const player = cell.player;
+
+        for (const [dr, dc] of directions) {
+          let cells = [{ row: r, col: c }];
+          for (let i = 1; i < 5; i++) {
+            const nr = r + dr * i;
+            const nc = c + dc * i;
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+              const nextCell = board[nr][nc];
+              if (nextCell && nextCell.player === player) {
+                cells.push({ row: nr, col: nc });
+              } else {
+                break;
+              }
+            }
+          }
+          if (cells.length >= 5) {
+            return cells;
+          }
+        }
+      }
+    }
+    return [];
+  };
 
   // Randomization Effect
   useEffect(() => {
@@ -827,6 +871,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         <div className={`player-info ${activePlayer === 2 ? 'active' : ''}`}>
           <strong>
             <span className="player-indicator player2-indicator">●</span> {joinerName || (game?.game_type === 'bot' ? 'Bot AI' : 'Waiting...')}
+            {isBotThinking && <span className="bot-thinking-inline"><span className="bot-thinking-spinner-small"></span></span>}
           </strong>
           {(variant?.rules?.allowOverwrite) && (
             <div className="legend">
@@ -855,14 +900,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
             gameActive={game.status === 'joined'}
             onTimeout={handleTimeout}
           />
-        </div>
-      )}
-
-      {/* Bot Thinking Indicator */}
-      {isBotThinking && (
-        <div className="bot-thinking-indicator">
-          <div className="bot-thinking-spinner"></div>
-          <span>Bot is thinking...</span>
         </div>
       )}
 
