@@ -436,10 +436,12 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     return () => clearInterval(interval);
   }, [game, hasRandomized, creatorName, joinerName, activePlayer, winner, isDraw, board, boardSize]);
 
-  // Reset hasRandomized when game changes (e.g., "Play Again")
+  // Reset state when game changes (e.g., "Play Again")
   useEffect(() => {
     if (game?.id) {
       setHasRandomized(false);
+      setWinningCells([]);  // Clear winning cells on new game
+      setLastBotMove(null); // Clear last bot move highlight
     }
   }, [game?.id]);
 
