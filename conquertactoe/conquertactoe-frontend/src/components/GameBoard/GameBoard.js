@@ -273,43 +273,55 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     setError(null);
   }, [activePlayer, gameResult, winner, isDraw]);
 
-  // Track last bot move and winning cells
+  // Effect 1: Handle Last Move Highlighting
   useEffect(() => {
     if (!game) return;
 
-    // Parse the game board
-    let gameBoard = game.board;
-    if (typeof gameBoard === 'string') {
-      try { gameBoard = JSON.parse(gameBoard); } catch (e) { return; }
-    }
-    if (!gameBoard || !Array.isArray(gameBoard)) return;
+    // Robust ID comparison (handle potential string/number mismatch)
+    // If I am creator, I am Player 1. Otherwise Player 2.
+    // Use loose equality (==) for user_id check to be safe
+    const isCreator = currentUser && (game.creator_id == currentUser.user_id);
+    const myPlayerNumber = isCreator ? 1 : 2;
 
-    // Generalize highlighting: Show opponent's last move when it's my turn
-    const myPlayerNumber = (currentUser && game.creator_id === currentUser.user_id) ? 1 : 2;
+    // Highlight if it's my turn (meaning opponent/bot just moved)
+    // OR if I just won (so I can see my winning move)? 
+    // User asked "highlight should disappear only after the players move".
+    // This implies persistent highlight until I take action.
     const isMyTurn = activePlayer === myPlayerNumber;
 
     if (isMyTurn && game.last_move) {
       let move = game.last_move;
+      // Ensure move is an object
       if (typeof move === 'string') {
         try { move = JSON.parse(move); } catch (e) { move = null; }
       }
+
       if (move && typeof move.row === 'number' && typeof move.col === 'number') {
-        setLastBotMove(move);
+        // Only update if changed to avoid loops (though equality check inside setter handles it usually)
+        setLastBotMove(prev => (prev?.row === move.row && prev?.col === move.col ? prev : move));
       } else {
         setLastBotMove(null);
       }
     } else {
       setLastBotMove(null);
     }
+  }, [game, activePlayer, currentUser]);
 
-    // Compute winning cells when game ends
-    if (winner && winningCells.length === 0) {
-      const cells = findWinningCells(gameBoard, gameBoard.length);
+  // Effect 2: Handle Winning Line Highlighting
+  useEffect(() => {
+    if (winner && winningCells.length === 0 && board) {
+      // Use the current board state which should be final
+      const size = board.length;
+      console.log('[WinningCells] Calculating winning line for winner:', winner);
+      const cells = findWinningCells(board, size);
       if (cells.length > 0) {
+        console.log('[WinningCells] Found winning line:', cells);
         setWinningCells(cells);
+      } else {
+        console.warn('[WinningCells] Winner declared but no diagonal/line found by helper.');
       }
     }
-  }, [game, activePlayer, winner]);
+  }, [winner, board, winningCells.length]);
 
   // Helper function to find winning 5-in-row cells
   const findWinningCells = (board, size) => {
