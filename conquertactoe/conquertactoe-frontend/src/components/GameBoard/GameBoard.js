@@ -46,6 +46,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [lastBotMove, setLastBotMove] = useState(null); // { row, col }
   const [winningCells, setWinningCells] = useState([]); // Array of { row, col }
 
+
   // Check for pending rematch via REST API when a finished game loads
   // This is a fallback for when socket authentication fails
   useEffect(() => {
@@ -283,29 +284,16 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     }
     if (!gameBoard || !Array.isArray(gameBoard)) return;
 
-    // For bot games, when it becomes player's turn, highlight bot's last move
-    // Simple approach: find all player 2 cells and highlight the one that matches game state
-    if (game.game_type === 'bot' && activePlayer === 1 && !lastBotMove) {
-      // Count player 1 and player 2 moves
-      let p1Count = 0, p2Count = 0;
-      let lastP2Cell = null;
-
-      for (let r = 0; r < gameBoard.length; r++) {
-        for (let c = 0; c < gameBoard[r].length; c++) {
-          const cell = gameBoard[r][c];
-          if (cell) {
-            if (cell.player === 1) p1Count++;
-            if (cell.player === 2) {
-              p2Count++;
-              lastP2Cell = { row: r, col: c };
-            }
-          }
+    // For bot games, use the stored last_move from backend
+    if (game.game_type === 'bot' && activePlayer === 1) {
+      if (game.last_move) {
+        let move = game.last_move;
+        if (typeof move === 'string') {
+          try { move = JSON.parse(move); } catch (e) { move = null; }
         }
-      }
-
-      // If bot has moved (p2Count > 0) and it's player's turn, highlight last bot move
-      if (p2Count > 0 && lastP2Cell) {
-        setLastBotMove(lastP2Cell);
+        if (move && typeof move.row === 'number' && typeof move.col === 'number') {
+          setLastBotMove(move);
+        }
       }
     }
 
@@ -316,7 +304,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         setWinningCells(cells);
       }
     }
-  }, [game, activePlayer, winner, lastBotMove]);
+  }, [game, activePlayer, winner]);
 
   // Helper function to find winning 5-in-row cells
   const findWinningCells = (board, size) => {
