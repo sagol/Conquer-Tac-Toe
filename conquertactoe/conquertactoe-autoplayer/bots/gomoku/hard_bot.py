@@ -274,10 +274,12 @@ class GomokuHardBot(IBot):
     def score_moves_for_ordering(self, board, player, board_size, candidates):
         """Quick heuristic scoring for initial move ordering"""
         scored = []
+        opponent = 1 if player == 2 else 2
+
         for r, c in candidates:
             score = 0
 
-            # Center preference
+            # Center preference (minor)
             center = board_size // 2
             dist = abs(r - center) + abs(c - center)
             score += max(0, 10 - dist)
@@ -285,10 +287,36 @@ class GomokuHardBot(IBot):
             # History heuristic
             score += self.history_table.get((r, c), 0) // 100
 
-            # Quick threat check
+            # === CRITICAL: Check win/threat for this move ===
             board[r][c] = {"player": player, "size": 0}
+
+            # Immediate win - highest priority
             if self.strategy.check_win(board, player, board_size):
-                score += 100000
+                score += 1000000  # Guaranteed win
+
+            # Evaluate threat value of this move
+            eval_score = self.strategy.evaluate_board(board, player, board_size)
+            if eval_score > 50000:  # Creates four or better
+                score += 50000
+            elif eval_score > 2000:  # Creates open three
+                score += 2000
+
+            board[r][c] = None
+
+            # === CRITICAL: Check if this blocks opponent threat ===
+            board[r][c] = {"player": opponent, "size": 0}
+
+            # Block opponent's immediate win
+            if self.strategy.check_win(board, opponent, board_size):
+                score += 500000  # Must block
+
+            # Evaluate opponent threat value
+            opp_eval = self.strategy.evaluate_board(board, opponent, board_size)
+            if opp_eval > 50000:  # Blocks opponent's four
+                score += 40000
+            elif opp_eval > 2000:  # Blocks opponent's three
+                score += 1500
+
             board[r][c] = None
 
             scored.append(((r, c), score))
