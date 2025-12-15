@@ -95,9 +95,9 @@ class GomokuMediumBot(IBot):
         if not top_moves:
             return None
 
-        # CRITICAL: If top move is must-block, return it immediately
+        # CRITICAL: If top move is a significant play, return it
         top_score = scored_moves[0][1]
-        if top_score >= 40000:  # Must block opponent's four or winning move
+        if top_score >= 2000:
             return {"row": top_moves[0][0], "col": top_moves[0][1], "cone_size": 0}
 
         best_score = float('-inf')

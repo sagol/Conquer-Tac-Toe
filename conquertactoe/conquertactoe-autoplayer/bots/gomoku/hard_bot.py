@@ -131,9 +131,9 @@ class GomokuHardBot(IBot):
         top_move = ordered_moves[0]
         top_score = scored_moves[0][1]
 
-        # CRITICAL: If top move is a must-block (high score), return it immediately
-        # Don't let search override critical defensive moves
-        if top_score >= 40000:  # Must block opponent's four or our winning move
+        # CRITICAL: If top move is a significant play (blocks/creates threat), use it
+        # Threshold catches: wins, blocks, fours, open threes
+        if top_score >= 2000:
             return {"row": top_move[0], "col": top_move[1], "cone_size": 0}
 
         best_move = top_move
