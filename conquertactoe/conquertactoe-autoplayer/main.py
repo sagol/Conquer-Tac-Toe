@@ -15,6 +15,7 @@ from bots.classic.hard_bot import ClassicHardBot
 # Gomoku bots
 from bots.gomoku.easy_bot import GomokuEasyBot
 from bots.gomoku.medium_bot import GomokuMediumBot
+from bots.gomoku.medium_pro_bot import GomokuMediumProBot
 from bots.gomoku.hard_bot import GomokuHardBot
 
 # Conquer bots
@@ -33,7 +34,7 @@ def startup_event():
         print(f"Warning: Failed to initialize ClickHouse: {e}")
         print("Continuing without database logging...")
 
-    print("[BotFactory] Registering all bots (5 variants × 3 difficulties = 15 bots)")
+    print("[BotFactory] Registering all bots (5 variants × 4 difficulties)")
 
     # Variant 1: Classic Tic-Tac-Toe
     BotFactory.register_bot(1, 'easy', ClassicEasyBot())
@@ -43,6 +44,7 @@ def startup_event():
     # Variant 2: Gomoku (5-in-Line)
     BotFactory.register_bot(2, 'easy', GomokuEasyBot())
     BotFactory.register_bot(2, 'medium', GomokuMediumBot())
+    BotFactory.register_bot(2, 'medium_pro', GomokuMediumProBot())
     BotFactory.register_bot(2, 'hard', GomokuHardBot())
 
     # Variants 3-5: Conquer variants (all use same bots)
