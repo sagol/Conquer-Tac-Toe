@@ -308,10 +308,12 @@ class GomokuHardBot(IBot):
 
             # Evaluate threat value of this move (OFFENSE)
             eval_score = self.strategy.evaluate_board(board, player, board_size)
+            offense_bonus = 0
             if eval_score > 50000:  # Creates four or better
-                score += 50000
+                offense_bonus = 50000
             elif eval_score > 2000:  # Creates open three
-                score += 5000  # Increased from 2000
+                offense_bonus = 5000
+            score += offense_bonus
 
             board[r][c] = None
 
@@ -324,12 +326,20 @@ class GomokuHardBot(IBot):
 
             # Evaluate opponent threat value (DEFENSE > OFFENSE)
             opp_eval = self.strategy.evaluate_board(board, opponent, board_size)
+            defense_bonus = 0
             if opp_eval > 50000:  # Blocks opponent's four
-                score += 100000  # Increased from 40000 - higher than offense!
+                defense_bonus = 100000
             elif opp_eval > 2000:  # Blocks opponent's three
-                score += 60000  # Increased from 10000 - MUST be higher than creates four!
+                defense_bonus = 60000
+            score += defense_bonus
 
             board[r][c] = None
+
+            # === COMBINATION BONUS: moves that block AND attack are strongest ===
+            if offense_bonus >= 5000 and defense_bonus >= 60000:
+                score += 25000  # Strong combo: blocks threat + builds own threat
+            elif offense_bonus >= 2000 and defense_bonus >= 10000:
+                score += 10000  # Moderate combo
 
             scored.append(((r, c), score))
 
