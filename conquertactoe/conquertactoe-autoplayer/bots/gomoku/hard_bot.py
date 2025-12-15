@@ -124,7 +124,19 @@ class GomokuHardBot(IBot):
         scored_moves = self.score_moves_for_ordering(board, player, board_size, candidates)
         ordered_moves = [m[0] for m in scored_moves[:25]]  # Top 25 candidates
 
-        best_move = ordered_moves[0] if ordered_moves else None
+        if not ordered_moves:
+            return None
+
+        # Get the top move and its score
+        top_move = ordered_moves[0]
+        top_score = scored_moves[0][1]
+
+        # CRITICAL: If top move is a must-block (high score), return it immediately
+        # Don't let search override critical defensive moves
+        if top_score >= 40000:  # Must block opponent's four or our winning move
+            return {"row": top_move[0], "col": top_move[1], "cone_size": 0}
+
+        best_move = top_move
         best_score = float('-inf')
 
         # Start with depth 2, increase until time runs out

@@ -90,6 +90,18 @@ def get_move(request: MoveRequest):
 
         print(f"[Autoplayer] Using bot: {bot.name}")
 
+        # Debug: Count pieces on board
+        player1_count = 0
+        player2_count = 0
+        for row in request.board:
+            for cell in row:
+                if cell and isinstance(cell, dict):
+                    if cell.get('player') == 1:
+                        player1_count += 1
+                    elif cell.get('player') == 2:
+                        player2_count += 1
+        print(f"[Autoplayer] Board pieces - Player(orange): {player1_count}, Bot(green): {player2_count}")
+
         # Prepare game state dictionary
         game_state = {
             "board": request.board,

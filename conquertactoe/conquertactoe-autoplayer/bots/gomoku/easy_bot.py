@@ -97,6 +97,15 @@ class GomokuEasyBot(IBot):
         scored_moves.sort(key=lambda x: x[1], reverse=True)
         top_moves = [m[0] for m in scored_moves[:20]]
 
+        if not top_moves:
+            return None
+
+        # CRITICAL: If top move is must-block, return it immediately
+        # (Even easy bot should block obvious winning threats)
+        top_score = scored_moves[0][1]
+        if top_score >= 40000:  # Must block opponent's four or winning move
+            return {"row": top_moves[0][0], "col": top_moves[0][1], "cone_size": 0}
+
         best_score = float('-inf')
         best_moves = []
         alpha = float('-inf')
