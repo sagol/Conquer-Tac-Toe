@@ -43,7 +43,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
   // Bot UI State
   const [isBotThinking, setIsBotThinking] = useState(false);
-  const [lastBotMove, setLastBotMove] = useState(null); // { row, col }
+  // lastBotMove state removed in favor of derived state
   const [winningCells, setWinningCells] = useState([]); // Array of { row, col }
 
 
@@ -273,22 +273,22 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     setError(null);
   }, [activePlayer, gameResult, winner, isDraw]);
 
-  // Effect 1: Handle Last Move Tracking
-  useEffect(() => {
-    if (game?.last_move) {
-      let move = game.last_move;
-      if (typeof move === 'string') {
-        try { move = JSON.parse(move); } catch (e) { move = null; }
-      }
-      if (move && typeof move.row === 'number' && typeof move.col === 'number') {
-        setLastBotMove(prev => (prev?.row === move.row && prev?.col === move.col ? prev : move));
-      } else {
-        setLastBotMove(null);
-      }
-    } else {
-      setLastBotMove(null);
+  // Derive Last Move directly from game prop to avoid useEffect sync issues
+  let parsedLastMove = null;
+  if (game?.last_move) {
+    let move = game.last_move;
+    if (typeof move === 'string') {
+      try { move = JSON.parse(move); } catch (e) { move = null; }
     }
-  }, [game?.last_move]);
+    if (move && typeof move.row === 'number' && typeof move.col === 'number') {
+      parsedLastMove = move;
+    }
+  }
+
+  // Determine if we should show the highlight (only when it is my turn, i.e. opponent just moved)
+  const isCreator = currentUser && (game?.creator_id == currentUser?.user_id);
+  const myPlayerNumber = isCreator ? 1 : 2;
+  const showLastMoveHighlight = activePlayer === myPlayerNumber;
 
   // Effect 2: Handle Winning Line Highlighting
   useEffect(() => {
@@ -437,7 +437,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     if (game?.id) {
       setHasRandomized(false);
       setWinningCells([]);  // Clear winning cells on new game
-      setLastBotMove(null); // Clear last bot move highlight
     }
   }, [game?.id]);
 
@@ -541,8 +540,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     try {
       console.log('Updating game with move:', { row, col, selectedCone });
 
-      // Clear last bot move highlight when player makes their move
-      setLastBotMove(null);
 
       // Lock the board to prevent multiple clicks
       setIsSubmitting(true);
@@ -654,13 +651,14 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       cellClass += ' winning-cell';
     }
 
-    // Check if this is the last bot move
-    const isLastBotMoveCell = lastBotMove && lastBotMove.row === row && lastBotMove.col === col;
+    // Check if this is the last bot move (derived)
+    const isLastBotMoveCell = parsedLastMove && parsedLastMove.row === row && parsedLastMove.col === col;
 
     // Determine if we should show the highlight (only when it is my turn, i.e. opponent just moved)
     const isCreator = currentUser && (game?.creator_id == currentUser?.user_id);
     const myPlayerNumber = isCreator ? 1 : 2;
     const showLastMoveHighlight = activePlayer === myPlayerNumber;
+
 
     if (isLastBotMoveCell && showLastMoveHighlight) {
       cellClass += ' last-move';

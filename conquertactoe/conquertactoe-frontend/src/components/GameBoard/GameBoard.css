@@ -886,9 +886,14 @@
   content: '';
   position: absolute;
   inset: -4px;
+  /* Changed from -4px to 0 to be inside */
   border: 3px solid rgba(78, 205, 196, 0.8);
+  /* Purple/Magenta */
   border-radius: 18px;
   animation: lastMoveRing 2s ease-in-out infinite;
+  z-index: 0;
+  /* Ensure on top */
+  pointer-events: none;
 }
 
 @keyframes lastMoveRing {
