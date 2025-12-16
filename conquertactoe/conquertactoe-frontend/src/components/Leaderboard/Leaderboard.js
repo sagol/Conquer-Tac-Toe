@@ -113,7 +113,7 @@ const Leaderboard = () => {
   };
 
   const renderLeaderboardTable = (data) => (
-    <TableContainer component={Paper} className="table-container">
+    <div className="table-container">
       <Table>
         <TableHead>
           <TableRow>
@@ -146,7 +146,7 @@ const Leaderboard = () => {
           ))}
         </TableBody>
       </Table>
-    </TableContainer>
+    </div>
   );
 
   const renderStatsDialog = () => {
@@ -229,62 +229,60 @@ const Leaderboard = () => {
         title="Leaderboard"
         description="Check top players and bot challengers in Conquer-Tac-Toe rankings. See who dominates the board."
       />
-      <Typography variant="h2" className="modern-title" gutterBottom>
-        Leaderboard
-      </Typography>
+      <div className="leaderboard-box">
+        {/* Search Bar */}
+        <Box mb={3} mt={2} className="search-box">
+          <Autocomplete
+            freeSolo
+            options={searchResults}
+            getOptionLabel={(option) => option.username || ''}
+            loading={searching}
+            onInputChange={handleSearchChange}
+            onChange={handlePlayerSelect}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Search for a player"
+                variant="outlined"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <>
+                      {searching ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+        </Box>
 
-      {/* Search Bar */}
-      <Box mb={3} mt={2} className="search-box">
-        <Autocomplete
-          freeSolo
-          options={searchResults}
-          getOptionLabel={(option) => option.username || ''}
-          loading={searching}
-          onInputChange={handleSearchChange}
-          onChange={handlePlayerSelect}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              placeholder="Search for a player"
-              variant="outlined"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              InputProps={{
-                ...params.InputProps,
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <>
-                    {searching ? <CircularProgress color="inherit" size={20} /> : null}
-                    {params.InputProps.endAdornment}
-                  </>
-                ),
-              }}
-            />
-          )}
-        />
-      </Box>
+        {/* Tabs */}
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          indicatorColor="primary"
+          textColor="primary"
+          className="leaderboard-tabs"
+        >
+          <Tab label="PvP Leaderboard" />
+          <Tab label="Bot Leaderboard" />
+        </Tabs>
 
-      {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onChange={(e, newValue) => setActiveTab(newValue)}
-        indicatorColor="primary"
-        textColor="primary"
-        centered
-      >
-        <Tab label="PvP Leaderboard" />
-        <Tab label="Bot Leaderboard" />
-      </Tabs>
-
-      {/* Tab Panels */}
-      <Box mt={3}>
-        {activeTab === 0 && renderLeaderboardTable(pvpLeaderboard)}
-        {activeTab === 1 && renderLeaderboardTable(botLeaderboard)}
-      </Box>
+        {/* Tab Panels */}
+        <Box mt={3}>
+          {activeTab === 0 && renderLeaderboardTable(pvpLeaderboard)}
+          {activeTab === 1 && renderLeaderboardTable(botLeaderboard)}
+        </Box>
+      </div>
 
       {/* Stats Dialog */}
       {renderStatsDialog()}

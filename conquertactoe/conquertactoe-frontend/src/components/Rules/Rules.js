@@ -11,8 +11,6 @@ const Rules = () => {
                 description="Learn the rules of Conquer-Tac-Toe, Gomoku, and Classic Tic-Tac-Toe. Master cone sizes and winning strategies."
                 keywords="game rules, how to play, gomoku rules, tic tac toe rules, strategy guide"
             />
-            <h1 className="modern-title">Game Rules</h1>
-
             <div className="rules-section">
                 <h2>1. Classic Tic-Tac-Toe</h2>
                 <p>The traditional game you know and love.</p>

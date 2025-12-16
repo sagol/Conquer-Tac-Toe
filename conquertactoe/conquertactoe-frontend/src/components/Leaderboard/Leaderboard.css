@@ -25,30 +25,44 @@
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Tabs Styling */
-.leaderboard-box .MuiTabs-root {
+.leaderboard-box {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+  backdrop-filter: blur(20px);
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 40px;
   margin-bottom: 30px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 15px;
-  padding: 5px;
 }
 
-.leaderboard-box .MuiTab-root {
+/* Tabs Styling */
+.leaderboard-tabs .MuiTab-root {
   color: rgba(255, 255, 255, 0.7) !important;
   font-weight: 600 !important;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
+  font-size: 1rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  padding: 12px 30px !important;
+  min-width: 150px !important;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  margin: 0 5px;
+  transition: all 0.3s ease !important;
 }
 
-.leaderboard-box .MuiTab-root.Mui-selected {
+.leaderboard-tabs .MuiTab-root:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.leaderboard-tabs .MuiTab-root.Mui-selected {
   color: white !important;
   background: linear-gradient(135deg, rgba(78, 205, 196, 0.5) 0%, rgba(68, 160, 141, 0.5) 100%);
+  font-weight: 700 !important;
   border-radius: 10px;
 }
 
-.leaderboard-box .MuiTabs-indicator {
+.leaderboard-tabs .MuiTabs-indicator {
   display: none;
 }
 
@@ -109,6 +123,7 @@
   backdrop-filter: blur(10px);
   border-radius: 20px !important;
   overflow: hidden;
+  margin-top: 30px !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
 }
 

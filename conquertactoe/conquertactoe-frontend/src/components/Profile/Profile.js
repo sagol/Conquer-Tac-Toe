@@ -59,85 +59,139 @@ const Profile = () => {
   }
 
   return (
-    <div className="profile-container">
+    <div className="profile-container modern-container">
       <div className="profile-box">
         <div className="profile-info">
-          <h3 className="modern-title">Your Stats</h3>
-          <div className="username-display" style={{ flexDirection: 'column', gap: '5px' }}>
-            {editing ? (
-              <Box className="edit-name">
-                <TextField
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="profile-input"
-                  placeholder="Enter your username"
-                />
-                <Box className="button-group">
+          <div className="user-header">
+            <div className="avatar-circle">
+              {user.username.substring(0, 2).toUpperCase()}
+            </div>
+            <div className="user-details-section">
+              <div className="user-info-row">
+                <div className="user-text-column">
+                  {editing ? (
+                    <Box className="edit-name">
+                      <TextField
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="profile-input"
+                        placeholder="Enter your username"
+                      />
+                      <Box className="button-group">
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={handleNameChange}
+                          className="profile-button"
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          variant="contained"
+                          onClick={() => setEditing(false)}
+                          className="profile-button"
+                        >
+                          Cancel
+                        </Button>
+                      </Box>
+                    </Box>
+                  ) : (
+                    <>
+                      <Typography variant="h4" className="username-text">{user.username}</Typography>
+                      <Typography variant="subtitle1" className="email-text">{user.email}</Typography>
+                    </>
+                  )}
+                </div>
+                {!editing && (
                   <Button
                     variant="contained"
                     color="primary"
-                    onClick={handleNameChange}
-                    className="profile-button"
+                    onClick={() => setEditing(true)}
+                    className="profile-button edit-button"
                   >
-                    Save
+                    Edit
                   </Button>
-                  <Button
-                    variant="contained"
-                    onClick={() => setEditing(false)}
-                    className="profile-button"
-                  >
-                    Cancel
-                  </Button>
-                </Box>
-              </Box>
-            ) : (
-              <Box className="profile-details" style={{ flexDirection: 'row', gap: '15px', marginBottom: '0' }}>
-                <Typography variant="h4" style={{ fontWeight: 'bold', color: 'white', margin: 0 }}>{user.username}</Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => setEditing(true)}
-                  className="profile-button"
-                  size="small"
-                  style={{ minWidth: 'auto', padding: '5px 15px' }}
-                >
-                  Edit
-                </Button>
-              </Box>
-            )}
-            <Typography variant="subtitle1" style={{ color: 'rgba(255,255,255,0.8)', marginTop: '5px' }}>{user.email}</Typography>
+                )}
+              </div>
+            </div>
           </div>
 
           <Box className="game-stats" mt={4}>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
-                <Card className="stat-card" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', color: 'white' }}>
-                  <CardContent>
-                    <Typography variant="h5" gutterBottom style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', textAlign: 'center' }}>PvP Stats</Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}><Typography align="center">Games: {user.pvp_total_games || 0}</Typography></Grid>
-                      <Grid item xs={6}><Typography align="center">Wins: {user.pvp_wins || 0}</Typography></Grid>
-                      <Grid item xs={6}><Typography align="center">Losses: {user.pvp_losses || 0}</Typography></Grid>
-                      <Grid item xs={6}><Typography align="center">Draws: {user.pvp_draws || 0}</Typography></Grid>
-                      <Grid item xs={12}><Typography variant="h6" align="center" style={{ marginTop: '10px', color: '#a8e6cf', fontWeight: 'bold' }}>Win Rate: {((user.pvp_win_rate || 0) * 100).toFixed(1)}%</Typography></Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
+                <div className="stat-card">
+                  <Typography variant="h5" className="stat-card-title">PvP Record</Typography>
+                  <div className="stats-content">
+                    <div className="stat-row">
+                      <span className="stat-label">Games:</span>
+                      <span className="stat-value">{user.pvp_total_games || 0}</span>
+                    </div>
+                    <div className="stat-row">
+                      <span className="stat-label">Wins:</span>
+                      <span className="stat-value">{user.pvp_wins || 0}</span>
+                    </div>
+                    <div className="stat-row">
+                      <span className="stat-label">Losses:</span>
+                      <span className="stat-value">{user.pvp_losses || 0}</span>
+                    </div>
+                    <div className="stat-row">
+                      <span className="stat-label">Draws:</span>
+                      <span className="stat-value">{user.pvp_draws || 0}</span>
+                    </div>
+                  </div>
+                  <div className="win-rate-container">
+                    <Typography variant="h6" className="win-rate-label">
+                      Win Rate
+                    </Typography>
+                    <div className="progress-bar-container">
+                      <div
+                        className="progress-bar pvp-progress"
+                        style={{ width: `${(user.pvp_win_rate || 0) * 100}%` }}
+                      ></div>
+                    </div>
+                    <Typography variant="h5" className="win-rate-percentage pvp-rate">
+                      {((user.pvp_win_rate || 0) * 100).toFixed(1)}%
+                    </Typography>
+                  </div>
+                </div>
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Card className="stat-card" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', color: 'white' }}>
-                  <CardContent>
-                    <Typography variant="h5" gutterBottom style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', textAlign: 'center' }}>Bot Stats</Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}><Typography align="center">Games: {user.bot_total_games || 0}</Typography></Grid>
-                      <Grid item xs={6}><Typography align="center">Wins: {user.bot_wins || 0}</Typography></Grid>
-                      <Grid item xs={6}><Typography align="center">Losses: {user.bot_losses || 0}</Typography></Grid>
-                      <Grid item xs={6}><Typography align="center">Draws: {user.bot_draws || 0}</Typography></Grid>
-                      <Grid item xs={12}><Typography variant="h6" align="center" style={{ marginTop: '10px', color: '#ffaaa5', fontWeight: 'bold' }}>Win Rate: {((user.bot_win_rate || 0) * 100).toFixed(1)}%</Typography></Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
+                <div className="stat-card">
+                  <Typography variant="h5" className="stat-card-title">Bot Record</Typography>
+                  <div className="stats-content">
+                    <div className="stat-row">
+                      <span className="stat-label">Games:</span>
+                      <span className="stat-value">{user.bot_total_games || 0}</span>
+                    </div>
+                    <div className="stat-row">
+                      <span className="stat-label">Wins:</span>
+                      <span className="stat-value">{user.bot_wins || 0}</span>
+                    </div>
+                    <div className="stat-row">
+                      <span className="stat-label">Losses:</span>
+                      <span className="stat-value">{user.bot_losses || 0}</span>
+                    </div>
+                    <div className="stat-row">
+                      <span className="stat-label">Draws:</span>
+                      <span className="stat-value">{user.bot_draws || 0}</span>
+                    </div>
+                  </div>
+                  <div className="win-rate-container">
+                    <Typography variant="h6" className="win-rate-label">
+                      Win Rate
+                    </Typography>
+                    <div className="progress-bar-container">
+                      <div
+                        className="progress-bar bot-progress"
+                        style={{ width: `${(user.bot_win_rate || 0) * 100}%` }}
+                      ></div>
+                    </div>
+                    <Typography variant="h5" className="win-rate-percentage bot-rate">
+                      {((user.bot_win_rate || 0) * 100).toFixed(1)}%
+                    </Typography>
+                  </div>
+                </div>
               </Grid>
             </Grid>
           </Box>
