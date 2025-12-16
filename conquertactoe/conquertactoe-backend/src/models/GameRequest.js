@@ -89,11 +89,11 @@ class GameRequest {
     return result.rows[0];
   }
 
-  static async updateBoard(gameId, board, activePlayer, player1Cones, player2Cones) {
-    console.log(`[GameRequest] updateBoard called. ID:${gameId} Active:${activePlayer}`);
+  static async updateBoard(gameId, board, activePlayer, player1Cones, player2Cones, lastMove = null) {
+    console.log(`[GameRequest] updateBoard called. ID:${gameId} Active:${activePlayer} LastMove:${JSON.stringify(lastMove)}`);
     const result = await pool.query(
-      'UPDATE GameRequests SET board = $1, active_player = $2, player1_cones = $3, player2_cones = $4, last_move_at = NOW() WHERE id = $5 RETURNING *',
-      [JSON.stringify(board), activePlayer, JSON.stringify(player1Cones), JSON.stringify(player2Cones), gameId]
+      'UPDATE GameRequests SET board = $1, active_player = $2, player1_cones = $3, player2_cones = $4, last_move_at = NOW(), last_move = $6 WHERE id = $5 RETURNING *',
+      [JSON.stringify(board), activePlayer, JSON.stringify(player1Cones), JSON.stringify(player2Cones), gameId, lastMove]
     );
     console.log(`[GameRequest] updateBoard result Active:${result.rows[0]?.active_player}`);
     return result.rows[0];

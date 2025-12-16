@@ -15,7 +15,7 @@ import {
 } from '@material-ui/core';
 import MenuIcon from '@material-ui/icons/Menu';
 import CloseIcon from '@material-ui/icons/Close';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser } from '../../redux/actions/authActions';
 import NotificationIconButton from '../Notifications/NotificationIconButton';
@@ -25,6 +25,7 @@ const Navbar = () => {
   const user = useSelector(state => state.auth.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const theme = useTheme();
@@ -42,6 +43,11 @@ const Navbar = () => {
 
   const handleNavClick = () => {
     setMobileOpen(false);
+  };
+
+  const isActive = (path) => {
+    if (path === '/' && location.pathname !== '/') return false;
+    return location.pathname.startsWith(path);
   };
 
   const navItems = [
@@ -71,7 +77,7 @@ const Navbar = () => {
               component={Link}
               to={item.path}
               onClick={handleNavClick}
-              className="drawer-item"
+              className={`drawer-item ${isActive(item.path) ? 'nav-active' : ''}`}
             >
               <ListItemText primary={item.label} />
             </ListItem>
@@ -88,7 +94,7 @@ const Navbar = () => {
             component={Link}
             to="/login"
             onClick={handleNavClick}
-            className="drawer-item"
+            className={`drawer-item ${isActive('/login') ? 'nav-active' : ''}`}
           >
             <ListItemText primary="Login" />
           </ListItem>
@@ -120,18 +126,54 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <Button color="inherit" component={Link} to="/" aria-label="Home">Home</Button>
-              <Button color="inherit" component={Link} to="/rules" aria-label="Rules">Rules</Button>
-              <Button color="inherit" component={Link} to="/leaderboard" aria-label="Leaderboard">Leaderboard</Button>
+              <Button
+                color="inherit"
+                component={Link}
+                to="/"
+                aria-label="Home"
+                className={isActive('/') ? 'nav-active' : ''}
+              >Home</Button>
+              <Button
+                color="inherit"
+                component={Link}
+                to="/rules"
+                aria-label="Rules"
+                className={isActive('/rules') ? 'nav-active' : ''}
+              >Rules</Button>
+              <Button
+                color="inherit"
+                component={Link}
+                to="/leaderboard"
+                aria-label="Leaderboard"
+                className={isActive('/leaderboard') ? 'nav-active' : ''}
+              >Leaderboard</Button>
               {user ? (
                 <>
-                  <Button color="inherit" component={Link} to="/profile" aria-label="Profile">Profile</Button>
-                  <Button color="inherit" component={Link} to="/lobby" aria-label="Lobby">Lobby</Button>
+                  <Button
+                    color="inherit"
+                    component={Link}
+                    to="/profile"
+                    aria-label="Profile"
+                    className={isActive('/profile') ? 'nav-active' : ''}
+                  >Profile</Button>
+                  <Button
+                    color="inherit"
+                    component={Link}
+                    to="/lobby"
+                    aria-label="Lobby"
+                    className={isActive('/lobby') ? 'nav-active' : ''}
+                  >Lobby</Button>
                   <NotificationIconButton />
                   <Button color="inherit" onClick={handleLogout} aria-label="Logout">Logout</Button>
                 </>
               ) : (
-                <Button color="inherit" component={Link} to="/login" aria-label="Login">Login</Button>
+                <Button
+                  color="inherit"
+                  component={Link}
+                  to="/login"
+                  aria-label="Login"
+                  className={isActive('/login') ? 'nav-active' : ''}
+                >Login</Button>
               )}
             </>
           )}

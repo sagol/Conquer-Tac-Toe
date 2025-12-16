@@ -82,7 +82,8 @@ const handleBotMove = async (gameId, board, player1Cones, player2Cones, variantI
       botBoard,
       1, // Back to player 1's turn
       player1Cones,
-      botP2Cones
+      botP2Cones,
+      { row: botMove.row, col: botMove.col }
     );
     console.log('Bot board state after update:', botBoardState);
     const botEmitPayload = { ...botBoardState, id: gameId, gameId: parseInt(gameId) };
@@ -286,7 +287,7 @@ exports.updateGameRequest = async (req, res) => {
     const nextActivePlayer = gameOverCondition ? activePlayer : (activePlayer === 1 ? 2 : 1);
 
     // Update board with correct active player
-    const updatedBoardState = await GameRequest.updateBoard(gameId, updatedBoard, nextActivePlayer, newPlayer1Cones, newPlayer2Cones);
+    const updatedBoardState = await GameRequest.updateBoard(gameId, updatedBoard, nextActivePlayer, newPlayer1Cones, newPlayer2Cones, { row, col });
     socket.getIo().emit('gameUpdated', { ...updatedBoardState, id: gameId, gameId: parseInt(gameId) });
     console.log(`Emitting 'gameUpdated' event for gameId: ${gameId}`);
 

@@ -95,3 +95,23 @@
         width: 250px !important;
     }
 }
+
+/* Active Navigation State - Desktop */
+.navbar .MuiButton-root.nav-active {
+    background: rgba(255, 255, 255, 0.2);
+    font-weight: 700 !important;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    backdrop-filter: blur(5px);
+}
+
+/* Active Drawer Item - Mobile */
+.drawer-item.nav-active {
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-left: 4px solid #fff;
+}
+
+.drawer-item.nav-active .MuiListItemText-primary {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}

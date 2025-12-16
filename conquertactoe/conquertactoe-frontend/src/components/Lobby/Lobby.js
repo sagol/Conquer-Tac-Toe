@@ -220,30 +220,32 @@ const Lobby = () => {
         title="Game Lobby"
         description="Join open games or create a new challenge in the Conquer-Tac-Toe lobby. Play vs AI or human opponents."
       />
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-        <Typography variant="h2" className="modern-title" style={{ margin: 0 }}>
-          Game Lobby
-        </Typography>
-        {!userPendingOrJoined && (
-          <Button variant="contained" color="primary" onClick={() => setCreateModalOpen(true)} className="lobby-button" data-testid="create-game-request-button">
-            Create Game Request
-          </Button>
-        )}
-      </Box>
-
       <div className="lobby-box">
-        <Tabs
-          value={activeTab}
-          onChange={handleTabChange}
-          indicatorColor="primary"
-          textColor="primary"
-          centered
-          className="lobby-tabs"
-          style={{ marginBottom: '20px' }}
-        >
-          <Tab label="My Games" />
-          <Tab label="Public Games" />
-        </Tabs>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2.5}>
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            indicatorColor="primary"
+            textColor="primary"
+            className="lobby-tabs"
+            style={{ flex: 1 }}
+          >
+            <Tab label="My Games" />
+            <Tab label="Public Games" />
+          </Tabs>
+          {!userPendingOrJoined && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => setCreateModalOpen(true)}
+              className="lobby-button"
+              data-testid="create-game-request-button"
+              style={{ marginLeft: '20px' }}
+            >
+              Create Game Request
+            </Button>
+          )}
+        </Box>
 
         <div className="table-container">
           <Table>

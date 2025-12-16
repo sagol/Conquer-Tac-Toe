@@ -12,7 +12,7 @@ class GomokuEasyBot(IBot):
     - No VCF
     - Adds randomness to simulate mistakes
     """
-    
+
     def __init__(self):
         self.strategy = GomokuStrategy()
         self.max_depth = 2
@@ -22,15 +22,15 @@ class GomokuEasyBot(IBot):
     @property
     def name(self) -> str:
         return "Easy Gomoku Bot"
-    
+
     def get_move(self, game_state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         board = game_state.get("board")
         if not board:
             return None
-            
+
         board_size = len(board)
         player = 2  # Bot is always player 2
-        
+
         # 1. Opening Move
         opening_move = self.strategy.get_opening_move(board, player, board_size)
         if opening_move:
@@ -56,73 +56,111 @@ class GomokuEasyBot(IBot):
 
     def minimax_search(self, board, player, board_size):
         start_time = time.time()
-        
+
         # Generate candidates
         candidates = self.strategy.generate_candidate_moves(board, board_size)
         if not candidates:
             return None
-            
-        # Score moves shallowly first for ordering
+
+        # Score moves - evaluate both our threats and opponent's
         scored_moves = []
+        opponent = 1 if player == 2 else 2
+
         for r, c in candidates:
-            # Quick heuristic score
+            score = 0
+
+            # Check our move value (OFFENSE)
             board[r][c] = {"player": player, "size": 0}
-            score = self.strategy.evaluate_board(board, player, board_size)
+            if self.strategy.check_win(board, player, board_size):
+                score += 1000000  # Immediate win
+            eval_score = self.strategy.evaluate_board(board, player, board_size)
+            offense_bonus = 0
+            if eval_score > 50000:
+                offense_bonus = 50000  # Creates four
+            elif eval_score > 2000:
+                offense_bonus = 5000  # Creates three
+            score += offense_bonus
             board[r][c] = None
+
+            # Check if blocks opponent threat (DEFENSE > OFFENSE)
+            board[r][c] = {"player": opponent, "size": 0}
+            if self.strategy.check_win(board, opponent, board_size):
+                score += 500000  # Must block
+            opp_eval = self.strategy.evaluate_board(board, opponent, board_size)
+            defense_bonus = 0
+            if opp_eval > 50000:
+                defense_bonus = 100000  # Blocks four
+            elif opp_eval > 2000:
+                defense_bonus = 60000  # Blocks three
+            score += defense_bonus
+            board[r][c] = None
+
+            # COMBINATION BONUS: block AND attack = strongest
+            if offense_bonus >= 5000 and defense_bonus >= 60000:
+                score += 25000  # Strong combo
+
             scored_moves.append(((r, c), score))
-        
+
         # Sort and take top 20 to search
         scored_moves.sort(key=lambda x: x[1], reverse=True)
         top_moves = [m[0] for m in scored_moves[:20]]
-        
+
+        if not top_moves:
+            return None
+
+        # CRITICAL: If top move is a significant play, return it
+        top_score = scored_moves[0][1]
+        if top_score >= 2000:
+            return {"row": top_moves[0][0], "col": top_moves[0][1], "cone_size": 0}
+
         best_score = float('-inf')
         best_moves = []
         alpha = float('-inf')
         beta = float('inf')
-        
+
         for r, c in top_moves:
             if time.time() - start_time > self.max_time:
                 break
-                
+
             board[r][c] = {"player": player, "size": 0}
             score = self.minimax(board, self.max_depth - 1, False, alpha, beta, player, board_size, start_time)
             board[r][c] = None
-            
+
             if score > best_score:
                 best_score = score
                 best_moves = [(r, c)]
             elif score == best_score:
                 best_moves.append((r, c))
-                
+
             alpha = max(alpha, score)
-        
+
         if best_moves:
             # Easy bot randomness: pick from top moves or sometimes a random valid move
             if random.random() < self.randomness and len(top_moves) > 1:
                 # Pick a random move from the top 5 candidates (suboptimal but not terrible)
                 choice = random.choice(top_moves[:5])
                 return {"row": choice[0], "col": choice[1], "cone_size": 0}
-            
+
             # Otherwise pick one of the best moves
             choice = random.choice(best_moves)
             return {"row": choice[0], "col": choice[1], "cone_size": 0}
-            
+
         return None
 
     def minimax(self, board, depth, is_maximizing, alpha, beta, bot_player, board_size, start_time):
         if depth == 0 or time.time() - start_time > self.max_time:
             return self.strategy.evaluate_board(board, bot_player, board_size)
-            
+
         opponent = 1 if bot_player == 2 else 2
         current_player = bot_player if is_maximizing else opponent
-        
+
         # Check for win
         if self.strategy.check_win(board, 1 if current_player == 2 else 2, board_size):
              # Previous move won
             return -100000 if is_maximizing else 100000
 
         candidates = self.strategy.generate_candidate_moves(board, board_size)
-        
+
         if is_maximizing:
             max_eval = float('-inf')
             for r, c in candidates[:10]: # Limit branching

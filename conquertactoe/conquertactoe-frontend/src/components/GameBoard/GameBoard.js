@@ -41,6 +41,12 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const [showRematchModal, setShowRematchModal] = useState(false);
   const [rematchReceivedState, setRematchReceivedState] = useState(null); // { requesterName, timeoutMs }
 
+  // Bot UI State
+  const [isBotThinking, setIsBotThinking] = useState(false);
+  // lastBotMove state removed in favor of derived state
+  const [winningCells, setWinningCells] = useState([]); // Array of { row, col }
+
+
   // Check for pending rematch via REST API when a finished game loads
   // This is a fallback for when socket authentication fails
   useEffect(() => {
@@ -267,6 +273,72 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     setError(null);
   }, [activePlayer, gameResult, winner, isDraw]);
 
+  // Derive Last Move directly from game prop to avoid useEffect sync issues
+  let parsedLastMove = null;
+  if (game?.last_move) {
+    let move = game.last_move;
+    if (typeof move === 'string') {
+      try { move = JSON.parse(move); } catch (e) { move = null; }
+    }
+    if (move && typeof move.row === 'number' && typeof move.col === 'number') {
+      parsedLastMove = move;
+    }
+  }
+
+  // Determine if we should show the highlight (only when it is my turn, i.e. opponent just moved)
+  const isCreator = currentUser && (game?.creator_id == currentUser?.user_id);
+  const myPlayerNumber = isCreator ? 1 : 2;
+  const showLastMoveHighlight = activePlayer === myPlayerNumber;
+
+  // Effect 2: Handle Winning Line Highlighting
+  useEffect(() => {
+    if (winner && winningCells.length === 0 && board) {
+      // Use the current board state which should be final
+      const size = board.length;
+      console.log('[WinningCells] Calculating winning line for winner:', winner);
+      const cells = findWinningCells(board, size);
+      if (cells.length > 0) {
+        console.log('[WinningCells] Found winning line:', cells);
+        setWinningCells(cells);
+      } else {
+        console.warn('[WinningCells] Winner declared but no diagonal/line found by helper.');
+      }
+    }
+  }, [winner, board, winningCells.length]);
+
+  // Helper function to find winning 5-in-row cells
+  const findWinningCells = (board, size) => {
+    const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const cell = board[r][c];
+        if (!cell) continue;
+        const player = cell.player;
+
+        for (const [dr, dc] of directions) {
+          let cells = [{ row: r, col: c }];
+          for (let i = 1; i < 5; i++) {
+            const nr = r + dr * i;
+            const nc = c + dc * i;
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+              const nextCell = board[nr][nc];
+              if (nextCell && nextCell.player === player) {
+                cells.push({ row: nr, col: nc });
+              } else {
+                break;
+              }
+            }
+          }
+          if (cells.length >= 5) {
+            return cells;
+          }
+        }
+      }
+    }
+    return [];
+  };
+
   // Randomization Effect
   useEffect(() => {
     // Only randomize if:
@@ -360,10 +432,11 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     return () => clearInterval(interval);
   }, [game, hasRandomized, creatorName, joinerName, activePlayer, winner, isDraw, board, boardSize]);
 
-  // Reset hasRandomized when game changes (e.g., "Play Again")
+  // Reset state when game changes (e.g., "Play Again")
   useEffect(() => {
     if (game?.id) {
       setHasRandomized(false);
+      setWinningCells([]);  // Clear winning cells on new game
     }
   }, [game?.id]);
 
@@ -467,6 +540,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     try {
       console.log('Updating game with move:', { row, col, selectedCone });
 
+
       // Lock the board to prevent multiple clicks
       setIsSubmitting(true);
 
@@ -479,11 +553,18 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       }
       setError(null);
 
+      // For bot games, show thinking indicator
+      const isBotGame = game?.game_type === 'bot';
+      if (isBotGame) {
+        setIsBotThinking(true);
+      }
+
       // IMPORTANT: Send ORIGINAL board state, let backend apply and validate the move
       // For bot games, this will wait for bot's response, but UI already updated optimistically
       await updateGame(board, activePlayer, player1Cones, player2Cones, row, col, selectedCone);
 
       // Backend response will update game state via socket, which will sync the board
+      // The bot's move will come via socket update
     } catch (error) {
       console.error('Error updating game:', error.response?.data || error.message);
       // Revert optimistic update on error
@@ -497,6 +578,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     } finally {
       // Always unlock the board when done
       setIsSubmitting(false);
+      setIsBotThinking(false);
     }
   };
 
@@ -562,6 +644,25 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
     // Check if this is Classic Tic-Tac-Toe (variant ID 1)
     const isClassicTicTacToe = game?.variant_id === 1;
+
+    // Check if this cell is part of the winning line
+    const isWinningCell = winningCells.some(c => c.row === row && c.col === col);
+    if (isWinningCell) {
+      cellClass += ' winning-cell';
+    }
+
+    // Check if this is the last bot move (derived)
+    const isLastBotMoveCell = parsedLastMove && parsedLastMove.row === row && parsedLastMove.col === col;
+
+    // Determine if we should show the highlight (only when it is my turn, i.e. opponent just moved)
+    const isCreator = currentUser && (game?.creator_id == currentUser?.user_id);
+    const myPlayerNumber = isCreator ? 1 : 2;
+    const showLastMoveHighlight = activePlayer === myPlayerNumber;
+
+
+    if (isLastBotMoveCell && showLastMoveHighlight) {
+      cellClass += ' last-move';
+    }
 
     if (cellValue) {
       const { player, size } = cellValue;
@@ -775,6 +876,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         <div className={`player-info ${activePlayer === 2 ? 'active' : ''}`}>
           <strong>
             <span className="player-indicator player2-indicator">●</span> {joinerName || (game?.game_type === 'bot' ? 'Bot AI' : 'Waiting...')}
+            {isBotThinking && <span className="bot-thinking-inline"><span className="bot-thinking-spinner-small"></span></span>}
           </strong>
           {(variant?.rules?.allowOverwrite) && (
             <div className="legend">

@@ -14,7 +14,7 @@ class ConquerStrategy:
             (0, 0): 3, (0, 2): 3, (2, 0): 3, (2, 2): 3,  # Corners
             (0, 1): 1, (1, 0): 1, (1, 2): 1, (2, 1): 1   # Edges
         }
-        
+
         # Winning lines indices
         self.WINNING_LINES = [
             [(0,0), (0,1), (0,2)], [(1,0), (1,1), (1,2)], [(2,0), (2,1), (2,2)], # Rows
@@ -31,11 +31,11 @@ class ConquerStrategy:
         cell = board[r][c]
         if cell is None:
             return True
-        
+
         # Cannot overwrite own cones
         if cell['player'] == player:
             return False
-            
+
         # Can only overwrite with strictly larger cone
         return size > cell['size']
 
@@ -52,7 +52,7 @@ class ConquerStrategy:
         for size_idx in range(len(cones)):
             if cones[size_idx] <= 0:
                 continue
-            
+
             for r in range(3):
                 for c in range(3):
                     if self.is_valid_move(board, r, c, size_idx, player):
@@ -66,7 +66,7 @@ class ConquerStrategy:
         """
         score = 0
         opponent = 1 if player == 2 else 2
-        
+
         # 1. Material / Position Control
         for r in range(3):
             for c in range(3):
@@ -75,7 +75,7 @@ class ConquerStrategy:
                     val = self.POSITION_VALUES.get((r, c), 1)
                     # Bonus for larger cones (harder to overwrite)
                     val += cell['size'] * 2
-                    
+
                     if cell['player'] == player:
                         score += val * 10
                     else:
@@ -86,7 +86,7 @@ class ConquerStrategy:
             player_count = 0
             opponent_count = 0
             empty_count = 0
-            
+
             for r, c in line:
                 cell = board[r][c]
                 if cell is None:
@@ -95,20 +95,20 @@ class ConquerStrategy:
                     player_count += 1
                 else:
                     opponent_count += 1
-            
+
             # 2 in a row (Threat)
             if player_count == 2 and empty_count == 1:
                 score += 50
             if opponent_count == 2 and empty_count == 1:
                 score -= 60  # Defensive priority
-                
+
             # Blocked lines are less valuable, but owning pieces is still good (handled by material score)
 
         # 3. Cone Economy
         # Having more/larger cones remaining is good
         player_inventory_val = sum((i + 1) * count for i, count in enumerate(bot_cones))
         opponent_inventory_val = sum((i + 1) * count for i, count in enumerate(opponent_cones))
-        
+
         score += (player_inventory_val - opponent_inventory_val) * 5
 
         return score
