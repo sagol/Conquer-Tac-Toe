@@ -115,7 +115,7 @@ const Leaderboard = () => {
   const renderLeaderboardTable = (data) => (
     <div className="table-container">
       <Table>
-        <TableHead>
+        <TableHead className="table-head">
           <TableRow>
             <TableCell className="col-rank"><strong>Rank</strong></TableCell>
             <TableCell className="col-username"><strong>Username</strong></TableCell>
