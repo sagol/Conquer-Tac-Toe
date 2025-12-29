@@ -113,7 +113,7 @@ class GomokuHardBot(IBot):
                 board[r][c] = None
                 return {"row": r, "col": c, "cone_size": 0}
             board[r][c] = None
-        
+
         # 3.3 CRITICAL: Block opponent's 3-in-a-row extension to 4-in-a-row
         # UNLESS they have a fork (multiple 3s) - then attack instead
         three_extension_block = self.find_three_extension_block(board, opponent, board_size, candidates)
@@ -136,7 +136,7 @@ class GomokuHardBot(IBot):
         fork_move = self.find_fork_move(board, player, board_size, candidates)
         if fork_move:
             return fork_move
-        
+
         # 4.7 LOWER PRIORITY: Prevent future forks (after offensive plays)
         preventive_block = self.find_preventive_fork_block(board, opponent, board_size, candidates)
         if preventive_block:
@@ -447,7 +447,7 @@ class GomokuHardBot(IBot):
 
         # Collect forcing moves with threat analysis
         forcing_moves = []
-        
+
         for r, c in candidates:
             board[r][c] = {"player": player, "size": 0}
 
@@ -458,10 +458,10 @@ class GomokuHardBot(IBot):
 
             # Analyze threats this move creates
             threats = self.count_threats(board, player, board_size, r, c)
-            
+
             # Forcing criteria: creates 4-in-a-row or double 3-in-a-row
             is_forcing = threats['fours'] >= 1 or threats['threes'] >= 2
-            
+
             if is_forcing:
                 forcing_moves.append((r, c, threats['fours'] * 100 + threats['threes']))
 
@@ -472,30 +472,30 @@ class GomokuHardBot(IBot):
 
         for r, c, score in forcing_moves[:3]:  # Top 3 forcing moves
             board[r][c] = {"player": player, "size": 0}
-            
+
             # After we play, what are opponent's options?
             # If they MUST block our four, verify we still win
             must_block = self.find_critical_blocks(board, player, opponent, board_size)
-            
+
             if len(must_block) <= 2:  # Limited blocking options
                 # Try each possible block
                 wins_all_blocks = True
                 for br, bc in must_block:
                     board[br][bc] = {"player": opponent, "size": 0}
-                    
+
                     # Do we still have a win after they block?
                     next_forcing = self.find_vcf_sequence(
                         board, player, board_size, depth + 1, max_depth
                     )
-                    
+
                     board[br][bc] = None
-                    
+
                     if not next_forcing:
                         wins_all_blocks = False
                         break
-                
+
                 board[r][c] = None
-                
+
                 if wins_all_blocks and len(must_block) > 0:
                     return {"row": r, "col": c, "cone_size": 0}
             else:
@@ -510,17 +510,17 @@ class GomokuHardBot(IBot):
         """
         critical_blocks = []
         candidates = self.strategy.generate_candidate_moves(board, board_size)
-        
+
         for r, c in candidates:
             # Test if attacker playing here would create a four
             board[r][c] = {"player": attacker, "size": 0}
             threats_if_attacker_plays = self.count_threats(board, attacker, board_size, r, c)
             board[r][c] = None
-            
+
             # This is a critical block if attacker would create a four here
             if threats_if_attacker_plays['fours'] >= 1:
                 critical_blocks.append((r, c))
-        
+
         return critical_blocks
 
     def find_preventive_fork_block(self, board, opponent, board_size, candidates):
@@ -529,14 +529,14 @@ class GomokuHardBot(IBot):
         This blocks fork threats BEFORE they happen.
         """
         dangerous_positions = []
-        
+
         for r, c in candidates:
             # Simulate opponent playing here
             board[r][c] = {"player": opponent, "size": 0}
-            
+
             # Would this create a fork for opponent?
             threats = self.count_threats(board, opponent, board_size, r, c)
-            
+
             # A fork is when one move creates multiple threats
             # Either: 2+ threes, OR 1 four + 1 three, OR 2+ fours
             is_fork = (
@@ -544,42 +544,42 @@ class GomokuHardBot(IBot):
                 (threats['fours'] >= 1 and threats['threes'] >= 1) or
                 threats['fours'] >= 2
             )
-            
+
             if is_fork:
                 dangerous_positions.append((r, c, threats['fours'] * 100 + threats['threes']))
-            
+
             board[r][c] = None
-        
+
         # Block the most dangerous fork position
         if dangerous_positions:
             dangerous_positions.sort(key=lambda x: x[2], reverse=True)
             r, c, score = dangerous_positions[0]
             return {"row": r, "col": c, "cone_size": 0}
-        
+
         return None
 
     def find_three_extension_block(self, board, opponent, board_size, candidates):
         """
         CRITICAL: Block positions that extend opponent's 3-in-a-row to 4-in-a-row.
-        
+
         ENHANCEMENT 1: Detects if opponent has MULTIPLE 3-in-a-rows (fork).
-        If opponent has 2+ different 3-in-a-rows, blocking one is useless - 
+        If opponent has 2+ different 3-in-a-rows, blocking one is useless -
         we need to attack instead. Returns None in this case.
-        
+
         ENHANCEMENT 2: Checks if threat is actually "open" (both ends extendable).
         Don't waste moves blocking threats that are already blocked from one side.
         """
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # H, V, diag-right, diag-left
         dangerous_extensions = []  # List of (row, col, direction_index, num_open_ends)
-        
+
         for r, c in candidates:
             # Check if playing here extends opponent's line to 4
             board[r][c] = {"player": opponent, "size": 0}
-            
+
             for dir_idx, (dr, dc) in enumerate(directions):
                 # Count consecutive opponent pieces through this position
                 total_consecutive = 1  # The piece we just placed
-                
+
                 # Count backward and check if end is blocked
                 backward_blocked = False
                 for i in range(1, 5):
@@ -596,7 +596,7 @@ class GomokuHardBot(IBot):
                     else:
                         backward_blocked = True  # Hit board edge
                         break
-                
+
                 # Count forward and check if end is blocked
                 forward_blocked = False
                 for i in range(1, 5):
@@ -613,32 +613,32 @@ class GomokuHardBot(IBot):
                     else:
                         forward_blocked = True  # Hit board edge
                         break
-                
+
                 # Calculate open ends (0, 1, or 2)
                 num_open_ends = 2 - (1 if backward_blocked else 0) - (1 if forward_blocked else 0)
-                
+
                 # If this creates 4 consecutive AND has at least one open end
                 if total_consecutive >= 4 and num_open_ends > 0:
                     dangerous_extensions.append((r, c, dir_idx, num_open_ends))
-            
+
             board[r][c] = None
-        
+
         if not dangerous_extensions:
             return None
-        
+
         # Sort by open ends (prefer blocking fully open threats = 2 open ends)
         dangerous_extensions.sort(key=lambda x: x[3], reverse=True)
-        
+
         # GROUP by direction to find if there are multiple independent 3-in-a-rows
         unique_directions = set(ext[2] for ext in dangerous_extensions)
-        
-        # If there are extensions in 2+ different directions, it's a fork  
+
+        # If there are extensions in 2+ different directions, it's a fork
         # (opponent has multiple 3-in-a-rows we can't block all)
         if len(unique_directions) >= 2:
             # FORK DETECTED: Opponent has 2+ different 3-in-a-rows
             # Defensive blocking won't work - return None to let bot attack
             return None
-        
+
         # Block the most dangerous threat (most open ends first)
         r, c, _, _ = dangerous_extensions[0]
         return {"row": r, "col": c, "cone_size": 0}
@@ -651,31 +651,31 @@ class GomokuHardBot(IBot):
         """
         best_fork = None
         best_fork_score = 0
-        
+
         for r, c in candidates:
             board[r][c] = {"player": player, "size": 0}
-            
+
             # Count distinct threats created by this move
             threat_count = self.count_threats(board, player, board_size, r, c)
-            
+
             # Four-three fork (has four + has three) or double-four = immediate win
             if threat_count['fours'] >= 1 and threat_count['threes'] >= 1:
                 board[r][c] = None
                 return {"row": r, "col": c, "cone_size": 0}  # Guaranteed win!
-            
+
             # Double four = immediate win
             if threat_count['fours'] >= 2:
                 board[r][c] = None
                 return {"row": r, "col": c, "cone_size": 0}
-            
+
             # Double three = very strong (opponent can only block one)
             if threat_count['threes'] >= 2:
                 if threat_count['threes'] > best_fork_score:
                     best_fork_score = threat_count['threes']
                     best_fork = (r, c)
-            
+
             board[r][c] = None
-        
+
         if best_fork:
             return {"row": best_fork[0], "col": best_fork[1], "cone_size": 0}
         return None
@@ -684,18 +684,18 @@ class GomokuHardBot(IBot):
         """
         Count distinct threat patterns created by the stone at (placed_r, placed_c).
         Returns dict with 'fours' and 'threes' counts.
-        
-        ENHANCED: Now detects gap-fours (XX_XX), broken-fours (X_XXX), 
+
+        ENHANCED: Now detects gap-fours (XX_XX), broken-fours (X_XXX),
         and secondary threats within radius.
         """
         threats = {'fours': 0, 'threes': 0}
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # horizontal, vertical, diagonals
-        
+
         for dr, dc in directions:
             # Extract 9-cell line centered on placed stone
             line = []
             positions = []
-            
+
             for i in range(-4, 5):
                 nr, nc = placed_r + dr * i, placed_c + dc * i
                 if 0 <= nr < board_size and 0 <= nc < board_size:
@@ -710,51 +710,51 @@ class GomokuHardBot(IBot):
                 else:
                     line.append('#')  # Out of bounds
                     positions.append(None)
-            
+
             line_str = ''.join(line)
-            
+
             # Detect FOURS (immediate threats)
             four_patterns = [
                 'XXXX_', '_XXXX',  # Simple four
                 'XX_XX', 'X_XXX', 'XXX_X',  # Gap-fours
             ]
-            
+
             for pattern in four_patterns:
                 if pattern in line_str:
                     threats['fours'] += 1
                     break  # Count once per direction
-            
+
             # Detect THREES (strong threats needing one more move)
             three_patterns = [
                 '_XXX_',  # Open three (strongest)
                 '__XXX_', '_XXX__',  # Semi-open three
                 '_XX_X_', '_X_XX_',  # Broken three with space
             ]
-            
+
             for pattern in three_patterns:
                 if pattern in line_str:
                     threats['threes'] += 1
                     break  # Count once per direction
-        
+
         return threats
 
     def find_four_in_row_threat(self, board, opponent, board_size, candidates):
         """
         Explicitly check for 4-in-a-row threats in ANY direction.
         Returns the blocking move if found.
-        
+
         This is critical for catching diagonal threats that pattern
         evaluation might underweight.
         """
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # H, V, diag-right, diag-left
-        
+
         # Check each empty cell to see if blocking it prevents a 4-in-row
         for r, c in candidates:
             for dr, dc in directions:
                 # Count consecutive opponent pieces in this direction
                 count = 0
                 positions = []
-                
+
                 # Check positive direction
                 for i in range(1, 5):
                     nr, nc = r + dr * i, c + dc * i
@@ -767,7 +767,7 @@ class GomokuHardBot(IBot):
                             break
                     else:
                         break
-                
+
                 # Check negative direction
                 for i in range(1, 5):
                     nr, nc = r - dr * i, c - dc * i
@@ -780,11 +780,11 @@ class GomokuHardBot(IBot):
                             break
                     else:
                         break
-                
+
                 # If 4 or more consecutive opponent pieces, BLOCK!
                 if count >= 4:
                     return {"row": r, "col": c, "cone_size": 0}
-        
+
         return None
 
     def find_own_four_in_row(self, board, player, board_size, candidates):
@@ -793,15 +793,15 @@ class GomokuHardBot(IBot):
         This creates a forcing move where opponent must block, giving bot initiative.
         """
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # H, V, diag-right, diag-left
-        
+
         for r, c in candidates:
             # Simulate placing bot's piece here
             board[r][c] = {"player": player, "size": 0}
-            
+
             for dr, dc in directions:
                 # Count consecutive bot pieces through this position
                 total_consecutive = 1  # The piece we just placed
-                
+
                 # Count backward
                 for i in range(1, 5):
                     nr, nc = r - dr * i, c - dc * i
@@ -813,7 +813,7 @@ class GomokuHardBot(IBot):
                             break
                     else:
                         break
-                
+
                 # Count forward
                 for i in range(1, 5):
                     nr, nc = r + dr * i, c + dc * i
@@ -825,12 +825,12 @@ class GomokuHardBot(IBot):
                             break
                     else:
                         break
-                
+
                 # If this creates 4 consecutive, it's a strong threat!
                 if total_consecutive >= 4:
                     board[r][c] = None
                     return {"row": r, "col": c, "cone_size": 0}
-            
+
             board[r][c] = None
-        
+
         return None
