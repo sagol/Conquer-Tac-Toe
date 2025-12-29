@@ -110,32 +110,29 @@ class GomokuHardBot(IBot):
             board[r][c] = None
 
         # 3.3 CRITICAL: Block 3-in-a-row extensions (before they become 4)
-        # This catches patterns like OOO_ or _OOO that preventive fork missed
+        # BUT: Only if opponent has a SINGLE 3-in-a-row (if multiple, skip to attack)
         three_extension_block = self.find_three_extension_block(board, opponent, board_size, candidates)
         if three_extension_block:
             return three_extension_block
 
         # 3.5 CRITICAL: Check for 4-in-a-row threats (one move from winning)
-        # This is MORE important than forks!
         four_in_row_block = self.find_four_in_row_threat(board, opponent, board_size, candidates)
         if four_in_row_block:
             return four_in_row_block
 
-        # 4. ADVANCED: Detect fork moves (four-three or double-three)
-        # These create multiple threats that opponent can't block
+        # 4. CRITICAL: Block opponent's existing fork (especially with 4-in-a-row!)
+        # This must come BEFORE creating own fork to prevent opponent wins
+        opponent_fork = self.find_fork_move(board, opponent, board_size, candidates)
+        if opponent_fork:
+            return opponent_fork
+
+        # 4.5 OFFENSIVE: Create our own fork (after blocking critical threats)
+        # Still aggressive, but only after ensuring opponent can't win next move
         fork_move = self.find_fork_move(board, player, board_size, candidates)
         if fork_move:
             return fork_move
-
-        # 4.5 ADVANCED (HARD ONLY): Block opponent's potential fork
-        # This is what makes Hard stronger - preemptive blocking
-        opponent_fork = self.find_fork_move(board, opponent, board_size, candidates)
-        if opponent_fork:
-            # Block opponent's fork square
-            return opponent_fork
         
-        # 4.7 CRITICAL: Prevent opponent fork BEFORE it happens
-        # Check if opponent playing at any position would create a fork
+        # 4.7 LOWER PRIORITY: Prevent future forks (after offensive plays)
         preventive_block = self.find_preventive_fork_block(board, opponent, board_size, candidates)
         if preventive_block:
             return preventive_block
