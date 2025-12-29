@@ -7,6 +7,7 @@ from .gomoku_strategy import GomokuStrategy
 # Pre-compute Zobrist table for fast board hashing
 # Supports up to 19x19 boards with 2 players
 
+
 class ZobristHasher:
     """Fast incremental board hashing using Zobrist method"""
 
