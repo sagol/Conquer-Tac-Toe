@@ -26,10 +26,12 @@ const Lobby = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(10); // Show 10 games initially
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
     setPage(1); // Reset to page 1 when switching tabs
+    setDisplayLimit(10); // Reset display limit when switching tabs
   };
 
   // Helper function to format timestamps
@@ -214,6 +216,14 @@ const Lobby = () => {
       return new Date(b.created_at) - new Date(a.created_at);
     });
 
+  // Apply display limit for pagination
+  const displayedGames = filteredGames.slice(0, displayLimit);
+  const hasMore = filteredGames.length > displayLimit;
+
+  const handleLoadMore = () => {
+    setDisplayLimit(prev => prev + 10);
+  };
+
   return (
     <div className="lobby-container modern-container">
       <SEO
@@ -266,8 +276,8 @@ const Lobby = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredGames.length > 0 ? (
-                filteredGames.map((request) => (
+              {displayedGames.length > 0 ? (
+                displayedGames.map((request) => (
                   <TableRow
                     key={request.id}
                     hover
@@ -310,6 +320,20 @@ const Lobby = () => {
             </TableBody>
           </Table>
         </div>
+
+        {/* Load More Button */}
+        {hasMore && (
+          <Box display="flex" justifyContent="center" mt={3}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleLoadMore}
+              className="lobby-button"
+            >
+              Load More Games
+            </Button>
+          </Box>
+        )}
 
 
         {/* Game Details Dialog */}
