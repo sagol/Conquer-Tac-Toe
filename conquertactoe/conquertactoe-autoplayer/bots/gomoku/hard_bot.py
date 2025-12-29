@@ -100,6 +100,11 @@ class GomokuHardBot(IBot):
                 return {"row": r, "col": c, "cone_size": 0}
             board[r][c] = None
 
+        # 1.5 CRITICAL: Check for own 4-in-a-row (one move to threaten win)
+        own_four = self.find_own_four_in_row(board, player, board_size, candidates)
+        if own_four:
+            return own_four
+
         # 3. Check for must-block moves (opponent wins next move)
         opponent = 1
         for r, c in candidates:
@@ -108,9 +113,9 @@ class GomokuHardBot(IBot):
                 board[r][c] = None
                 return {"row": r, "col": c, "cone_size": 0}
             board[r][c] = None
-
-        # 3.3 CRITICAL: Block 3-in-a-row extensions (before they become 4)
-        # BUT: Only if opponent has a SINGLE 3-in-a-row (if multiple, skip to attack)
+        
+        # 3.3 CRITICAL: Block opponent's 3-in-a-row extension to 4-in-a-row
+        # UNLESS they have a fork (multiple 3s) - then attack instead
         three_extension_block = self.find_three_extension_block(board, opponent, board_size, candidates)
         if three_extension_block:
             return three_extension_block
@@ -779,5 +784,53 @@ class GomokuHardBot(IBot):
                 # If 4 or more consecutive opponent pieces, BLOCK!
                 if count >= 4:
                     return {"row": r, "col": c, "cone_size": 0}
+        
+        return None
+
+    def find_own_four_in_row(self, board, player, board_size, candidates):
+        """
+        Find bot's own 4-in-a-row opportunities (one move creates unstoppable threat).
+        This creates a forcing move where opponent must block, giving bot initiative.
+        """
+        directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # H, V, diag-right, diag-left
+        
+        for r, c in candidates:
+            # Simulate placing bot's piece here
+            board[r][c] = {"player": player, "size": 0}
+            
+            for dr, dc in directions:
+                # Count consecutive bot pieces through this position
+                total_consecutive = 1  # The piece we just placed
+                
+                # Count backward
+                for i in range(1, 5):
+                    nr, nc = r - dr * i, c - dc * i
+                    if 0 <= nr < board_size and 0 <= nc < board_size:
+                        cell = board[nr][nc]
+                        if cell and cell.get('player') == player:
+                            total_consecutive += 1
+                        else:
+                            break
+                    else:
+                        break
+                
+                # Count forward
+                for i in range(1, 5):
+                    nr, nc = r + dr * i, c + dc * i
+                    if 0 <= nr < board_size and 0 <= nc < board_size:
+                        cell = board[nr][nc]
+                        if cell and cell.get('player') == player:
+                            total_consecutive += 1
+                        else:
+                            break
+                    else:
+                        break
+                
+                # If this creates 4 consecutive, it's a strong threat!
+                if total_consecutive >= 4:
+                    board[r][c] = None
+                    return {"row": r, "col": c, "cone_size": 0}
+            
+            board[r][c] = None
         
         return None
