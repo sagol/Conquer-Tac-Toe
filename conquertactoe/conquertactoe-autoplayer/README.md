@@ -54,14 +54,34 @@ graph LR
 
 ### Gomoku Hard Bot (Expert)
 
-The most sophisticated bot, optimized for large boards.
+The most sophisticated bot, optimized for large boards with advanced strategic capabilities.
 
-**Algorithms:**
+**Core Algorithms:**
 - **Iterative Deepening**: Starts at depth 2, increases to 12 based on time
 - **Zobrist Hashing**: O(1) transposition table lookups
-- **VCF Search**: Victory by Continuous Forcing (depth 10)
+- **VCF Search**: Victory by Continuous Forcing (depth 20)
 - **History Heuristic**: Orders moves by historical performance
 - **Killer Moves**: Tracks refutation moves per ply
+
+**Strategic Improvements (Dec 2025):**
+- **Own 4-in-a-Row Detection**: Finds bot's winning positions (creates unstoppable threats)
+- **Open Threat Analysis**: Distinguishes open (2 ends), semi-open (1 end), and closed (0 ends) threats
+- **Smart Fork Blocking**: Prioritizes blocking opponent forks before creating own
+- **Fork Detection**: Identifies double 3-in-a-row and 4-in-a-row combination threats
+- **Preventive Defense**: Blocks positions that would create opponent forks
+- **Priority Rebalancing**: Optimized move ordering for aggressive yet safe play
+
+**Move Priority Order:**
+1. Immediate 5-in-a-row win
+2. Own 4-in-a-row opportunity
+3. Block opponent's 5-in-a-row
+4. Block opponent's 3-to-4 extension
+5. Block opponent's 4-in-a-row
+6. Block opponent's existing fork
+7. Create own fork
+8. Prevent future opponent forks
+9. VCF forcing sequence
+10. Iterative deepening search
 
 **Performance:** ~47,000 nodes/4.5s on 15×15 midgame
 

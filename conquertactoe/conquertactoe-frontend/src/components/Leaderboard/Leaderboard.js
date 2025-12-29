@@ -115,15 +115,15 @@ const Leaderboard = () => {
   const renderLeaderboardTable = (data) => (
     <div className="table-container">
       <Table>
-        <TableHead>
+        <TableHead className="table-head">
           <TableRow>
-            <TableCell className="col-rank"><strong>Rank</strong></TableCell>
-            <TableCell className="col-username"><strong>Username</strong></TableCell>
-            <TableCell align="center" className="col-games"><strong>Games</strong></TableCell>
-            <TableCell align="center" className="col-wins"><strong>Wins</strong></TableCell>
-            <TableCell align="center" className="col-losses"><strong>Losses</strong></TableCell>
-            <TableCell align="center" className="col-draws"><strong>Draws</strong></TableCell>
-            <TableCell align="center" className="col-winrate"><strong>Win Rate</strong></TableCell>
+            <TableCell className="col-rank" style={{ textTransform: 'uppercase' }}><strong>Rank</strong></TableCell>
+            <TableCell className="col-username" style={{ textTransform: 'uppercase' }}><strong>Username</strong></TableCell>
+            <TableCell align="center" className="col-games" style={{ textTransform: 'uppercase' }}><strong>Games</strong></TableCell>
+            <TableCell align="center" className="col-wins" style={{ textTransform: 'uppercase' }}><strong>Wins</strong></TableCell>
+            <TableCell align="center" className="col-losses" style={{ textTransform: 'uppercase' }}><strong>Losses</strong></TableCell>
+            <TableCell align="center" className="col-draws" style={{ textTransform: 'uppercase' }}><strong>Draws</strong></TableCell>
+            <TableCell align="center" className="col-winrate" style={{ textTransform: 'uppercase' }}><strong>Win Rate</strong></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
