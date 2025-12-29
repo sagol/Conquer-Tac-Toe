@@ -557,12 +557,15 @@ class GomokuHardBot(IBot):
         """
         CRITICAL: Block positions that extend opponent's 3-in-a-row to 4-in-a-row.
         
-        ENHANCEMENT: Detects if opponent has MULTIPLE 3-in-a-rows (fork).
+        ENHANCEMENT 1: Detects if opponent has MULTIPLE 3-in-a-rows (fork).
         If opponent has 2+ different 3-in-a-rows, blocking one is useless - 
         we need to attack instead. Returns None in this case.
+        
+        ENHANCEMENT 2: Checks if threat is actually "open" (both ends extendable).
+        Don't waste moves blocking threats that are already blocked from one side.
         """
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # H, V, diag-right, diag-left
-        dangerous_extensions = []  # List of (row, col, direction_index)
+        dangerous_extensions = []  # List of (row, col, direction_index, num_open_ends)
         
         for r, c in candidates:
             # Check if playing here extends opponent's line to 4
@@ -572,7 +575,8 @@ class GomokuHardBot(IBot):
                 # Count consecutive opponent pieces through this position
                 total_consecutive = 1  # The piece we just placed
                 
-                # Count backward
+                # Count backward and check if end is blocked
+                backward_blocked = False
                 for i in range(1, 5):
                     nr, nc = r - dr * i, c - dc * i
                     if 0 <= nr < board_size and 0 <= nc < board_size:
@@ -580,11 +584,16 @@ class GomokuHardBot(IBot):
                         if cell and cell.get('player') == opponent:
                             total_consecutive += 1
                         else:
+                            # Hit a wall or opponent piece - check if blocked
+                            if cell is not None and cell.get('player') != opponent:
+                                backward_blocked = True
                             break
                     else:
+                        backward_blocked = True  # Hit board edge
                         break
                 
-                # Count forward
+                # Count forward and check if end is blocked
+                forward_blocked = False
                 for i in range(1, 5):
                     nr, nc = r + dr * i, c + dc * i
                     if 0 <= nr < board_size and 0 <= nc < board_size:
@@ -592,18 +601,28 @@ class GomokuHardBot(IBot):
                         if cell and cell.get('player') == opponent:
                             total_consecutive += 1
                         else:
+                            # Hit a wall or opponent piece
+                            if cell is not None and cell.get('player') != opponent:
+                                forward_blocked = True
                             break
                     else:
+                        forward_blocked = True  # Hit board edge
                         break
                 
-                # If this creates 4 consecutive, record it
-                if total_consecutive >= 4:
-                    dangerous_extensions.append((r, c, dir_idx))
+                # Calculate open ends (0, 1, or 2)
+                num_open_ends = 2 - (1 if backward_blocked else 0) - (1 if forward_blocked else 0)
+                
+                # If this creates 4 consecutive AND has at least one open end
+                if total_consecutive >= 4 and num_open_ends > 0:
+                    dangerous_extensions.append((r, c, dir_idx, num_open_ends))
             
             board[r][c] = None
         
         if not dangerous_extensions:
             return None
+        
+        # Sort by open ends (prefer blocking fully open threats = 2 open ends)
+        dangerous_extensions.sort(key=lambda x: x[3], reverse=True)
         
         # GROUP by direction to find if there are multiple independent 3-in-a-rows
         unique_directions = set(ext[2] for ext in dangerous_extensions)
@@ -615,8 +634,8 @@ class GomokuHardBot(IBot):
             # Defensive blocking won't work - return None to let bot attack
             return None
         
-        # Only one direction threatened - block it
-        r, c, _ = dangerous_extensions[0]
+        # Block the most dangerous threat (most open ends first)
+        r, c, _, _ = dangerous_extensions[0]
         return {"row": r, "col": c, "cone_size": 0}
 
     def find_fork_move(self, board, player, board_size, candidates):
