@@ -109,6 +109,12 @@ class GomokuHardBot(IBot):
                 return {"row": r, "col": c, "cone_size": 0}
             board[r][c] = None
 
+        # 3.3 CRITICAL: Block 3-in-a-row extensions (before they become 4)
+        # This catches patterns like OOO_ or _OOO that preventive fork missed
+        three_extension_block = self.find_three_extension_block(board, opponent, board_size, candidates)
+        if three_extension_block:
+            return three_extension_block
+
         # 3.5 CRITICAL: Check for 4-in-a-row threats (one move from winning)
         # This is MORE important than forks!
         four_in_row_block = self.find_four_in_row_threat(board, opponent, board_size, candidates)
