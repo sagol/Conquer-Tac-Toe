@@ -489,6 +489,26 @@ class GomokuHardBot(IBot):
 
         return None
 
+    def find_critical_blocks(self, board, attacker, defender, board_size):
+        """
+        Find cells where defender MUST play to block attacker's threats.
+        Returns list of critical blocking positions.
+        """
+        critical_blocks = []
+        candidates = self.strategy.generate_candidate_moves(board, board_size)
+        
+        for r, c in candidates:
+            # Test if attacker playing here would create a four
+            board[r][c] = {"player": attacker, "size": 0}
+            threats_if_attacker_plays = self.count_threats(board, attacker, board_size, r, c)
+            board[r][c] = None
+            
+            # This is a critical block if attacker would create a four here
+            if threats_if_attacker_plays['fours'] >= 1:
+                critical_blocks.append((r, c))
+        
+        return critical_blocks
+
     def find_fork_move(self, board, player, board_size, candidates):
         """
         ADVANCED: Find moves that create multiple threats simultaneously.
