@@ -421,75 +421,72 @@ class GomokuHardBot(IBot):
         return score
 
     def find_vcf_sequence(self, board, player, board_size, depth=0, max_depth=10):
-        """Deep VCF search - look for forced win sequences"""
+        """
+        Enhanced VCF - Victory by Continuous Forcing.
+        Finds moves that create unstoppable forcing sequences.
+        """
         if depth >= max_depth:
             return None
 
         opponent = 1 if player == 2 else 2
         candidates = self.strategy.generate_candidate_moves(board, board_size)
 
-        # Find forcing moves (creates 4 or open 3)
+        # Collect forcing moves with threat analysis
         forcing_moves = []
+        
         for r, c in candidates:
             board[r][c] = {"player": player, "size": 0}
 
-            # Check if this move wins immediately
+            # Immediate win
             if self.strategy.check_win(board, player, board_size):
                 board[r][c] = None
                 return {"row": r, "col": c, "cone_size": 0}
 
-            # Check if it creates a strong threat (lowered to catch open threes)
-            score = self.strategy.evaluate_board(board, player, board_size)
-            if score > 5000:  # Creates 4 or strong open 3 (lowered from 8000)
-                forcing_moves.append((r, c, score))
+            # Analyze threats this move creates
+            threats = self.count_threats(board, player, board_size, r, c)
+            
+            # Forcing criteria: creates 4-in-a-row or double 3-in-a-row
+            is_forcing = threats['fours'] >= 1 or threats['threes'] >= 2
+            
+            if is_forcing:
+                forcing_moves.append((r, c, threats['fours'] * 100 + threats['threes']))
 
             board[r][c] = None
 
-        # Sort by score and try top forcing moves
+        # Try forcing moves (strongest first)
         forcing_moves.sort(key=lambda x: x[2], reverse=True)
 
-        for r, c, _ in forcing_moves[:5]:
+        for r, c, score in forcing_moves[:3]:  # Top 3 forcing moves
             board[r][c] = {"player": player, "size": 0}
-
-            # Find opponent's forced response (must block our threat)
-            opp_response = self.find_forced_response(board, opponent, player, board_size)
-
-            if opp_response:
-                # Play opponent's response
-                or_, oc = opp_response
-                board[or_][oc] = {"player": opponent, "size": 0}
-
-                # Continue the attack
-                next_move = self.find_vcf_sequence(board, player, board_size, depth + 1, max_depth)
-
-                board[or_][oc] = None
+            
+            # After we play, what are opponent's options?
+            # If they MUST block our four, verify we still win
+            must_block = self.find_critical_blocks(board, player, opponent, board_size)
+            
+            if len(must_block) <= 2:  # Limited blocking options
+                # Try each possible block
+                wins_all_blocks = True
+                for br, bc in must_block:
+                    board[br][bc] = {"player": opponent, "size": 0}
+                    
+                    # Do we still have a win after they block?
+                    next_forcing = self.find_vcf_sequence(
+                        board, player, board_size, depth + 1, max_depth
+                    )
+                    
+                    board[br][bc] = None
+                    
+                    if not next_forcing:
+                        wins_all_blocks = False
+                        break
+                
                 board[r][c] = None
-
-                if next_move:
+                
+                if wins_all_blocks and len(must_block) > 0:
                     return {"row": r, "col": c, "cone_size": 0}
             else:
-                # No forced response means we might have multiple threats
                 board[r][c] = None
-                # This could be a winning position
 
-        return None
-
-    def find_forced_response(self, board, player, attacker, board_size):
-        """Find if there's exactly one move that blocks a four"""
-        candidates = self.strategy.generate_candidate_moves(board, board_size)
-        blocking_moves = []
-
-        for r, c in candidates:
-            board[r][c] = {"player": player, "size": 0}
-            # Check if this blocks the threat
-            attacker_score = self.strategy.evaluate_board(board, attacker, board_size)
-            if attacker_score < 5000:  # Threat blocked
-                blocking_moves.append((r, c))
-            board[r][c] = None
-
-        # Return the blocking move if there's exactly one
-        if len(blocking_moves) == 1:
-            return blocking_moves[0]
         return None
 
     def find_fork_move(self, board, player, board_size, candidates):
