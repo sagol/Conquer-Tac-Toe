@@ -559,17 +559,19 @@ class GomokuHardBot(IBot):
     def find_three_extension_block(self, board, opponent, board_size, candidates):
         """
         CRITICAL: Block positions that extend opponent's 3-in-a-row to 4-in-a-row.
-        This catches simple threats that don't create forks but are still deadly.
         
-        Example: If opponent has OOO_, block the _ to prevent OOOO
+        ENHANCEMENT: Detects if opponent has MULTIPLE 3-in-a-rows (fork).
+        If opponent has 2+ different 3-in-a-rows, blocking one is useless - 
+        we need to attack instead. Returns None in this case.
         """
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # H, V, diag-right, diag-left
+        dangerous_extensions = []  # List of (row, col, direction_index)
         
         for r, c in candidates:
             # Check if playing here extends opponent's line to 4
             board[r][c] = {"player": opponent, "size": 0}
             
-            for dr, dc in directions:
+            for dir_idx, (dr, dc) in enumerate(directions):
                 # Count consecutive opponent pieces through this position
                 total_consecutive = 1  # The piece we just placed
                 
@@ -597,14 +599,28 @@ class GomokuHardBot(IBot):
                     else:
                         break
                 
-                # If this creates 4 consecutive, it's a critical block
+                # If this creates 4 consecutive, record it
                 if total_consecutive >= 4:
-                    board[r][c] = None
-                    return {"row": r, "col": c, "cone_size": 0}
+                    dangerous_extensions.append((r, c, dir_idx))
             
             board[r][c] = None
         
-        return None
+        if not dangerous_extensions:
+            return None
+        
+        # GROUP by direction to find if there are multiple independent 3-in-a-rows
+        unique_directions = set(ext[2] for ext in dangerous_extensions)
+        
+        # If there are extensions in 2+ different directions, it's a fork  
+        # (opponent has multiple 3-in-a-rows we can't block all)
+        if len(unique_directions) >= 2:
+            # FORK DETECTED: Opponent has 2+ different 3-in-a-rows
+            # Defensive blocking won't work - return None to let bot attack
+            return None
+        
+        # Only one direction threatened - block it
+        r, c, _ = dangerous_extensions[0]
+        return {"row": r, "col": c, "cone_size": 0}
 
     def find_fork_move(self, board, player, board_size, candidates):
         """
