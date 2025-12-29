@@ -109,6 +109,12 @@ class GomokuHardBot(IBot):
                 return {"row": r, "col": c, "cone_size": 0}
             board[r][c] = None
 
+        # 3.5 CRITICAL: Check for 4-in-a-row threats (one move from winning)
+        # This is MORE important than forks!
+        four_in_row_block = self.find_four_in_row_threat(board, opponent, board_size, candidates)
+        if four_in_row_block:
+            return four_in_row_block
+
         # 4. ADVANCED: Detect fork moves (four-three or double-three)
         # These create multiple threats that opponent can't block
         fork_move = self.find_fork_move(board, player, board_size, candidates)
@@ -580,3 +586,52 @@ class GomokuHardBot(IBot):
                     break  # Count once per direction
         
         return threats
+
+    def find_four_in_row_threat(self, board, opponent, board_size, candidates):
+        """
+        Explicitly check for 4-in-a-row threats in ANY direction.
+        Returns the blocking move if found.
+        
+        This is critical for catching diagonal threats that pattern
+        evaluation might underweight.
+        """
+        directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # H, V, diag-right, diag-left
+        
+        # Check each empty cell to see if blocking it prevents a 4-in-row
+        for r, c in candidates:
+            for dr, dc in directions:
+                # Count consecutive opponent pieces in this direction
+                count = 0
+                positions = []
+                
+                # Check positive direction
+                for i in range(1, 5):
+                    nr, nc = r + dr * i, c + dc * i
+                    if 0 <= nr < board_size and 0 <= nc < board_size:
+                        cell = board[nr][nc]
+                        if cell and cell.get('player') == opponent:
+                            count += 1
+                            positions.append((nr, nc))
+                        else:
+                            break
+                    else:
+                        break
+                
+                # Check negative direction
+                for i in range(1, 5):
+                    nr, nc = r - dr * i, c - dc * i
+                    if 0 <= nr < board_size and 0 <= nc < board_size:
+                        cell = board[nr][nc]
+                        if cell and cell.get('player') == opponent:
+                            count += 1
+                            positions.append((nr, nc))
+                        else:
+                            break
+                    else:
+                        break
+                
+                # If 4 or more consecutive opponent pieces, BLOCK!
+                if count >= 4:
+                    return {"row": r, "col": c, "cone_size": 0}
+        
+        return None
