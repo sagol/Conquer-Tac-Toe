@@ -556,6 +556,56 @@ class GomokuHardBot(IBot):
         
         return None
 
+    def find_three_extension_block(self, board, opponent, board_size, candidates):
+        """
+        CRITICAL: Block positions that extend opponent's 3-in-a-row to 4-in-a-row.
+        This catches simple threats that don't create forks but are still deadly.
+        
+        Example: If opponent has OOO_, block the _ to prevent OOOO
+        """
+        directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # H, V, diag-right, diag-left
+        
+        for r, c in candidates:
+            # Check if playing here extends opponent's line to 4
+            board[r][c] = {"player": opponent, "size": 0}
+            
+            for dr, dc in directions:
+                # Count consecutive opponent pieces through this position
+                total_consecutive = 1  # The piece we just placed
+                
+                # Count backward
+                for i in range(1, 5):
+                    nr, nc = r - dr * i, c - dc * i
+                    if 0 <= nr < board_size and 0 <= nc < board_size:
+                        cell = board[nr][nc]
+                        if cell and cell.get('player') == opponent:
+                            total_consecutive += 1
+                        else:
+                            break
+                    else:
+                        break
+                
+                # Count forward
+                for i in range(1, 5):
+                    nr, nc = r + dr * i, c + dc * i
+                    if 0 <= nr < board_size and 0 <= nc < board_size:
+                        cell = board[nr][nc]
+                        if cell and cell.get('player') == opponent:
+                            total_consecutive += 1
+                        else:
+                            break
+                    else:
+                        break
+                
+                # If this creates 4 consecutive, it's a critical block
+                if total_consecutive >= 4:
+                    board[r][c] = None
+                    return {"row": r, "col": c, "cone_size": 0}
+            
+            board[r][c] = None
+        
+        return None
+
     def find_fork_move(self, board, player, board_size, candidates):
         """
         ADVANCED: Find moves that create multiple threats simultaneously.
