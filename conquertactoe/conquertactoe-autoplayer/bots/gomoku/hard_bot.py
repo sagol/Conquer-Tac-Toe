@@ -77,8 +77,14 @@ class GomokuHardBot(IBot):
 
         # Trim transposition table if too large
         if len(self.transposition_table) > self.tt_max_size:
-            # Keep most recent entries (simple approach)
-            self.transposition_table = dict(list(self.transposition_table.items())[-self.tt_max_size//2:])
+            # Improved: Keep entries with highest depth (most valuable)
+            # Sort by depth and keep top half
+            sorted_entries = sorted(
+                self.transposition_table.items(),
+                key=lambda x: x[1].get('depth', 0),
+                reverse=True
+            )
+            self.transposition_table = dict(sorted_entries[:self.tt_max_size//2])
 
         # 1. Opening Move (Optimal)
         opening_move = self.strategy.get_opening_move(board, player, board_size)
@@ -117,7 +123,8 @@ class GomokuHardBot(IBot):
             return opponent_fork
 
         # 5. VCF Search (Deep) - Look for forced win sequence
-        vcf_move = self.find_vcf_sequence(board, player, board_size, max_depth=14)
+        # Enhanced with lower threshold and greater depth
+        vcf_move = self.find_vcf_sequence(board, player, board_size, max_depth=20)
         if vcf_move:
             return vcf_move
 
@@ -146,7 +153,8 @@ class GomokuHardBot(IBot):
 
         # CRITICAL: If top move is a significant play (blocks/creates threat), use it
         # Threshold catches: wins, blocks, fours, open threes
-        if top_score >= 2000:
+        # Lowered from 2000 to 1500 for better tactical awareness
+        if top_score >= 1500:
             return {"row": top_move[0], "col": top_move[1], "cone_size": 0}
 
         best_move = top_move
@@ -350,9 +358,9 @@ class GomokuHardBot(IBot):
 
             # === COMBINATION BONUS: moves that block AND attack are strongest ===
             if offense_bonus >= 5000 and defense_bonus >= 60000:
-                score += 25000  # Strong combo: blocks threat + builds own threat
+                score += 150000  # Massively increased - combo moves are strategic wins
             elif offense_bonus >= 2000 and defense_bonus >= 10000:
-                score += 10000  # Moderate combo
+                score += 75000  # Moderate combo also very valuable
 
             scored.append(((r, c), score))
 
@@ -424,9 +432,9 @@ class GomokuHardBot(IBot):
                 board[r][c] = None
                 return {"row": r, "col": c, "cone_size": 0}
 
-            # Check if it creates a strong threat
+            # Check if it creates a strong threat (lowered to catch open threes)
             score = self.strategy.evaluate_board(board, player, board_size)
-            if score > 8000:  # Creates 4 or better
+            if score > 5000:  # Creates 4 or strong open 3 (lowered from 8000)
                 forcing_moves.append((r, c, score))
 
             board[r][c] = None
@@ -519,49 +527,56 @@ class GomokuHardBot(IBot):
         """
         Count distinct threat patterns created by the stone at (placed_r, placed_c).
         Returns dict with 'fours' and 'threes' counts.
+        
+        ENHANCED: Now detects gap-fours (XX_XX), broken-fours (X_XXX), 
+        and secondary threats within radius.
         """
         threats = {'fours': 0, 'threes': 0}
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # horizontal, vertical, diagonals
         
         for dr, dc in directions:
-            # Count stones in this line through placed position
-            count = 1  # The placed stone
-            open_ends = 0
+            # Extract 9-cell line centered on placed stone
+            line = []
+            positions = []
             
-            # Check positive direction
-            for i in range(1, 5):
+            for i in range(-4, 5):
                 nr, nc = placed_r + dr * i, placed_c + dc * i
                 if 0 <= nr < board_size and 0 <= nc < board_size:
                     cell = board[nr][nc]
                     if cell and cell.get('player') == player:
-                        count += 1
+                        line.append('X')
                     elif cell is None:
-                        open_ends += 1
-                        break
+                        line.append('_')
                     else:
-                        break
+                        line.append('O')
+                    positions.append((nr, nc))
                 else:
-                    break
+                    line.append('#')  # Out of bounds
+                    positions.append(None)
             
-            # Check negative direction
-            for i in range(1, 5):
-                nr, nc = placed_r - dr * i, placed_c - dc * i
-                if 0 <= nr < board_size and 0 <= nc < board_size:
-                    cell = board[nr][nc]
-                    if cell and cell.get('player') == player:
-                        count += 1
-                    elif cell is None:
-                        open_ends += 1
-                        break
-                    else:
-                        break
-                else:
-                    break
+            line_str = ''.join(line)
             
-            # Classify the threat
-            if count >= 4:
-                threats['fours'] += 1
-            elif count >= 3 and open_ends >= 2:
-                threats['threes'] += 1  # Open three
+            # Detect FOURS (immediate threats)
+            four_patterns = [
+                'XXXX_', '_XXXX',  # Simple four
+                'XX_XX', 'X_XXX', 'XXX_X',  # Gap-fours
+            ]
+            
+            for pattern in four_patterns:
+                if pattern in line_str:
+                    threats['fours'] += 1
+                    break  # Count once per direction
+            
+            # Detect THREES (strong threats needing one more move)
+            three_patterns = [
+                '_XXX_',  # Open three (strongest)
+                '__XXX_', '_XXX__',  # Semi-open three
+                '_XX_X_', '_X_XX_',  # Broken three with space
+            ]
+            
+            for pattern in three_patterns:
+                if pattern in line_str:
+                    threats['threes'] += 1
+                    break  # Count once per direction
         
         return threats

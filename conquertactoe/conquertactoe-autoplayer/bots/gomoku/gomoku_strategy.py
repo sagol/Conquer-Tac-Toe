@@ -21,9 +21,9 @@ class GomokuStrategy:
             'open_four': 100000,   # Unstoppable win in 1
             'four': 15000,         # Forced defense
             'open_three': 3000,    # Major threat
-            'broken_three': 800,   # Minor threat
-            'three': 200,
-            'open_two': 50,
+            'broken_three': 2500,  # Increased - important tactical pattern
+            'three': 500,          # Increased - foundation for threats
+            'open_two': 100,       # Increased - building material
             'two': 15
         }
 
@@ -84,26 +84,37 @@ class GomokuStrategy:
 
         center = actual_board_size // 2
 
-        # Move 1: Center
+        # Move 1: First move - always take center (BLACK/FIRST PLAYER)
         if piece_count == 0:
             return {"row": center, "col": center, "cone_size": 0}
 
-        # Move 2: Near center
+        # Move 2: Second player's first move
         elif piece_count == 1:
+            # Check if opponent took center
             if board[center][center] is not None:
-                # Play diagonal (strongest response)
-                offsets = [(1, 1), (-1, 1), (-1, -1), (1, -1)]
+                # Opponent took center - play diagonal (optimal defense)
+                # Priority: diagonal > knight's move > adjacent
+                offsets = [(1, 1), (-1, 1), (-1, -1), (1, -1)]  # Diagonals first
                 for dr, dc in offsets:
                     r, c = center + dr, center + dc
                     if 0 <= r < actual_board_size and 0 <= c < actual_board_size and board[r][c] is None:
                         return {"row": r, "col": c, "cone_size": 0}
-                # Fallback to adjacent
+                
+                # Knight's move as fallback (distance 2)
+                knight_offsets = [(2, 1), (1, 2), (-1, 2), (-2, 1), (-2, -1), (-1, -2), (1, -2), (2, -1)]
+                for dr, dc in knight_offsets:
+                    r, c = center + dr, center + dc
+                    if 0 <= r < actual_board_size and 0 <= c < actual_board_size and board[r][c] is None:
+                        return {"row": r, "col": c, "cone_size": 0}
+                
+                # Adjacent as last resort
                 offsets = [(0, 1), (1, 0), (0, -1), (-1, 0)]
                 for dr, dc in offsets:
                     r, c = center + dr, center + dc
                     if 0 <= r < actual_board_size and 0 <= c < actual_board_size and board[r][c] is None:
                         return {"row": r, "col": c, "cone_size": 0}
             else:
+                # Opponent played off-center - we can take center (strong move!)
                 return {"row": center, "col": center, "cone_size": 0}
 
         # Move 3-4: Build towards pattern
@@ -230,7 +241,7 @@ class GomokuStrategy:
                 score += value
 
         # Check opponent patterns (defensive - weighted higher)
-        defense_weight = 1.15
+        defense_weight = 1.25  # Increased from 1.15 for better defense
         for pattern, value in self.opponent_patterns:
             if pattern in s:
                 score -= value * defense_weight
@@ -246,14 +257,17 @@ class GomokuStrategy:
         actual_board_size = len(board)
         center = actual_board_size // 2
 
+        # Adaptive radius based on board size
+        search_radius = 3 if actual_board_size >= 12 else 2
+
         has_pieces = False
         for r in range(actual_board_size):
             for c in range(actual_board_size):
                 if board[r][c] is not None:
                     has_pieces = True
-                    # Add neighbors (radius 2)
-                    for dr in range(-2, 3):
-                        for dc in range(-2, 3):
+                    # Add neighbors with adaptive radius
+                    for dr in range(-search_radius, search_radius + 1):
+                        for dc in range(-search_radius, search_radius + 1):
                             if dr == 0 and dc == 0:
                                 continue
                             nr, nc = r + dr, c + dc

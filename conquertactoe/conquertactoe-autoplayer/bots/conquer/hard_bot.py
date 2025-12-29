@@ -28,7 +28,35 @@ class ConquerHardBot(IBot):
         if not board or not bot_cones:
             return None
 
-        # 1. Endgame Solver
+        # 1. Check for immediate win
+        for move in self.strategy.generate_valid_moves(board, bot_cones, 2):
+            r, c, size = move['row'], move['col'], move['cone_size']
+            original = board[r][c]
+            board[r][c] = {"player": 2, "size": size}
+            if self.strategy.check_win(board, 2):
+                board[r][c] = original
+                return move
+            board[r][c] = original
+        
+        # 2. Check for opponent winning move and block it
+        for move in self.strategy.generate_valid_moves(board, player_cones, 1):
+            r, c, size = move['row'], move['col'], move['cone_size']
+            original = board[r][c]
+            board[r][c] = {"player": 1, "size": size}
+            if self.strategy.check_win(board, 1):
+                board[r][c] = original
+                # Block with any available cone
+                for our_move in self.strategy.generate_valid_moves(board, bot_cones, 2):
+                    if our_move['row'] == r and our_move['col'] == c:
+                        return our_move
+            board[r][c] = original
+        
+        # 3. Fork Detection - find moves creating multiple threats
+        fork_move = self.find_fork_move(board, bot_cones)
+        if fork_move:
+            return fork_move
+        
+        # 4. Endgame Solver
         # If total pieces remaining is small, solve perfectly
         total_pieces = sum(c for c in bot_cones if c < 900) + sum(c for c in player_cones if c < 900)
         if total_pieces <= 9:
@@ -36,7 +64,7 @@ class ConquerHardBot(IBot):
             if best_move:
                 return best_move
 
-        # 2. Deep Minimax with Alpha-Beta
+        # 5. Deep Minimax with Alpha-Beta
         best_move = self.minimax_search(board, bot_cones, player_cones)
 
         if best_move:
@@ -50,6 +78,36 @@ class ConquerHardBot(IBot):
         # We use the same minimax but with infinite depth (or very high)
         # and no heuristic evaluation at leaf nodes unless terminal
         return self.minimax_search(board, bot_cones, player_cones, depth=12)
+    
+    def find_fork_move(self, board, bot_cones):
+        """
+        Find moves that create multiple winning threats (fork).
+        A fork is when one move creates 2+ lines with 2-in-a-row.
+        """
+        moves = self.strategy.generate_valid_moves(board, bot_cones, 2)
+        
+        for move in moves:
+            r, c, size = move['row'], move['col'], move['cone_size']
+            original = board[r][c]
+            board[r][c] = {"player": 2, "size": size}
+            
+            # Count how many winning lines have 2 of our pieces
+            threat_count = 0
+            for line in self.strategy.WINNING_LINES:
+                player_count = sum(1 for lr, lc in line if board[lr][lc] and board[lr][lc]['player'] == 2)
+                empty_count = sum(1 for lr, lc in line if board[lr][lc] is None)
+                
+                # 2-in-a-row with 1 empty = threat
+                if player_count == 2 and empty_count == 1:
+                    threat_count += 1
+            
+            board[r][c] = original
+            
+            # If this move creates 2+ threats, it's a fork
+            if threat_count >= 2:
+                return move
+        
+        return None
 
     def minimax_search(self, board, bot_cones, player_cones, depth=None):
         search_depth = depth if depth is not None else self.max_depth

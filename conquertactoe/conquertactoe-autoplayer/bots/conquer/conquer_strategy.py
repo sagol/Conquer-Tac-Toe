@@ -96,18 +96,50 @@ class ConquerStrategy:
                 else:
                     opponent_count += 1
 
-            # 2 in a row (Threat)
+            # 2 in a row (Threat) - but verify empty cell is PLAYABLE
             if player_count == 2 and empty_count == 1:
-                score += 50
+                # Find the empty cell and check if we can play there
+                empty_cell = None
+                for r, c in line:
+                    if board[r][c] is None:
+                        empty_cell = (r, c)
+                        break
+                
+                if empty_cell:
+                    # Check if we have any cone that can play there
+                    can_play = any(count > 0 for count in bot_cones)
+                    if can_play:
+                        score += 50
+            
             if opponent_count == 2 and empty_count == 1:
-                score -= 60  # Defensive priority
+                # Find empty cell and check if it's defensible
+                empty_cell = None
+                for r, c in line:
+                    if board[r][c] is None:
+                        empty_cell = (r, c)
+                        break
+                
+                if empty_cell:
+                    r, c = empty_cell
+                    cell = board[r][c]
+                    # Check if we can actually play here to block
+                    if cell is None:
+                        can_block = any(count > 0 for count in bot_cones)
+                    else:
+                        # Cell occupied - can we overwrite it?
+                        can_block = any(i > cell['size'] and count > 0 
+                                      for i, count in enumerate(bot_cones))
+                    
+                    if can_block:
+                        score -= 60  # Defensive priority
 
             # Blocked lines are less valuable, but owning pieces is still good (handled by material score)
 
         # 3. Cone Economy
         # Having more/larger cones remaining is good
-        player_inventory_val = sum((i + 1) * count for i, count in enumerate(bot_cones))
-        opponent_inventory_val = sum((i + 1) * count for i, count in enumerate(opponent_cones))
+        # Nonlinear weighting: larger cones are disproportionately valuable
+        player_inventory_val = sum((i + 1) ** 1.5 * count for i, count in enumerate(bot_cones))
+        opponent_inventory_val = sum((i + 1) ** 1.5 * count for i, count in enumerate(opponent_cones))
 
         score += (player_inventory_val - opponent_inventory_val) * 5
 
