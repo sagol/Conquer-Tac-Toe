@@ -127,6 +127,12 @@ class GomokuHardBot(IBot):
         if opponent_fork:
             # Block opponent's fork square
             return opponent_fork
+        
+        # 4.7 CRITICAL: Prevent opponent fork BEFORE it happens
+        # Check if opponent playing at any position would create a fork
+        preventive_block = self.find_preventive_fork_block(board, opponent, board_size, candidates)
+        if preventive_block:
+            return preventive_block
 
         # 5. VCF Search (Deep) - Look for forced win sequence
         # Enhanced with lower threshold and greater depth
@@ -508,6 +514,41 @@ class GomokuHardBot(IBot):
                 critical_blocks.append((r, c))
         
         return critical_blocks
+
+    def find_preventive_fork_block(self, board, opponent, board_size, candidates):
+        """
+        PREVENTIVE: Find positions where if opponent plays, they would create a fork.
+        This blocks fork threats BEFORE they happen.
+        """
+        dangerous_positions = []
+        
+        for r, c in candidates:
+            # Simulate opponent playing here
+            board[r][c] = {"player": opponent, "size": 0}
+            
+            # Would this create a fork for opponent?
+            threats = self.count_threats(board, opponent, board_size, r, c)
+            
+            # A fork is when one move creates multiple threats
+            # Either: 2+ threes, OR 1 four + 1 three, OR 2+ fours
+            is_fork = (
+                threats['threes'] >= 2 or
+                (threats['fours'] >= 1 and threats['threes'] >= 1) or
+                threats['fours'] >= 2
+            )
+            
+            if is_fork:
+                dangerous_positions.append((r, c, threats['fours'] * 100 + threats['threes']))
+            
+            board[r][c] = None
+        
+        # Block the most dangerous fork position
+        if dangerous_positions:
+            dangerous_positions.sort(key=lambda x: x[2], reverse=True)
+            r, c, score = dangerous_positions[0]
+            return {"row": r, "col": c, "cone_size": 0}
+        
+        return None
 
     def find_fork_move(self, board, player, board_size, candidates):
         """
