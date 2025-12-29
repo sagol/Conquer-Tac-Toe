@@ -197,11 +197,17 @@
   min-height: 60px;
   aspect-ratio: 1 / 1;
   /* Keep cells square */
+
+  /* Performance optimization for hover */
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  /* Enable hardware acceleration */
 }
 
 .cell:hover {
   background: rgba(255, 255, 255, 0.5);
-  transform: scale(1.05);
+  transform: translate3d(0, 0, 0) scale(1.03);
+  /* Reduced scale, use GPU */
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
