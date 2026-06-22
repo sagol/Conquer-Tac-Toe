@@ -80,27 +80,28 @@ const logMove = async (data) => {
             boardSize = 3
         } = data;
 
+        // Escape single quotes/backslashes for ClickHouse string literals; coerce numerics.
+        const esc = (v) => String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         const query = `
       INSERT INTO ${DB_NAME}.game_moves (
-        game_id, board_state, player_cones, bot_cones, 
-        move_row, move_col, move_size, 
+        game_id, board_state, player_cones, bot_cones,
+        move_row, move_col, move_size,
         difficulty, variant_id, board_size
       ) VALUES (
-        '${gameId}',
-        '${JSON.stringify(board)}',
-        '${JSON.stringify(playerCones)}',
-        '${JSON.stringify(botCones)}',
-        ${move.row},
-        ${move.col},
-        ${move.coneSize},
-        '${difficulty}',
-        ${variantId},
-        ${boardSize}
+        '${esc(gameId)}',
+        '${esc(JSON.stringify(board))}',
+        '${esc(JSON.stringify(playerCones))}',
+        '${esc(JSON.stringify(botCones))}',
+        ${Number(move.row)},
+        ${Number(move.col)},
+        ${Number(move.coneSize)},
+        '${esc(difficulty)}',
+        ${Number(variantId)},
+        ${Number(boardSize)}
       )
     `;
 
         await clickhouse.query(query).toPromise();
-        console.log(`Logged move for game ${gameId} to ClickHouse`);
     } catch (err) {
         console.error('Failed to log move to ClickHouse:', err);
         // Don't throw, just log error so game flow isn't interrupted

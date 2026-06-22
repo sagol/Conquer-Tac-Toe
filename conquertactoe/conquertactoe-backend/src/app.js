@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const session = require('express-session');
 const passport = require('passport');
-const bodyParser = require('body-parser');
 const cors = require('cors');
 const routes = require('./routes');
 const socket = require('./socket');
@@ -43,7 +42,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(bodyParser.json());
+app.use(express.json());
 
 // Check maintenance mode before processing requests
 app.use(maintenanceMode);

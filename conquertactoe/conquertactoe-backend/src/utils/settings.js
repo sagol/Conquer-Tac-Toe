@@ -1,13 +1,9 @@
-const { Pool } = require('pg');
+const pool = require('../config/db');
 
 // Cache settings in memory with TTL
 let settingsCache = null;
 let lastFetch = 0;
 const CACHE_TTL = 30000; // 30 seconds
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
-});
 
 /**
  * Fetch all settings from database

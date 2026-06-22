@@ -6,7 +6,7 @@ export const FETCH_VARIANTS_SUCCESS = 'FETCH_VARIANTS_SUCCESS';
 export const FETCH_VARIANTS_FAILURE = 'FETCH_VARIANTS_FAILURE';
 export const SELECT_VARIANT = 'SELECT_VARIANT';
 
-const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
 
 /**
  * Fetch all game variants from the API

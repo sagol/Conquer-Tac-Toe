@@ -2,6 +2,20 @@ const passport = require('passport');
 const pool = require('../config/db');
 const { getBooleanSetting } = require('../utils/settings');
 
+// Returns true if the user is still banned. Clears the ban first if it has expired.
+async function isStillBanned(user) {
+  if (!user.is_banned) return false;
+  const expired = user.ban_expires_at && new Date(user.ban_expires_at) < new Date();
+  if (!expired) return true;
+  try {
+    await pool.query('UPDATE Users SET is_banned = FALSE, ban_expires_at = NULL, ban_reason = NULL WHERE user_id = $1', [user.user_id]);
+    user.is_banned = false;
+  } catch (dbErr) {
+    console.error('Error unbanning user:', dbErr);
+  }
+  return false;
+}
+
 exports.googleAuth = passport.authenticate('google', { scope: ['profile', 'email'] });
 
 exports.googleAuthCallback = (req, res, next) => {
@@ -13,23 +27,10 @@ exports.googleAuthCallback = (req, res, next) => {
       return res.redirect('/login');
     }
 
-    // Check for ban
-    if (user.is_banned) {
-      const now = new Date();
-      if (user.ban_expires_at && new Date(user.ban_expires_at) < now) {
-        // Ban expired, unban user
-        try {
-          await pool.query('UPDATE Users SET is_banned = FALSE, ban_expires_at = NULL, ban_reason = NULL WHERE user_id = $1', [user.user_id]);
-          user.is_banned = false;
-        } catch (dbErr) {
-          console.error('Error unbanning user:', dbErr);
-        }
-      } else {
-        // User is banned
-        const reason = encodeURIComponent(user.ban_reason || 'Violation of terms');
-        const expires = encodeURIComponent(user.ban_expires_at ? new Date(user.ban_expires_at).toISOString() : 'Permanent');
-        return res.redirect(`${process.env.CLIENT_URL}/banned?reason=${reason}&expires=${expires}`);
-      }
+    if (await isStillBanned(user)) {
+      const reason = encodeURIComponent(user.ban_reason || 'Violation of terms');
+      const expires = encodeURIComponent(user.ban_expires_at ? new Date(user.ban_expires_at).toISOString() : 'Permanent');
+      return res.redirect(`${process.env.CLIENT_URL}/banned?reason=${reason}&expires=${expires}`);
     }
 
     req.logIn(user, (err) => {
@@ -58,27 +59,16 @@ exports.currentUser = async (req, res) => {
   }
 
   // Check if user is banned (in case they were banned while logged in)
-  if (req.user.is_banned) {
-    const now = new Date();
-    if (req.user.ban_expires_at && new Date(req.user.ban_expires_at) < now) {
-      // Ban expired, unban user
-      try {
-        await pool.query('UPDATE Users SET is_banned = FALSE, ban_expires_at = NULL, ban_reason = NULL WHERE user_id = $1', [req.user.user_id]);
-        req.user.is_banned = false;
-      } catch (dbErr) {
-        console.error('Error unbanning user:', dbErr);
-      }
-    } else {
-      // Still banned, log them out
-      req.logout(() => {
-        return res.status(403).json({
-          error: 'Account banned',
-          reason: req.user.ban_reason,
-          expires: req.user.ban_expires_at
-        });
+  if (await isStillBanned(req.user)) {
+    // Still banned, log them out
+    req.logout(() => {
+      return res.status(403).json({
+        error: 'Account banned',
+        reason: req.user.ban_reason,
+        expires: req.user.ban_expires_at
       });
-      return;
-    }
+    });
+    return;
   }
 
   console.log("User Info:", req.user);
@@ -119,21 +109,13 @@ exports.devLogin = async (req, res, next) => {
       user = newUserRes.rows[0];
     }
 
-    // Check for ban
-    if (user.is_banned) {
-      const now = new Date();
-      if (user.ban_expires_at && new Date(user.ban_expires_at) < now) {
-        // Ban expired, unban user
-        await pool.query('UPDATE Users SET is_banned = FALSE, ban_expires_at = NULL, ban_reason = NULL WHERE user_id = $1', [user.user_id]);
-        user.is_banned = false;
-      } else {
-        return res.status(403).json({
-          banned: true,
-          error: 'Account banned',
-          reason: user.ban_reason || 'Violation of terms of service',
-          expiresAt: user.ban_expires_at || 'Permanent'
-        });
-      }
+    if (await isStillBanned(user)) {
+      return res.status(403).json({
+        banned: true,
+        error: 'Account banned',
+        reason: user.ban_reason || 'Violation of terms of service',
+        expiresAt: user.ban_expires_at || 'Permanent'
+      });
     }
 
     console.log('Logging in user:', user);

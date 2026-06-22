@@ -1,14 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
 
 // Use the pool from server.js (or create a new one if needed, but better to export/import)
 // For simplicity in this structure, I'll assume we can access the db via a shared module or just recreate the pool config
 // Ideally, we should have a db.js module. Let's create a quick db instance here for now to keep it self-contained or refactor server.js later.
 // Actually, let's just use the env var.
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
-});
+const pool = require('../config/db');
 
 // GET /admin/users - List all users with stats
 router.get('/', async (req, res) => {

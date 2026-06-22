@@ -18,11 +18,12 @@ const REMATCH_TIMEOUT_MS = 60000; // 60 seconds
  * Clean up a pending rematch (clear timeout, remove from Map)
  */
 function cleanupRematch(gameId) {
-  const pending = pendingRematches.get(gameId);
+  const key = parseInt(gameId, 10);
+  const pending = pendingRematches.get(key);
   if (pending?.timeoutId) {
     clearTimeout(pending.timeoutId);
   }
-  pendingRematches.delete(gameId);
+  pendingRematches.delete(key);
 }
 
 /**
@@ -89,10 +90,7 @@ async function acceptRematchHttp(gameId, accepterId) {
 
       // Emit events to notify clients via socket
       if (io) {
-        io.to(`user_${player1Id}`).emit('rematchAccepted', acceptedPayload);
-        io.to(`user_${player2Id}`).emit('rematchAccepted', acceptedPayload);
-        io.to(`game_${gameId}`).emit('rematchAccepted', acceptedPayload);
-        io.emit('playerJoined', newGame);
+        emitRematchAccepted(player1Id, player2Id, gameId, acceptedPayload, newGame);
       }
 
       cleanupRematch(parseInt(gameId));
@@ -165,6 +163,16 @@ async function createRematchGame(originalGameId, player1Id, player2Id) {
   }
 }
 
+/**
+ * Broadcast an accepted rematch to both players, the game room, and the lobby.
+ */
+function emitRematchAccepted(player1Id, player2Id, gameId, payload, newGame) {
+  io.to(`user_${player1Id}`).emit('rematchAccepted', payload);
+  io.to(`user_${player2Id}`).emit('rematchAccepted', payload);
+  io.to(`game_${gameId}`).emit('rematchAccepted', payload);
+  io.emit('playerJoined', newGame);
+}
+
 function init(server, sessionMiddleware) {
   io = new Server(server, {
     cors: {
@@ -177,13 +185,7 @@ function init(server, sessionMiddleware) {
   // Convert express middleware to socket.io middleware
   const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
 
-  // Defensive programming: Check sessionMiddleware before use
-  // In current app.js initialization, sessionMiddleware is always defined.
-  // However, this check provides safety for:
-  // - Future refactoring or different initialization patterns
-  // - Unit testing scenarios where middleware might be mocked/skipped
-  // - Deployment configurations that might disable sessions
-  // The overhead is negligible and prevents potential runtime errors.
+  // sessionMiddleware is always defined in app.js; guard kept for safety.
   if (sessionMiddleware) {
     io.use(wrap(sessionMiddleware));
     const passport = require('passport');
@@ -204,14 +206,7 @@ function init(server, sessionMiddleware) {
 
     // Join user-specific room for private notifications
     socket.on('joinUserRoom', (userId) => {
-      // Rate limiting: allow max 5 attempts per minute per socket connection
-      // SCOPE: Per-socket (not per-user) - intentional tradeoff for simplicity
-      // - Pros: Simple implementation, automatic cleanup on disconnect, no shared state needed
-      // - Cons: User can bypass by opening multiple socket connections
-      // - Acceptable for this use case: joinUserRoom is non-destructive, and user authentication
-      //   provides primary security. Rate limit prevents accidental spam, not determined attacks.
-      // Rate limit state is attached to the ephemeral socket instance and is garbage collected on disconnect.
-
+      // Per-socket rate limit (not per-user): simple, auto-cleaned on disconnect.
       // Initialize rate limit state if needed
       if (!socket.rateLimit) socket.rateLimit = { count: 0, firstAttempt: Date.now() };
 
@@ -237,9 +232,7 @@ function init(server, sessionMiddleware) {
         if (authenticatedUser && parseInt(authenticatedUser.user_id, 10) === targetUserId) {
           const roomName = `user_${targetUserId}`;
 
-          // Prevent duplicate joins using Set.has() (socket.rooms is a Set in Socket.IO 4.x)
-          // Note: .has() is the correct Set API method. Array.from().includes() would work
-          // but is less efficient and unnecessary for Sets.
+          // Prevent duplicate joins (socket.rooms is a Set).
           if (socket.rooms.has(roomName)) {
             console.log(`Socket ${socket.id} already in room ${roomName}`);
             return;
@@ -325,8 +318,7 @@ function init(server, sessionMiddleware) {
         socket.emit('rematchError', { message: 'Not authenticated' });
         return;
       }
-
-      console.log(`[Rematch] User ${requesterId} requesting rematch for game ${gameId}`);
+      gameId = parseInt(gameId, 10);
 
       // Check if there's already a pending rematch for this game
       const existing = pendingRematches.get(gameId);
@@ -345,12 +337,7 @@ function init(server, sessionMiddleware) {
               newGameId: newGame.id,
               originalGameId: gameId
             };
-            io.to(`user_${requesterId}`).emit('rematchAccepted', acceptedPayload);
-            io.to(`user_${opponentId}`).emit('rematchAccepted', acceptedPayload);
-            io.to(`game_${gameId}`).emit('rematchAccepted', acceptedPayload);
-
-            // Also emit playerJoined for lobby updates
-            io.emit('playerJoined', newGame);
+            emitRematchAccepted(requesterId, opponentId, gameId, acceptedPayload, newGame);
           } else {
             io.to(`user_${requesterId}`).emit('rematchError', { message: 'Failed to create rematch game' });
             io.to(`user_${opponentId}`).emit('rematchError', { message: 'Failed to create rematch game' });
@@ -439,13 +426,11 @@ function init(server, sessionMiddleware) {
      */
     socket.on('acceptRematch', async ({ gameId }) => {
       const accepterId = socket.request.user?.user_id;
-      console.log(`[Rematch] acceptRematch received for game ${gameId}, socket ${socket.id}, user:`, socket.request.user?.user_id || 'UNAUTHENTICATED');
-
       if (!accepterId) {
-        console.log(`[Rematch] Accept denied - socket ${socket.id} is not authenticated`);
         socket.emit('rematchError', { message: 'Not authenticated' });
         return;
       }
+      gameId = parseInt(gameId, 10);
 
       const pending = pendingRematches.get(gameId);
       if (!pending) {
@@ -473,12 +458,7 @@ function init(server, sessionMiddleware) {
             originalGameId: gameId
           };
           // Emit to both user rooms and game room
-          io.to(`user_${player1Id}`).emit('rematchAccepted', acceptedPayload);
-          io.to(`user_${player2Id}`).emit('rematchAccepted', acceptedPayload);
-          io.to(`game_${gameId}`).emit('rematchAccepted', acceptedPayload);
-
-          // Emit for lobby updates
-          io.emit('playerJoined', newGame);
+          emitRematchAccepted(player1Id, player2Id, gameId, acceptedPayload, newGame);
         } else {
           io.to(`user_${player1Id}`).emit('rematchError', { message: 'Failed to create rematch game' });
           io.to(`user_${player2Id}`).emit('rematchError', { message: 'Failed to create rematch game' });
@@ -495,6 +475,7 @@ function init(server, sessionMiddleware) {
     socket.on('declineRematch', ({ gameId }) => {
       const declinerId = socket.request.user?.user_id;
       if (!declinerId) return;
+      gameId = parseInt(gameId, 10);
 
       const pending = pendingRematches.get(gameId);
       if (!pending) return;
@@ -521,6 +502,7 @@ function init(server, sessionMiddleware) {
     socket.on('cancelRematch', ({ gameId }) => {
       const cancellerId = socket.request.user?.user_id;
       if (!cancellerId) return;
+      gameId = parseInt(gameId, 10);
 
       const pending = pendingRematches.get(gameId);
       if (!pending || pending.requesterId !== cancellerId) return;

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Button, Table, TableBody, TableCell, TableHead, TableRow, Snackbar, Typography, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
-import Pagination from '@material-ui/lab/Pagination';
 import axios from 'axios';
 import socket from '../../utils/socket'; // Use shared socket instance
 import { fetchActiveGameRequests, addGameRequest, updateGameRequest } from '../../redux/actions/gameRequestActions';
@@ -19,10 +18,7 @@ const Lobby = () => {
   // socket state is removed, use imported socket directly
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
-  const [userStats, setUserStats] = useState({ wins: 0, losses: 0, draws: 0 });
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
-  const totalPages = useSelector(state => state.gameRequests.totalPages);
-  const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState(0);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -30,7 +26,6 @@ const Lobby = () => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
-    setPage(1); // Reset to page 1 when switching tabs
     setDisplayLimit(10); // Reset display limit when switching tabs
   };
 
@@ -52,19 +47,6 @@ const Lobby = () => {
 
   useEffect(() => {
     if (auth.user) {
-      const fetchStats = async () => {
-        try {
-          console.log('Fetching stats for user:', auth.user.user_id);
-          const res = await axios.get(`${backendUrl}/users/${auth.user.user_id}/stats`, { withCredentials: true });
-          console.log('Stats fetched:', res.data);
-          setUserStats(res.data);
-        } catch (error) {
-          console.error('Error fetching user stats:', error.response?.data || error.message);
-        }
-      };
-
-      fetchStats();
-      console.log('Fetching all game requests');
       dispatch(fetchActiveGameRequests());
 
       // Ensure socket is connected if not already

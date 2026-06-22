@@ -2,12 +2,9 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { Pool } = require('pg');
 const logger = require('../utils/logger');
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
-});
+const pool = require('../config/db');
 
 // Public config endpoint to check if dev login is enabled
 router.get('/config', async (req, res) => {

@@ -109,7 +109,7 @@ class GameRequest {
 
   static async getTotalGameCount(userId) {
     const result = await pool.query(
-      `SELECT COUNT(*) FROM GameRequests WHERE (creator_id = $1 OR joiner_id = $1) OR (status = 'pending')`,
+      `SELECT COUNT(*) FROM GameRequests WHERE creator_id = $1 OR joiner_id = $1`,
       [userId]
     );
     return parseInt(result.rows[0].count, 10);

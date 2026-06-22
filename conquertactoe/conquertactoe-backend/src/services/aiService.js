@@ -26,7 +26,7 @@ async function getBotMove(gameId, board, playerCones, botCones, difficulty = 'me
         });
         return response.data;
     } catch (error) {
-        console.error('Error calling AI Service:', error.message);
+        console.error('Error calling AI Service:', error.response?.status, error.message);
         throw new Error('AI Service unavailable');
     }
 }

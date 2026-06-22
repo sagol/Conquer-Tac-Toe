@@ -1,10 +1,7 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const { Pool } = require('pg');
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
-});
+const pool = require('./db');
 
 // Parse allowed admin emails from environment variable
 const getAllowedEmails = () => {
