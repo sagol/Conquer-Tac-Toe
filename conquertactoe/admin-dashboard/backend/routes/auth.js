@@ -59,7 +59,7 @@ router.post('/login', async (req, res) => {
 
         const token = jwt.sign(
             { id: user.user_id, role: user.role, email: user.email },
-            process.env.ADMIN_JWT_SECRET || 'secret',
+            process.env.ADMIN_JWT_SECRET,
             { expiresIn: '1h' }
         );
 
@@ -121,7 +121,7 @@ router.get('/google/callback', (req, res, next) => {
                 // Generate JWT Token
                 const token = jwt.sign(
                     { id: user.user_id, role: user.role, email: user.email },
-                    process.env.ADMIN_JWT_SECRET || 'secret',
+                    process.env.ADMIN_JWT_SECRET,
                     { expiresIn: '1h' }
                 );
 

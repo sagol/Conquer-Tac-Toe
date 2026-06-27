@@ -9,6 +9,12 @@ const { ClickHouse } = require('clickhouse');
 // Load environment variables
 dotenv.config();
 
+// Fail closed: the admin JWT secret must be configured (never fall back to a public default).
+if (!process.env.ADMIN_JWT_SECRET) {
+    console.error('FATAL: ADMIN_JWT_SECRET is not set. Refusing to start.');
+    process.exit(1);
+}
+
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
@@ -86,7 +92,7 @@ function requireAdmin(req, res, next) {
     const token = (req.headers.authorization || '').replace('Bearer ', '');
     if (!token) return res.status(401).json({ error: 'Not authenticated' });
     try {
-        const decoded = jwt.verify(token, process.env.ADMIN_JWT_SECRET || 'secret');
+        const decoded = jwt.verify(token, process.env.ADMIN_JWT_SECRET);
         if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
             return res.status(403).json({ error: 'Access denied' });
         }
