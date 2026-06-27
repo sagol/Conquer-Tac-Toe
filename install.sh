@@ -63,8 +63,8 @@ export AUTOPLAYER_PORT=8000
 
 # Admin Dashboard Backend
 export ADMIN_BACKEND_PORT=4000
-export ADMIN_JWT_SECRET=admin_secret_key_change_me
-export ADMIN_JWT_REFRESH_SECRET=admin_refresh_secret_change_me
+export ADMIN_JWT_SECRET=$(openssl rand -hex 32)
+export ADMIN_JWT_REFRESH_SECRET=$(openssl rand -hex 32)
 export ADMIN_ACCESS_TOKEN_EXPIRY=1h
 export ADMIN_REFRESH_TOKEN_EXPIRY=7d
 export ADMIN_ALLOWED_ORIGINS=http://localhost:3002
