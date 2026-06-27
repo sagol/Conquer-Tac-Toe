@@ -14,7 +14,7 @@ const Login = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+  const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
 
   // Fetch public configs on component mount
   useEffect(() => {

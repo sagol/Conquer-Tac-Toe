@@ -1,6 +1,5 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
-import PropTypes from 'prop-types';
 
 const SEO = ({ title, description, keywords, image, url, type }) => {
     const siteTitle = 'Conquer-Tac-Toe | Strategic Tic-Tac-Toe Variant Game';
@@ -52,15 +51,6 @@ const SEO = ({ title, description, keywords, image, url, type }) => {
             <meta property="twitter:image" content={siteImage} />
         </Helmet>
     );
-};
-
-SEO.propTypes = {
-    title: PropTypes.string,
-    description: PropTypes.string,
-    keywords: PropTypes.string,
-    image: PropTypes.string,
-    url: PropTypes.string,
-    type: PropTypes.string,
 };
 
 export default SEO;

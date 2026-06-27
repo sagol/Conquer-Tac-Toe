@@ -3,11 +3,17 @@ const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
-const { Pool } = require('pg');
+const jwt = require('jsonwebtoken');
 const { ClickHouse } = require('clickhouse');
 
 // Load environment variables
 dotenv.config();
+
+// Fail closed: the admin JWT secret must be configured (never fall back to a public default).
+if (!process.env.ADMIN_JWT_SECRET) {
+    console.error('FATAL: ADMIN_JWT_SECRET is not set. Refusing to start.');
+    process.exit(1);
+}
 
 const app = express();
 app.set('trust proxy', 1);
@@ -46,9 +52,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Database Connections
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
-});
+const pool = require('./config/db');
 
 const clickhouse = new ClickHouse({
     url: `http://${process.env.CLICKHOUSE_HOST}`,
@@ -83,16 +87,30 @@ app.get('/health', async (req, res) => {
 
 const logger = require('./utils/logger');
 
-// ... (imports)
+// Require a valid admin JWT on every /admin route except /admin/auth.
+function requireAdmin(req, res, next) {
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+        const decoded = jwt.verify(token, process.env.ADMIN_JWT_SECRET);
+        if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        req.admin = decoded;
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+}
 
 // Routes
 app.use('/admin/auth', require('./routes/auth'));
+app.use('/admin', requireAdmin); // everything below requires authentication
 app.use('/admin/users', require('./routes/users'));
 app.use('/admin/games', require('./routes/games'));
 app.use('/admin/analytics', require('./routes/analytics'));
 app.use('/admin/system', require('./routes/system'));
 app.use('/admin/settings', require('./routes/settings'));
-app.use('/admin/docker', require('./routes/docker'));
 
 // Error Handling
 app.use((err, req, res, next) => {

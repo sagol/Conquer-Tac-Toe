@@ -7,7 +7,6 @@ import Games from './pages/Games';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
-import DockerLogs from './pages/DockerLogs';
 
 const PrivateRoute = ({ children }) => {
     const token = localStorage.getItem('adminToken');
@@ -44,13 +43,6 @@ function App() {
                     <PrivateRoute>
                         <Layout>
                             <Analytics />
-                        </Layout>
-                    </PrivateRoute>
-                } />
-                <Route path="/docker-logs" element={
-                    <PrivateRoute>
-                        <Layout>
-                            <DockerLogs />
                         </Layout>
                     </PrivateRoute>
                 } />

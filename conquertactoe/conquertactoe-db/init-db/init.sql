@@ -119,6 +119,10 @@ CREATE TABLE GameRequests (
 -- Create indexes for GameRequests
 CREATE INDEX idx_gamerequests_variant ON GameRequests(variant_id);
 CREATE INDEX idx_gamerequests_difficulty ON GameRequests(bot_difficulty);
+CREATE INDEX idx_gamerequests_creator ON GameRequests(creator_id);
+CREATE INDEX idx_gamerequests_joiner ON GameRequests(joiner_id);
+CREATE INDEX idx_gamerequests_status ON GameRequests(status);
+CREATE INDEX idx_gamerequests_created_at ON GameRequests(created_at);
 
 -- ============================================
 -- Application Configuration Table

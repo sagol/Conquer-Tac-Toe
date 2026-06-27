@@ -8,7 +8,7 @@ import ErrorMessage from '../ErrorMessage/ErrorMessage';
 import MoveTimer from './MoveTimer';
 import RematchModal from './RematchModal';
 
-const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser, socket, openRematchModal, onClearRematchParam }) => {
+const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, gameResult, currentUser, socket }) => {
   const navigate = useNavigate();
   const [board, setBoard] = useState([]);
   const [boardSize, setBoardSize] = useState(3); // Default to 3x3
@@ -61,7 +61,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
         );
 
         if (response.data.hasPendingRematch) {
-          console.log('[GameBoard] Found pending rematch via API:', response.data);
           setRematchReceivedState({
             requesterName: response.data.requesterName,
             timeoutMs: response.data.timeoutMs
@@ -80,34 +79,20 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   useEffect(() => {
     if (!socket || !game?.id) return;
 
-    const handleRematchRequested = ({ gameId, requesterId, requesterName, timeoutMs }) => {
+    const handleRematchRequested = ({ gameId, requesterName, timeoutMs }) => {
       if (parseInt(gameId) === parseInt(game.id)) {
-        console.log('[GameBoard] Received rematchRequested event from', requesterName);
         setRematchReceivedState({ requesterName, timeoutMs });
         setShowRematchModal(true);
       }
     };
 
-    // Also listen for rematch acceptance to navigate to new game
-    const handleRematchAccepted = ({ newGameId, originalGameId }) => {
-      if (parseInt(originalGameId) === parseInt(game.id)) {
-        console.log('[GameBoard] Rematch accepted, navigating to new game:', newGameId);
-        // Reset modal state before navigation
-        setShowRematchModal(false);
-        setRematchReceivedState(null);
-
-      }
-    };
-
     socket.on('rematchRequested', handleRematchRequested);
-    socket.on('rematchAccepted', handleRematchAccepted);
 
     // Join the game room to listen for game-specific events (like rematch)
     socket.emit('joinGameRoom', game.id);
 
     return () => {
       socket.off('rematchRequested', handleRematchRequested);
-      socket.off('rematchAccepted', handleRematchAccepted);
       socket.emit('leaveGameRoom', game.id);
     };
   }, [socket, game?.id]);
@@ -116,7 +101,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const handleTimeout = async () => {
     if (!game || winner || isDraw) return;
 
-    console.log('Timeout detected in frontend, attempting to claim...');
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
       await axios.post(
@@ -139,7 +123,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
       // For PvP games: Show rematch modal instead of creating new game directly
       if (gameType === 'public' && game.joiner_id) {
-        console.log('[GameBoard] PvP game - showing rematch modal');
         setShowRematchModal(true);
         return;
       }
@@ -155,7 +138,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
       const endpoint = gameType === 'bot' ? `${backendUrl}/game-requests/bot` : `${backendUrl}/game-requests`;
 
-      console.log('Creating new game:', { endpoint, gameData });
 
       const res = await axios.post(endpoint, gameData, { withCredentials: true });
 
@@ -188,12 +170,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   useEffect(() => {
     if (!game) return;
 
-    console.log(`[${new Date().toISOString()}] [GameBoard] Initializing from game prop:`, game);
-    if (game.board) {
-      const isBoardEmpty = Array.isArray(game.board) ? game.board.every(r => r.every(c => c === null)) : 'unknown';
-      console.log(`[${new Date().toISOString()}] Game prop board empty?`, isBoardEmpty);
-    }
-
     // Parse board if it's a string
     let parsedBoard = game.board;
     if (typeof parsedBoard === 'string') {
@@ -208,18 +184,14 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     // Determine board state
     let initialBoard;
     if (parsedBoard && Array.isArray(parsedBoard) && parsedBoard.length > 0) {
-      console.log('[GameBoard] Using existing board from game.board, length:', parsedBoard.length);
       initialBoard = parsedBoard;
     } else if (game.board_size) {
-      console.log('[GameBoard] Creating empty board from game.board_size:', game.board_size);
       initialBoard = Array(game.board_size).fill(null).map(() => Array(game.board_size).fill(null));
     } else {
-      console.warn('[GameBoard] No board or board_size, defaulting to 3x3');
       initialBoard = Array(3).fill(null).map(() => Array(3).fill(null));
     }
 
     const newSize = initialBoard.length;
-    console.log('[GameBoard] Setting board and boardSize to:', newSize);
 
     setBoard(initialBoard);
     setBoardSize(newSize);
@@ -239,7 +211,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     setPlayer2Cones(p2Cones);
     setError(null);
 
-    console.log('[GameBoard] Initialization complete. Board size:', newSize, 'Cones:', { p1Cones, p2Cones });
   }, [game]);
 
   // Fetch variant information (separate concern - doesn't update boardSize)
@@ -250,7 +221,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
           const backendUrl = process.env.REACT_APP_BACKEND_URL;
           const res = await axios.get(`${backendUrl}/variants/${game.variant_id}`);
           setVariant(res.data);
-          console.log('[GameBoard] Fetched variant:', res.data);
         } catch (error) {
           console.error('[GameBoard] Error fetching variant:', error);
         }
@@ -266,12 +236,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       setSelectedCone2(0);
     }
   }, [variant]);
-
-  useEffect(() => {
-    console.log(`[${new Date().toISOString()}] GameBoard Render. ActivePlayer:`, activePlayer, 'Type:', typeof activePlayer);
-    console.log('Game Result:', gameResult, 'Winner:', winner);
-    setError(null);
-  }, [activePlayer, gameResult, winner, isDraw]);
 
   // Derive Last Move directly from game prop to avoid useEffect sync issues
   let parsedLastMove = null;
@@ -290,18 +254,34 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const myPlayerNumber = isCreator ? 1 : 2;
   const showLastMoveHighlight = activePlayer === myPlayerNumber;
 
+  // Classic Tic-Tac-Toe: derive who started (gets X) from the board, once per render.
+  const isClassicTicTacToe = game?.variant_id === 1;
+  let firstPlayer = 1;
+  if (isClassicTicTacToe && game) {
+    let gameBoard = game.board;
+    if (typeof gameBoard === 'string') {
+      try { gameBoard = JSON.parse(gameBoard); } catch (e) { gameBoard = null; }
+    }
+    let p1Moves = 0, p2Moves = 0;
+    if (Array.isArray(gameBoard)) {
+      gameBoard.forEach(r => r.forEach(c => {
+        if (c?.player === 1) p1Moves++;
+        else if (c?.player === 2) p2Moves++;
+      }));
+    }
+    if (p1Moves > p2Moves) firstPlayer = 1;
+    else if (p2Moves > p1Moves) firstPlayer = 2;
+    else firstPlayer = parseInt(game.active_player) || 1;
+  }
+
   // Effect 2: Handle Winning Line Highlighting
   useEffect(() => {
     if (winner && winningCells.length === 0 && board) {
       // Use the current board state which should be final
       const size = board.length;
-      console.log('[WinningCells] Calculating winning line for winner:', winner);
       const cells = findWinningCells(board, size);
       if (cells.length > 0) {
-        console.log('[WinningCells] Found winning line:', cells);
         setWinningCells(cells);
-      } else {
-        console.warn('[WinningCells] Winner declared but no diagonal/line found by helper.');
       }
     }
   }, [winner, board, winningCells.length]);
@@ -354,7 +334,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     // CHECK: Only show animation if board is completely empty (fresh game)
     const isBoardEmpty = board.every(row => row.every(cell => cell === null));
     if (!isBoardEmpty) {
-      console.log('Board has moves, skipping randomization animation');
       return;
     }
 
@@ -369,21 +348,13 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
       const ageInSeconds = (now - createdAt) / 1000;
 
       if (ageInSeconds > 10 && !isJustJoined) {
-        console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old and not just joined (prev=${prevStatus}), skipping randomization animation`);
         return;
       }
-      console.log(`Game is ${ageInSeconds.toFixed(1)} seconds old, showing randomization animation (isJustJoined=${isJustJoined})`);
     }
 
     // Start randomization immediately when game is joined
-    console.log(`[${new Date().toISOString()}] Starting randomization animation...`);
-    console.log('Creator name:', creatorName);
-    console.log('Joiner name:', joinerName);
-    console.log('Active player:', activePlayer);
-    console.log('Current Board State:', JSON.stringify(board));
 
     // Freeze the current board state to prevent visual updates during animation
-    console.log(`[${new Date().toISOString()}] Freezing board state. Is board empty?`, board.every(row => row.every(c => c === null)));
 
     // CRITICAL FIX: Instead of freezing the current 'board' (which might already have the bot move due to race conditions),
     // we explicitly create a fresh EMPTY board to show during the animation.
@@ -402,13 +373,11 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     const isBotGame = game?.game_type === 'bot';
     const player2Name = joinerName || (isBotGame ? 'Bot AI' : 'Opponent');
     const names = [player1Name, player2Name];
-    console.log('Names array:', names, 'Game type:', game?.game_type);
     const duration = 1500; // 1.5 seconds total (reduced from 2s)
     const speed = 80; // Switch every 80ms (slightly faster)
 
     interval = setInterval(() => {
       const currentName = names[counter % 2];
-      console.log('Setting name:', currentName);
       setRandomizingName(currentName);
       counter++;
     }, speed);
@@ -417,7 +386,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     setTimeout(() => {
       clearInterval(interval);
       const finalName = activePlayer === 1 ? player1Name : player2Name;
-      console.log('Final name:', finalName);
       setRandomizingName(finalName);
       setShowFinalName(true);
 
@@ -448,7 +416,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
   const handleCellClick = async (row, col) => {
     // Block if already processing a move
     if (isSubmitting) {
-      console.log('[Click] Blocked: Already submitting a move');
       return;
     }
 
@@ -472,22 +439,17 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     const isPlayer1 = currentUser.user_id === game.creator_id;
     const isPlayer2 = currentUser.user_id === game.joiner_id;
 
-    console.log(`[Click] User:${currentUser.user_id} Creator:${game.creator_id} Active:${activePlayer} (type:${typeof activePlayer}) isP1:${isPlayer1}`);
-    console.log(`[Click] Validation: isP1=${isPlayer1} activePlayer=${activePlayer} check=${activePlayer !== 1}`);
 
     if (isPlayer1 && activePlayer !== 1) {
-      console.warn(`BLOCKED: Player 1 but active is ${activePlayer} (type:${typeof activePlayer})`);
       setError('It is not your turn.');
       return;
     }
 
     if (isPlayer2 && activePlayer !== 2) {
-      console.warn(`BLOCKED: Player 2 but active is ${activePlayer} (type:${typeof activePlayer})`);
       setError('It is not your turn.');
       return;
     }
 
-    console.log('[Click] Turn validation PASSED');
 
     const selectedCone = activePlayer === 1 ? selectedCone1 : selectedCone2;
     const currentPlayerCones = activePlayer === 1 ? player1Cones : player2Cones;
@@ -502,17 +464,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     }
 
 
-    console.log('[handleCellClick] About to validate move:', {
-      row,
-      col,
-      selectedCone,
-      selectedConeType: typeof selectedCone,
-      cellValue: board[row][col],
-      cellPlayer: board[row][col]?.player,
-      cellSize: board[row][col]?.size,
-      cellSizeType: typeof board[row][col]?.size,
-      activePlayer
-    });
 
     // Check if cone size allows overwriting (for variants with size rules)
     if (board[row][col] !== null && !canPlaceCone(board[row][col], selectedCone)) {
@@ -538,7 +489,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     }
 
     try {
-      console.log('Updating game with move:', { row, col, selectedCone });
 
 
       // Lock the board to prevent multiple clicks
@@ -589,47 +539,33 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     const selectedSize = parseInt(selectedCone, 10);
     const cellSize = parseInt(cell.size, 10);
 
-    console.log('[canPlaceCone] Checking move:', {
-      selectedCone: selectedSize,
-      cellSize: cellSize,
-      cellPlayer: cell.player,
-      activePlayer,
-      variantLoaded: !!variant,
-      allowOverwrite: variant?.rules?.allowOverwrite,
-      overwriteRules: variant?.rules?.overwriteRules
-    });
 
     // Check variant rules for overwrite
     if (variant?.rules?.allowOverwrite) {
       if (variant.rules.overwriteRules === 'larger_or_same_size') {
         // Conquer Same-Size: allow equal or larger
         const result = selectedSize >= cellSize;
-        console.log('[canPlaceCone] larger_or_same_size rule:', result, `${selectedSize} >= ${cellSize}`);
         return result;
       } else if (variant.rules.overwriteRules === 'larger_cone_only') {
         // Conquer Classic: only larger
         const result = selectedSize > cellSize;
-        console.log('[canPlaceCone] larger_cone_only rule:', result, `${selectedSize} > ${cellSize}`);
         return result;
       }
     }
 
     // Default: only if larger (fallback)
     const result = selectedSize > cellSize;
-    console.log('[canPlaceCone] Fallback rule:', result, `${selectedSize} > ${cellSize}`);
     return result;
   };
 
   const handleSurrender = async () => {
     try {
-      console.log('Surrendering game...');
       const res = await axios.post(
         `${process.env.REACT_APP_BACKEND_URL}/game-requests/${game.id}/surrender`,
         {},
         { withCredentials: true }
       );
       setError(`Game has ended by surrender. Winner: Player ${res.data.winner}`);
-      console.log('Surrender response:', res.data);
     } catch (error) {
       console.error('Error surrendering:', error.response?.data || error.message);
       setError(error.response?.data.error || error.message);
@@ -642,9 +578,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
     let cellClass = 'cell';
     let coneSizeClass = '';
 
-    // Check if this is Classic Tic-Tac-Toe (variant ID 1)
-    const isClassicTicTacToe = game?.variant_id === 1;
-
     // Check if this cell is part of the winning line
     const isWinningCell = winningCells.some(c => c.row === row && c.col === col);
     if (isWinningCell) {
@@ -653,12 +586,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
 
     // Check if this is the last bot move (derived)
     const isLastBotMoveCell = parsedLastMove && parsedLastMove.row === row && parsedLastMove.col === col;
-
-    // Determine if we should show the highlight (only when it is my turn, i.e. opponent just moved)
-    const isCreator = currentUser && (game?.creator_id == currentUser?.user_id);
-    const myPlayerNumber = isCreator ? 1 : 2;
-    const showLastMoveHighlight = activePlayer === myPlayerNumber;
-
 
     if (isLastBotMoveCell && showLastMoveHighlight) {
       cellClass += ' last-move';
@@ -681,46 +608,6 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
           break;
         default:
           break;
-      }
-    }
-
-    // Determine who started first for X/O assignment in Classic Tic-Tac-Toe
-    // Derive strictly from server state (game.board and game.active_player) to ensure stability
-    let firstPlayer = 1; // default
-    if (isClassicTicTacToe && game) {
-      let player1Moves = 0;
-      let player2Moves = 0;
-
-      // Parse game.board if it's a string
-      let gameBoard = game.board;
-      if (typeof gameBoard === 'string') {
-        try {
-          gameBoard = JSON.parse(gameBoard);
-        } catch (e) {
-          // Ignore parse error, default to 0-0
-        }
-      }
-
-      if (gameBoard && Array.isArray(gameBoard)) {
-        gameBoard.forEach(row => {
-          row.forEach(cell => {
-            if (cell && cell.player === 1) player1Moves++;
-            if (cell && cell.player === 2) player2Moves++;
-          });
-        });
-      }
-
-      if (player1Moves > player2Moves) {
-        // Player 1 has more moves -> P1 started
-        firstPlayer = 1;
-      } else if (player2Moves > player1Moves) {
-        // Player 2 has more moves -> P2 started
-        firstPlayer = 2;
-      } else {
-        // Equal moves (0-0, 1-1, etc.)
-        // If moves are equal, it is the starting player's turn!
-        // So starting player is whoever is currently active.
-        firstPlayer = parseInt(game.active_player) || 1;
       }
     }
 
@@ -917,10 +804,7 @@ const GameBoard = ({ game, updateGame, creatorName, joinerName, winner, isDraw, 
           gap: boardSize >= 15 ? '5px' : '10px'
         }}
       >
-        {(frozenBoard || board).map((row, rowIndex) => {
-          if (rowIndex === 0) console.log(`[${new Date().toISOString()}] Rendering row 0. Using frozenBoard?`, !!frozenBoard);
-          return renderRow(rowIndex);
-        })}
+        {(frozenBoard || board).map((row, rowIndex) => renderRow(rowIndex))}
       </div>
       <ErrorMessage message={error} />
       {renderGameResult()}

@@ -8,6 +8,14 @@ const isValidUserId = (userId) => {
     return Number.isInteger(num) && num > 0 && num <= Number.MAX_SAFE_INTEGER;
 };
 
+/**
+ * Validates a username: letters, numbers, spaces, underscores and hyphens only.
+ */
+const isValidUsername = (username) => {
+    return typeof username === 'string' && /^[a-zA-Z0-9_ -]+$/.test(username);
+};
+
 module.exports = {
-    isValidUserId
+    isValidUserId,
+    isValidUsername
 };

@@ -1,10 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
-});
+const pool = require('../config/db');
 
 // GET /admin/games - List active/recent games
 router.get('/', async (req, res) => {
@@ -44,7 +41,6 @@ router.post('/:id/reset', async (req, res) => {
         // Or use process.env.BACKEND_INTERNAL_URL if defined
         const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://conquertactoe_backend:3000';
 
-        console.log(`Calling reset on main backend: ${backendUrl}/internal/games/${id}/reset`);
 
         await axios.post(`${backendUrl}/internal/games/${id}/reset`);
 

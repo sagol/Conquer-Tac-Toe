@@ -1,10 +1,5 @@
 const pool = require('../config/db');
-
-// Validate username function
-const isValidUsername = (username) => {
-  const usernameRegex = /^[a-zA-Z0-9_ -]+$/;
-  return usernameRegex.test(username);
-};
+const { isValidUsername } = require('../utils/validation');
 
 exports.getUserById = async (req, res) => {
   try {
