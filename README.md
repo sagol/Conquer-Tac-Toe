@@ -19,15 +19,15 @@ Run `pnpm verify` before you commit. It type-checks the code, runs Biome, checks
 
 ## Deploy it
 
-One Worker serves both the app and the API. `wrangler.jsonc` defines two Cloudflare environments, staging at staging.gurudo.com and production at gurudo.com, each with its own D1 database. A build targets one environment through `CLOUDFLARE_ENV`, and `wrangler deploy` deploys whatever the last build produced:
+One Worker serves both the app and the API. `wrangler.jsonc` defines two Cloudflare environments, staging at staging.gurudo.com and production at gurudo.com, each with its own D1 database. A build targets one environment through `CLOUDFLARE_ENV`, the D1 commands pick the environment from the same variable, and `wrangler deploy` deploys whatever the last build produced:
 
 ```sh
 CLOUDFLARE_ENV=staging pnpm build
-pnpm exec wrangler d1 migrations apply conquer-staging --remote
+CLOUDFLARE_ENV=staging pnpm exec wrangler d1 migrations apply conquer-staging --remote
 pnpm exec wrangler deploy --tag "$(git rev-parse HEAD)"
 ```
 
-Production deploys from `main` through Workers Builds. Its build command is `pnpm verify && CLOUDFLARE_ENV=production pnpm build`, and its deploy command is `wrangler d1 migrations apply conquer --remote && wrangler deploy`.
+Production deploys from `main` through Workers Builds. Its build command is `pnpm verify && CLOUDFLARE_ENV=production pnpm build`, and its deploy command is `CLOUDFLARE_ENV=production wrangler d1 migrations apply conquer --remote && wrangler deploy`.
 
 ## License
 

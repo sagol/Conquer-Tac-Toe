@@ -1,6 +1,7 @@
-// One Worker in three environments. The top level is local development. A build picks
-// staging or production through CLOUDFLARE_ENV, and wrangler deploys that build's output, so no
-// command passes --env. Environments inherit only the top-level keys that are not bindings or vars.
+// One Worker in three environments. The top level is local development. A build picks staging or
+// production through CLOUDFLARE_ENV and wrangler deploy deploys that build's output; the wrangler d1
+// commands read the same variable, so no command passes --env. Environments inherit the top-level
+// keys except bindings and vars.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "conquer-local",
@@ -58,7 +59,9 @@
           "database_id": "00000000-0000-0000-0000-000000000000",
           "migrations_dir": "migrations"
         }
-      ]
+      ],
+      // No DEV_LOGIN in production.
+      "vars": {}
     }
   }
 }
