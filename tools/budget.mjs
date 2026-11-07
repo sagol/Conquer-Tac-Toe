@@ -19,7 +19,7 @@ const MAX_DATA_KB = 4096;
 
 // The complete dependency lists, each version pinned exactly.
 const LISTS = {
-  dependencies: ['react', 'react-dom', 'wouter', 'hono', 'arctic', 'jose'],
+  dependencies: ['react', 'react-dom', 'wouter', 'hono', 'jose'],
   devDependencies: [
     'typescript',
     'vite',
