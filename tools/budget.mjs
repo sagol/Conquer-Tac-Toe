@@ -293,16 +293,19 @@ for (const file of files) {
     for (const s of new Set(literals))
       if (ids.has(s)) errors.push(`${file}: the variant id '${s}' appears outside ${GAMES}`);
   }
-  // Worker and web code imports its own src, engine/games and the runtime list, and the worker cloudflare: modules.
+  // Worker and web code imports its own src, engine/games, kernel files through engine/<path> (engine/src/<path>.ts
+  // outside games/), the runtime list and, in the worker, cloudflare: modules.
   if (unit === 'worker' || unit === 'web') {
     for (const { spec, target: to } of [...imports, ...dynamic]) {
+      const path = /^engine\/([\w-]+(?:\/[\w-]+)*)$/.exec(spec ?? '')?.[1];
       const known =
-        spec === 'engine/games' ||
+        path === 'games' ||
+        (path && !path.startsWith('games/') && isFile(`engine/src/${path}.ts`)) ||
         LISTS.dependencies.includes(/^(@[^/]+\/)?[^/]+/.exec(spec ?? '')?.[0]) ||
         (unit === 'worker' && /^cloudflare:/.test(spec ?? ''));
       if (to ? !to.startsWith(`${unit}/src/`) : !known)
         errors.push(
-          `${file}: imports ${spec ?? 'a computed path'} from outside the ${unit} package's src, engine/games and the runtime list`,
+          `${file}: imports ${spec ?? 'a computed path'} from outside the ${unit} package's src, engine/games, kernel files through engine/<path> and the runtime list`,
         );
     }
   }
