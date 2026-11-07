@@ -12,7 +12,7 @@ const GAMES = 'engine/src/games/';
 const CAPS = { kernel: 740, worker: 1700, web: 4000 };
 const TOTAL = 7800;
 const HEADER = /^\/\/ budget: (\d+) lines, (\d+) KB(?:, (\S+) (\d+) KB)?$/m;
-const ANY_HEADER = /^\s*\/[/*]+\s*budget\b/im; // a header line that HEADER must then parse
+const ANY_HEADER = /^\s*\/[/*]+\s*budget\s*:/im; // a header line that HEADER must then parse
 const DEFAULT_HEADER = { lines: 400, kb: 200 };
 const MAX_FAMILY_LINES = 1000;
 const MAX_DATA_KB = 4096;
@@ -32,20 +32,36 @@ const LISTS = {
   ],
 };
 const PACKAGES = ['engine', 'worker', 'web'];
-// self and window are globalThis under other names.
-const NOT_IN_GAMES = new Set(['Date', 'performance', 'crypto', 'fetch', 'globalThis', 'self', 'window']);
+// self and window are globalThis under other names; Function and eval run code from a string.
+const NOT_IN_GAMES = new Set([
+  'Date',
+  'performance',
+  'crypto',
+  'fetch',
+  'globalThis',
+  'self',
+  'window',
+  'Function',
+  'eval',
+]);
 
 const errors = [];
 const read = (file) => readFileSync(join(root, file), 'utf8');
+const isFile = (file) => statSync(join(root, file), { throwIfNoEntry: false })?.isFile();
 
-// The workspace holds the three packages, and nothing in it changes what the lists install.
+// The workspace holds the three packages, and nothing changes what the lists install: no overrides, catalogs,
+// patches, extensions or pnpm hooks.
 const workspace = read('pnpm-workspace.yaml');
 const block = /^packages:\n((?:[ \t]+.*\n)*)/m.exec(workspace)?.[1] ?? '';
-const members = [...block.matchAll(/-\s*['"]?([^\s'"#]+)/g)].map((m) => m[1]);
+const members = [...block.replace(/#.*/g, '').matchAll(/-\s*['"]?([^\s'"#]+)/g)].map((m) => m[1]);
 if (members.join() !== PACKAGES.join()) errors.push(`pnpm-workspace.yaml: packages must be ${PACKAGES.join(', ')}`);
-for (const [, key] of workspace.matchAll(/^(overrides|catalogs?|patchedDependencies|packageExtensions)\s*:/gm)) {
+const SETTINGS =
+  /^(overrides|catalogs?|patchedDependencies|packageExtensions|pnpmfile|globalPnpmfile|configDependencies)\s*:/gm;
+for (const [, key] of workspace.matchAll(SETTINGS))
   errors.push(`pnpm-workspace.yaml: the ${key} setting is not allowed`);
-}
+for (const file of ['.pnpmfile.cjs', '.pnpmfile.mjs'])
+  if (existsSync(join(root, file))) errors.push(`${file}: pnpm hooks are not allowed`);
+if (/^pnpmfileChecksum:/m.test(read('pnpm-lock.yaml'))) errors.push('pnpm-lock.yaml: written through a pnpm hook');
 
 const declared = new Set();
 for (const dir of new Set(['.', ...PACKAGES, ...members])) {
@@ -82,15 +98,16 @@ if (variants.length) {
 const ids = new Set(variants.map((v) => v.id));
 
 // A unit is the kernel, the worker, the web, the registry (games/index.ts) or a family folder, with or
-// without its index.ts; a folder below a family with its own index.ts (rings/gomoku) is a unit of its own
-// under its own header.
+// without its index.ts; a folder below a family whose index.ts has a budget header (rings/gomoku) is a unit
+// of its own under that header, and any other folder below a family belongs to the family.
 function unitOf(file) {
   if (!file.startsWith(GAMES)) return file.startsWith('engine/src/') ? 'kernel' : file.split('/')[0];
-  for (let dir = dirname(file); dir.length >= GAMES.length; dir = dirname(dir)) {
-    if (existsSync(join(root, dir, 'index.ts'))) return dir.slice(GAMES.length);
-  }
   const [family, ...rest] = file.slice(GAMES.length).split('/');
-  return rest.length ? family : 'registry';
+  if (!rest.length) return 'registry';
+  for (let dir = dirname(file); dir !== `${GAMES}${family}`; dir = dirname(dir)) {
+    if (isFile(`${dir}/index.ts`) && HEADER.test(read(`${dir}/index.ts`))) return dir.slice(GAMES.length);
+  }
+  return family;
 }
 
 function header(unit) {
@@ -112,11 +129,16 @@ const lines = {};
 const data = [];
 const staticTargets = [];
 const botModules = new Set();
-const files = ['engine/src', 'worker/src', 'web/src', 'tools'].flatMap((dir) =>
-  readdirSync(join(root, dir), { recursive: true })
-    .map((name) => `${dir}/${name}`)
-    .filter((file) => /\.([cm]?[jt]sx?|css)$/.test(file)),
-);
+const files = [];
+for (const dir of ['engine/src', 'worker/src', 'web/src', 'tools']) {
+  for (const entry of readdirSync(join(root, dir), { recursive: true, withFileTypes: true })) {
+    const file = relative(root, join(entry.parentPath, entry.name));
+    if (entry.isFile() && /\.([cm]?[jt]sx?|css)$/.test(file)) files.push(file);
+    // Product code is TypeScript or CSS, so tsc checks every script and no data file or link hides here.
+    if (dir !== 'tools' && !entry.isDirectory() && !(entry.isFile() && /\.(tsx?|css)$/.test(file)))
+      errors.push(`${file}: product folders hold only .ts, .tsx and .css files`);
+  }
+}
 
 for (const file of files) {
   const unit = unitOf(file);
@@ -125,7 +147,7 @@ for (const file of files) {
     if (unit !== 'tools') lines[unit] = (lines[unit] ?? 0) + n;
   };
   if (unit === 'registry' && file !== `${GAMES}index.ts`) errors.push(`${file}: only index.ts lives in ${GAMES}`);
-  if (file === `${GAMES}${unit}/index.ts` && ANY_HEADER.test(text) && !HEADER.test(text)) {
+  if (file.startsWith(GAMES) && file.endsWith('/index.ts') && ANY_HEADER.test(text) && !HEADER.test(text)) {
     errors.push(`${file}: malformed budget header, expected // budget: N lines, M KB`);
   }
   if (file.endsWith('.css')) {
@@ -141,9 +163,7 @@ for (const file of files) {
     errors.push(`${file}: ${parsed.errors[0].message}`);
     continue;
   }
-  // Generated files cost no lines; every other rule applies to them.
   const generated = file.endsWith('.gen.ts');
-  count(generated ? 0 : codeLines(text, parsed.comments));
   if (generated) {
     data.push({ file, unit, kb: statSync(join(root, file)).size / 1024 });
     if (!file.startsWith(GAMES)) errors.push(`${file}: generated files live only in game folders`);
@@ -151,28 +171,37 @@ for (const file of files) {
 
   const target = (spec) => (spec?.startsWith('.') ? relative(root, resolve(root, dirname(file), spec)) : undefined);
   const imports = [
-    ...parsed.module.staticImports.map((i) => i.moduleRequest.value),
-    ...parsed.module.staticExports.flatMap((e) => e.entries.map((x) => x.moduleRequest?.value).filter(Boolean)),
-  ].map((spec) => ({ spec, target: target(spec) }));
+    ...parsed.module.staticImports.map((i) => ({ spec: i.moduleRequest.value, start: i.start })),
+    ...parsed.module.staticExports.flatMap((e) =>
+      e.entries.filter((x) => x.moduleRequest).map((x) => ({ spec: x.moduleRequest.value, start: e.start })),
+    ),
+  ].map((i) => ({ ...i, target: target(i.spec) }));
   const dynamic = parsed.module.dynamicImports.map((d) => {
     const spec = /^(['"])(.*)\1$/.exec(text.slice(d.moduleRequest.start, d.moduleRequest.end))?.[2];
     return { spec, target: target(spec), start: d.start, end: d.end };
   });
-  staticTargets.push(...imports.map((i) => ({ file, target: i.target })));
   // A relative import names its file exactly, so one module has one spelling (no ./bot.js for bot.ts, no query).
   for (const { spec, target: to } of [...imports, ...dynamic]) {
-    if (to && !existsSync(join(root, to))) errors.push(`${file}: imports ${spec}, which is not a file`);
+    if (to && !isFile(to)) errors.push(`${file}: imports ${spec}, which is not a file`);
   }
 
   const botSpans = [];
   const literals = [];
   const used = [];
   const names = new Set(); // starts of identifiers that name a property rather than read a value
+  const erased = new Set(); // starts of the import and export type statements that compilers remove
+  const blanks = [...parsed.comments]; // comment-only lines are free, JSX comments ({/* */}) included
+  let code = false; // a function or a class, which a generated data file never holds
+  let meta = false;
   const keyName = (key) => key.name ?? key.value;
   const key = (n) => {
     if (n.computed) return;
     if (!n.shorthand) names.add(n.key.start);
     if (n.key.type === 'Identifier') literals.push(n.key.name);
+  };
+  const typeOnly = (n) => (n.importKind ?? n.exportKind) === 'type' && erased.add(n.start);
+  const fn = () => {
+    code = true;
   };
   new Visitor({
     Property(n) {
@@ -180,6 +209,23 @@ for (const file of files) {
       if (keyName(n.key) === 'bot' && /Function/.test(n.value.type)) botSpans.push(n.value);
     },
     TSPropertySignature: key,
+    TSMethodSignature: key,
+    MethodDefinition: key,
+    PropertyDefinition: key,
+    ImportDeclaration: typeOnly,
+    ExportNamedDeclaration: typeOnly,
+    ExportAllDeclaration: typeOnly,
+    FunctionDeclaration: fn,
+    FunctionExpression: fn,
+    ArrowFunctionExpression: fn,
+    ClassDeclaration: fn,
+    ClassExpression: fn,
+    MetaProperty(n) {
+      if (n.meta.name === 'import') meta = true;
+    },
+    JSXExpressionContainer(n) {
+      if (n.expression.type === 'JSXEmptyExpression') blanks.push(n);
+    },
     MemberExpression(n) {
       if (n.computed) return;
       names.add(n.property.start);
@@ -201,7 +247,17 @@ for (const file of files) {
       literals.push(n.value.trim());
     },
   }).visit(parsed.program);
+  // Generated files cost no lines while they hold only data; every other rule applies to them.
+  count(generated && !code ? 0 : codeLines(text, blanks));
+  staticTargets.push(...imports.filter((i) => !erased.has(i.start)).map((i) => ({ file, target: i.target })));
 
+  // Nothing silences tsc, which refuses the import forms budget does not read, and there is no import.meta:
+  // Vite turns import.meta.glob into imports that neither tsc nor Node sees.
+  if (unit !== 'tools') {
+    if (meta) errors.push(`${file}: product code never uses import.meta`);
+    if (parsed.comments.some((c) => /@ts-(ignore|expect-error|nocheck)/.test(c.value)))
+      errors.push(`${file}: product code never silences the type checker`);
+  }
   if (file.startsWith('engine/src/')) {
     for (const { spec, target: to } of [...imports, ...dynamic]) {
       if (!to?.startsWith('engine/src/'))
@@ -237,11 +293,25 @@ for (const file of files) {
     for (const s of new Set(literals))
       if (ids.has(s)) errors.push(`${file}: the variant id '${s}' appears outside ${GAMES}`);
   }
+  // Worker and web code imports its own src, engine/games and the runtime list, and the worker cloudflare: modules.
   if (unit === 'worker' || unit === 'web') {
     for (const { spec, target: to } of [...imports, ...dynamic]) {
-      if (to && !to.startsWith(`${unit}/`)) errors.push(`${file}: imports ${spec} from outside the ${unit} package`);
+      const known =
+        spec === 'engine/games' ||
+        LISTS.dependencies.includes(/^(@[^/]+\/)?[^/]+/.exec(spec ?? '')?.[0]) ||
+        (unit === 'worker' && /^cloudflare:/.test(spec ?? ''));
+      if (to ? !to.startsWith(`${unit}/src/`) : !known)
+        errors.push(
+          `${file}: imports ${spec ?? 'a computed path'} from outside the ${unit} package's src, engine/games and the runtime list`,
+        );
     }
   }
+}
+
+// The web build starts at index.html, so every script it loads is a web/src file that the rules above read.
+for (const [tag] of read('index.html').matchAll(/<script\b[^>]*>/gi)) {
+  if (!/\ssrc="\/web\/src\/[\w/.-]+"/.test(tag) || tag.includes('..'))
+    errors.push(`index.html: ${tag} loads code from outside web/src`);
 }
 
 for (const { file, target } of staticTargets) {
