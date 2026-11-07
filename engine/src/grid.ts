@@ -13,7 +13,8 @@ const DIRECTIONS = [
 ];
 
 // The cells of every run of at least `length` cells through `cell` that `owner` gives the same seat as `cell`,
-// each run in sweep order and joined; empty when there is none. `owner` maps a cell to its seat, or -1.
+// each run in sweep order and joined, with `cell`, which the runs share, listed once; empty when there is none.
+// `owner` maps a cell to its seat, or -1.
 export function lines(cols: number, rows: number, cell: number, owner: (cell: number) => number, length: number) {
   const seat = owner(cell);
   const mine = (c: number, r: number) => c >= 0 && c < cols && r >= 0 && r < rows && owner(r * cols + c) === seat;
@@ -29,5 +30,5 @@ export function lines(cols: number, rows: number, cell: number, owner: (cell: nu
     while (mine(c + n * dc, r + n * dr)) n++;
     if (n >= length) for (let i = 0; i < n; i++) found.push((r + i * dr) * cols + c + i * dc);
   }
-  return found;
+  return found.length ? [...new Set(found)] : found;
 }
