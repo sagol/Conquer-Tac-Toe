@@ -20,7 +20,7 @@ export class RingPosition implements Position {
   private readonly setup: RingSetup;
   private readonly cells: Uint8Array;
   private readonly stock = new Int8Array(6); // rings left, seat * 3 + size; unused when the stock is unlimited
-  private readonly history: number[] = []; // per play: cell << 8 | the cell's old value << 3 | size << 1 | mover
+  private readonly history: number[] = []; // per play: cell << 3 | the cell's old value; the cell now holds the ring played
   private side: Seat = 0;
   private end: Outcome | undefined;
   private readonly owner = (cell: number) => (this.cells[cell] ? Math.floor((this.cells[cell] - 1) / 3) : -1);
@@ -37,36 +37,43 @@ export class RingPosition implements Position {
 
   moves(): readonly Move[] {
     const out: Move[] = [];
-    if (this.end) return out;
-    for (let size = this.setup.stock ? 2 : 0; size >= 0; size--) {
-      if (this.setup.stock && !this.stock[this.side * 3 + size]) continue;
-      for (let cell = 0; cell < this.cells.length; cell++) if (this.fits(cell, size)) out.push(cell * 3 + size);
-    }
+    if (!this.end) this.legal(this.side, out);
     return out;
+  }
+
+  // The seat's legal moves, largest ring first, pushed to out; without out (play's question whether the seat can
+  // move), true at the first one.
+  private legal(seat: Seat, out?: Move[]): boolean {
+    for (let size = this.setup.stock ? 2 : 0; size >= 0; size--) {
+      if (this.setup.stock && !this.stock[seat * 3 + size]) continue;
+      for (let cell = 0; cell < this.cells.length; cell++)
+        if (this.fits(cell, size) && out?.push(cell * 3 + size) === undefined) return true;
+    }
+    return false;
   }
 
   play(m: Move): void {
     const cell = Math.floor(m / 3);
-    const size = m % 3;
     const seat = this.side;
-    this.history.push((cell << 8) | (this.cells[cell] << 3) | (size << 1) | seat);
-    this.cells[cell] = 1 + seat * 3 + size;
-    if (this.setup.stock) this.stock[seat * 3 + size]--;
+    const ring = seat * 3 + (m % 3); // its stock index; the cell holds ring + 1
+    this.history.push((cell << 3) | this.cells[cell]);
+    this.cells[cell] = ring + 1;
+    if (this.setup.stock) this.stock[ring]--;
     // Only the mover's rings changed, and only on this cell, so a line can only be the mover's, through it.
     const line = lines(this.setup.size, this.setup.size, cell, this.owner, this.setup.line);
     const next: Seat = seat ? 0 : 1;
-    if (line.length) this.end = { winner: seat, reason: this.setup.win, line };
-    else if (this.canMove(next)) this.side = next;
-    else if (!this.canMove(seat)) this.end = { winner: null, reason: NO_MOVES };
+    if (line.length) this.end = Object.freeze({ winner: seat, reason: this.setup.win, line: Object.freeze(line) });
+    else if (this.legal(next)) this.side = next;
+    else if (!this.legal(seat)) this.end = Object.freeze({ winner: null, reason: NO_MOVES });
   }
 
   undo(): void {
     const h = this.history.pop();
     if (h === undefined) return; // nothing played, nothing to restore
-    const cell = h >> 8;
-    this.cells[cell] = (h >> 3) & 7;
-    if (this.setup.stock) this.stock[(h & 1) * 3 + ((h >> 1) & 3)]++;
-    this.side = (h & 1) as Seat;
+    const ring = this.cells[h >> 3] - 1;
+    this.cells[h >> 3] = h & 7;
+    if (this.setup.stock) this.stock[ring]++;
+    this.side = Math.floor(ring / 3) as Seat;
     this.end = undefined;
   }
 
@@ -106,13 +113,5 @@ export class RingPosition implements Position {
     if (!top) return true;
     const below = (top - 1) % 3;
     return this.setup.cover === 'same' ? below <= size : this.setup.cover === 'smaller' && below < size;
-  }
-
-  // A larger ring fits wherever a smaller one does, so the seat can move when its largest ring fits somewhere.
-  private canMove(seat: Seat): boolean {
-    let size = this.setup.stock ? 2 : 0;
-    while (size >= 0 && this.setup.stock && !this.stock[seat * 3 + size]) size--;
-    for (let cell = 0; size >= 0 && cell < this.cells.length; cell++) if (this.fits(cell, size)) return true;
-    return false;
   }
 }

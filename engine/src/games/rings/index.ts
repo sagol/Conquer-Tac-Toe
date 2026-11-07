@@ -3,23 +3,30 @@
 import type { Clock, Five, Level, Opts, Variant } from '../../game.ts';
 import { RingPosition, type RingSetup } from './rules.ts';
 
-// Placeholder rows: M2 sets the five levels of 7.2, and K1's level clause checks them from then on.
-const row: Level = { rating: 0, tip: '', ms: 0, depth: 0, nodes: 0, noise: 0 };
-const levels: Five<Level> = [row, row, row, row, row];
-const quick: Clock = { initialMs: 180_000, incrementMs: 2_000, capMs: 180_000 }; // 3+2
+// Placeholder rows: M2 sets the five levels of 7.2, and K1's level clause checks them from then on. Objects that
+// several entries share are frozen, so a caller that edits one entry cannot change another.
+const row: Level = Object.freeze({ rating: 0, tip: '', ms: 0, depth: 0, nodes: 0, noise: 0 });
+const levels: Five<Level> = Object.freeze([row, row, row, row, row]);
+const quick: Clock = Object.freeze({ initialMs: 180_000, incrementMs: 2_000, capMs: 180_000 }); // 3+2
 const three = { size: 3, line: 3, win: 'Three in a row' } as const;
 const sized = { piece: 'ring', cover: 'smaller', hint: 'Drop a ring or cover a smaller one' } as const;
 const covers = 'A covered ring leaves the game for good.';
-const coverSmaller = {
+const coverSmaller = Object.freeze({
   text: `Drop a ring from your stock on an empty cell, or on a smaller ring of either colour. ${covers}`,
   moves: 'B2M B2L',
-};
-const lineOf3 = {
+});
+const lineOf3 = Object.freeze({
   text: 'Three of your rings on top in a row, a column or a diagonal win.',
   moves: 'A1S B2S A2S C3S A3S',
-};
-const passes = { text: 'A player with no legal move passes. When neither player can move, the game is a draw.' };
-const upTo5 = [0, 1, 2, 3, 4, 5];
+});
+const passes = Object.freeze({ text: 'A player who cannot move passes. When neither can, the game is a draw.' });
+const upTo5 = Object.freeze([0, 1, 2, 3, 4, 5]);
+// Custom's stock options; its ceiling reads their defaults.
+const stock = [
+  { key: 's', label: 'Small rings', values: upTo5, default: 3 },
+  { key: 'm', label: 'Medium rings', values: upTo5, default: 3 },
+  { key: 'l', label: 'Large rings', values: upTo5, default: 2 },
+];
 
 // Every entry is hidden with placeholder levels until M2 and M4, and gets its bot hooks in M2.
 type Entry = Omit<Variant<RingPosition>, 'levels' | 'status' | 'start' | 'bot'> & { setup(o: Opts): RingSetup };
@@ -121,18 +128,14 @@ export default [
       lineOf3,
       passes,
     ],
-    options: [
-      { key: 's', label: 'Small rings', values: upTo5, default: 3 },
-      { key: 'm', label: 'Medium rings', values: upTo5, default: 3 },
-      { key: 'l', label: 'Large rings', values: upTo5, default: 2 },
-    ],
+    options: stock,
     clock: quick,
     preview: 'A1S B2M B2L C3S',
     // Exact on the default stock until M2 lists the exact set (7.3), search elsewhere.
-    ceiling: (o) => (o.s === 3 && o.m === 3 && o.l === 2 ? 'exact' : 'search'),
+    ceiling: (o) => (stock.every((x) => o[x.key] === x.default) ? 'exact' : 'search'),
     setup: (o) => {
-      const total = o.s + o.m + o.l;
-      if (total < 3 || total > 15) throw new RangeError(`Custom takes 3 to 15 rings in all, not ${total}`);
+      const total = o.s + o.m + o.l; // at most 15, since start() takes only 0 to 5 of each
+      if (total < 3) throw new RangeError(`Custom takes at least 3 rings in all, not ${total}`);
       return { ...three, ...sized, stock: [o.s, o.m, o.l] };
     },
   }),

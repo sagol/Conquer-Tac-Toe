@@ -4,7 +4,7 @@ import { hash } from './random.ts';
 
 export const MAX_PLIES = 1000; // reached: draw, reason 'Move limit'; each 6.n states a shorter longest game
 const DAY = 86_400_000;
-export const RELAXED: Clock = { initialMs: DAY, incrementMs: DAY, capMs: DAY }; // one day per move (D-07)
+export const RELAXED: Clock = Object.freeze({ initialMs: DAY, incrementMs: DAY, capMs: DAY }); // one day per move (D-07)
 
 // The m in moves() with name(m) === text.
 export function find(p: Position, text: string): Move | undefined {

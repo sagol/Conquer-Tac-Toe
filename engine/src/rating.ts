@@ -11,7 +11,7 @@ interface Game {
   score: 0 | 0.5 | 1;
 }
 
-export const START: Rating = { r: 1500, rd: 350, vol: 0.06 };
+export const START: Rating = Object.freeze({ r: 1500, rd: 350, vol: 0.06 });
 const TAU = 0.5;
 const SCALE = 173.7178;
 
@@ -24,6 +24,7 @@ export function idle(p: Rating, days: number): Rating {
 
 // One rating period. Each game is its own period (section 8); the paper's example has three games in one.
 export function rate(p: Rating, games: readonly Game[]): Rating {
+  if (!games.length) return { ...p, rd: Math.hypot(p.rd, SCALE * p.vol) }; // no games: step 6 alone, RD grows
   const mu = (p.r - 1500) / SCALE;
   const phi = p.rd / SCALE;
   let info = 0;
