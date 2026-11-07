@@ -1,0 +1,64 @@
+// One Worker in three environments. The top level is local development. A build picks
+// staging or production through CLOUDFLARE_ENV, and wrangler deploys that build's output, so no
+// command passes --env. Environments inherit only the top-level keys that are not bindings or vars.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "conquer-local",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-10-19",
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/ws/*", "/admin", "/admin/*"]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom", "Hub"] }],
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }, { "name": "HUB", "class_name": "Hub" }]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "conquer-local",
+      // Local only: wrangler keeps this database on disk under .wrangler/.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": { "DEV_LOGIN": "1" },
+  "env": {
+    "staging": {
+      "name": "conquer-staging",
+      "routes": [{ "pattern": "staging.gurudo.com", "custom_domain": true }],
+      "durable_objects": {
+        "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }, { "name": "HUB", "class_name": "Hub" }]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "conquer-staging",
+          // PLACEHOLDER: replace with the id of conquer-staging once the database exists.
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "vars": { "DEV_LOGIN": "1" }
+    },
+    "production": {
+      "name": "conquer",
+      "routes": [{ "pattern": "gurudo.com", "custom_domain": true }],
+      "durable_objects": {
+        "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }, { "name": "HUB", "class_name": "Hub" }]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "conquer",
+          // PLACEHOLDER: replace with the id of conquer once the database exists.
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
+}

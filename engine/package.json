@@ -1,0 +1,8 @@
+{
+  "name": "engine",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./games": "./src/games/index.ts"
+  }
+}

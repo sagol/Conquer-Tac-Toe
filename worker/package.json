@@ -1,0 +1,11 @@
+{
+  "name": "worker",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "arctic": "3.7.0",
+    "engine": "workspace:*",
+    "hono": "4.13.13",
+    "jose": "6.2.13"
+  }
+}
