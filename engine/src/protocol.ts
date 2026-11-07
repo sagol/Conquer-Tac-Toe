@@ -1,41 +1,40 @@
 // engine/src/protocol.ts: every socket message (4.4, 4.2). Incoming text passes parseRoom or parseHub first.
-import type { Opts, Seat } from './game.ts';
+import type { Opts, Outcome, Seat } from './game.ts';
 
 export const MOVE = /^[A-Za-z0-9:+-]{1,12}$/; // a move name (6.0)
 
-export type Status = 'open' | 'active' | 'done' | 'aborted' | 'cancelled';
-export type Clocks = readonly [number, number]; // ms left per seat when the message left
-export interface Player {
+type Status = 'open' | 'active' | 'done' | 'aborted' | 'cancelled';
+type Clocks = readonly [number, number]; // ms left per seat when the message left
+interface Player {
   name: string;
-  rating: number;
+  rating: number; // rounded (section 8)
+  provisional?: boolean; // RD above 110: the rating shows with "?"
   uid?: number; // a user
   level?: number; // a bot level, 1 to 5
 }
-export interface Result {
-  winner: Seat | null;
-  reason: string;
+type Result = Pick<Outcome, 'winner' | 'reason'> & {
   deltas?: readonly [number | null, number | null]; // rating change per seat once the result is applied
-}
-export interface OpenRequest {
+};
+interface OpenRequest {
   id: string;
   variant: string;
   opts: Opts;
   by: Player;
 }
-export interface LiveGame {
+interface LiveGame {
   id: string;
   variant: string;
   seats: readonly [Player, Player];
   move: number;
   viewers: number;
 }
-export interface Queue {
+interface Queue {
   variant: string;
   opts: Opts;
 }
 const REMATCH = ['offer', 'accept', 'decline', 'cancel'] as const;
-export type RematchOp = (typeof REMATCH)[number];
-export interface Failure {
+type RematchOp = (typeof REMATCH)[number];
+interface Failure {
   t: 'error';
   error: 'illegal' | 'forbidden' | 'limit' | 'rate';
   message: string;
@@ -87,35 +86,29 @@ export type HubOut =
   | { t: 'matched'; id: string }
   | Failure;
 
-// The validator: per message type, a check for each field; a field name ending in ? is optional, and no other
-// field may appear.
+// The validator: per message type, a check for each field, and no other field may appear.
 type Fields = Readonly<Record<string, (x: unknown) => boolean>>;
+type Types = Readonly<Record<string, Fields>>;
 const object = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const count = (x: unknown) => Number.isSafeInteger(x) && (x as number) >= 0;
+const fits = (x: unknown, fields: Fields): boolean =>
+  object(x) &&
+  Object.keys(x).every((key) => Object.hasOwn(fields, key)) &&
+  Object.entries(fields).every(([key, ok]) => ok(x[key]));
 const queue: Fields = {
   variant: (x) => typeof x === 'string' && /^[a-z0-9]{2,16}$/.test(x),
   opts: (x) => object(x) && Object.values(x).every((n) => Number.isFinite(n)),
 };
-const ROOM: Readonly<Record<string, Fields>> = {
+const ROOM: Types = {
   hello: { lastSeq: count },
   move: { seq: count, move: (x) => typeof x === 'string' && MOVE.test(x) },
   resign: {},
   abort: {},
   rematch: { op: (x) => REMATCH.includes(x as RematchOp) },
 };
-const HUB: Readonly<Record<string, Fields>> = { hello: { 'queue?': (x) => fits(x, queue) }, queue, unqueue: {} };
+const HUB: Types = { hello: { queue: (x) => x === undefined || fits(x, queue) }, queue, unqueue: {} };
 
-function fits(x: unknown, fields: Fields): boolean {
-  if (!object(x)) return false;
-  for (const key of Object.keys(x)) if (!Object.hasOwn(fields, key) && !Object.hasOwn(fields, `${key}?`)) return false;
-  return Object.entries(fields).every(([key, ok]) =>
-    key.endsWith('?')
-      ? x[key.slice(0, -1)] === undefined || ok(x[key.slice(0, -1)])
-      : Object.hasOwn(x, key) && ok(x[key]),
-  );
-}
-
-function parse<T>(text: string, types: Readonly<Record<string, Fields>>): T | undefined {
+function parse<T>(text: string, types: Types): T | undefined {
   let x: unknown;
   try {
     x = JSON.parse(text);
