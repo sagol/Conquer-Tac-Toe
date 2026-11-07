@@ -27,7 +27,12 @@ const ring = ({ setup, ...entry }: Entry): Variant<RingPosition> => ({
   ...entry,
   levels,
   status: 'hidden',
-  start: (o) => new RingPosition(setup(o)),
+  // Values off the option list (a raw caller, an old stored row) throw like a bad mix instead of building a board.
+  start: (o) => {
+    if (entry.options.some(({ key, values }) => !values.includes(o[key])))
+      throw new RangeError(`options off the list: ${JSON.stringify(o)}`);
+    return new RingPosition(setup(o));
+  },
   bot: async () => ({}),
 });
 
