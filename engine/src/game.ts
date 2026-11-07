@@ -65,7 +65,7 @@ export interface Level {
   nodes: number; // the only work budget: search nodes or an own engine's unit
   noise: number; // chance of a random move; from level 2 never one that ends the game in the mover's loss
   margin?: number; // root moves within margin of the best are equally likely; engine's own scale
-  x?: Readonly<Record<string, number>>; // hand-set knobs of a family's own engine (Gomoku: vcf, vct, top)
+  x?: Readonly<Record<string, number>>; // hand-set knobs of a family's own engine
 }
 export type Five<T> = readonly [T, T, T, T, T];
 export const BOT_NAMES = ['Pip', 'Echo', 'Vex', 'Nova-9', 'Omega'] as const; // D-09
@@ -100,6 +100,6 @@ export interface Variant<P extends Position = Position> {
   levels: Five<Level>; // calibrated at the default options
   status: 'hidden' | 'live' | 'retired'; // D-21
   ceiling(o: Opts): 'exact' | 'search'; // level 5 under these options (6.n): gate profile, Create dialog note
-  start(o: Opts): P; // throws RangeError on a bad mix (Custom total)
+  start(o: Opts): P; // throws RangeError on a bad option mix
   bot(): Promise<Bot<P>>; // dynamic import inside the family folder; a stub in the web build
 }
