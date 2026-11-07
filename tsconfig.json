@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
-  "compilerOptions": { "lib": ["es2024"], "types": ["node"] },
+  "compilerOptions": { "types": ["node"] },
   "include": ["vite.config.ts"]
 }

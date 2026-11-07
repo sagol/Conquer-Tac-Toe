@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "wrangler types worker/worker-configuration.d.ts && tsc -p engine && tsc -p worker && tsc -p web && tsc -p .",
-    "verify": "pnpm typecheck && biome ci && node tools/budget.mjs && vite build && node tools/bundle.mjs"
+    "verify": "pnpm typecheck && biome ci && node tools/budget.mjs && pnpm build && node tools/bundle.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.2",
