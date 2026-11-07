@@ -1,11 +1,11 @@
 // engine/src/rating.ts: Glicko-2 (Glickman, "Example of the Glicko-2 system") and seasons (section 8).
-export interface Rating {
+interface Rating {
   r: number;
   rd: number;
   vol: number;
 }
 // One game of a rating period: the opponent's rating and RD, and the score against them.
-export interface Game {
+interface Game {
   r: number;
   rd: number;
   score: 0 | 0.5 | 1;
@@ -15,10 +15,11 @@ export const START: Rating = { r: 1500, rd: 350, vol: 0.06 };
 const TAU = 0.5;
 const SCALE = 173.7178;
 
-// RD grows for the days since the player's last rated game in the pool, up to the starting RD.
+// RD grows for the days since the player's last rated game in the pool, up to the starting RD. Days below zero (a
+// last_at after the game's own time, as when games are rated again after a restore) or missing (NaN) grow nothing.
 export function idle(p: Rating, days: number): Rating {
   const phi = p.rd / SCALE;
-  return { ...p, rd: Math.min(START.rd, SCALE * Math.sqrt(phi * phi + days * p.vol * p.vol)) };
+  return { ...p, rd: Math.min(START.rd, SCALE * Math.sqrt(phi * phi + Math.max(0, days || 0) * p.vol * p.vol)) };
 }
 
 // One rating period. Each game is its own period (section 8); the paper's example has three games in one.
@@ -62,7 +63,8 @@ function volatility(phi2: number, v: number, delta2: number, sigma: number): num
   return Math.exp(lo / 2);
 }
 
-// The season of a time: calendar quarters in UTC, numbered from the launch quarter, 2027 Q1, as season 1.
+// The season of a time: calendar quarters in UTC, numbered from the launch quarter as season 1. The launch quarter,
+// 2027 Q1, is an assumption that M12 confirms before the first rated public game.
 const LAUNCH = 2027 * 4;
 export function seasonOf(ms: number): number {
   const d = new Date(ms);
