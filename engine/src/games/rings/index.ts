@@ -132,9 +132,10 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M B2M A1S C3L',
-    levels: rows([100_000, 100_000, 100_000, 100_000, 100_000]),
+    // Omega proves the positions past its 10-ply book from about 300,000 nodes, so its target is 500 ms (7.3).
+    levels: rows([100_000, 100_000, 100_000, 100_000, 100_000], 500),
     ceiling: () => 'exact',
-    bot: async () => (await import('./bot3.ts')).hooks,
+    bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-chaos.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, cover: 'same', hint: 'Drop a ring or cover one no larger', stock: [3, 3, 2] }),
   }),
   ring({
