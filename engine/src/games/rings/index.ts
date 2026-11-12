@@ -17,7 +17,7 @@ const LEVELS = [
   { rating: 1700, tip: 'Plays perfectly, with the odd slip', ms: 100, depth: 99, noise: 0.02 },
   { rating: 2000, tip: 'Plays perfectly and sets traps', ms: 140, depth: 99, noise: 0 },
 ];
-const rows = (nodes: Five<number>, omegaMs = 140) =>
+const rows = (nodes: Five<number>, omegaMs = LEVELS[4].ms) =>
   Object.freeze(
     LEVELS.map((level, i) => Object.freeze({ ...level, ...(i === 4 && { ms: omegaMs }), nodes: nodes[i] })),
   ) as unknown as Five<Level>;
@@ -34,6 +34,7 @@ const lineOf3 = Object.freeze({
   moves: 'A1S B2S A2S C3S A3S',
 });
 const passes = Object.freeze({ text: 'A player who cannot move passes. When neither can, the game is a draw.' });
+const stock332 = Object.freeze({ text: 'Each player has three small, three medium and two large rings.' });
 // Custom's stock options: only its default stock, which M2 proves, until M4 checks the other 205 (7.3) and widens
 // these lists to the stocks that pass, with the 3-ring minimum that start() then checks.
 const stock = [
@@ -121,7 +122,7 @@ export default [
     line: 'Same-size captures',
     tone: 'o',
     rules: [
-      { text: 'Each player has three small, three medium and two large rings.' },
+      stock332,
       {
         text: `Drop a ring from your stock on an empty cell, or on a ring of the same size or smaller of either colour. ${covers}`,
         moves: 'B2M B2M',
@@ -143,12 +144,13 @@ export default [
     title: 'Custom',
     line: 'Pick the ring stock',
     tone: 'x',
-    rules: [{ text: 'Each player has three small, three medium and two large rings.' }, coverSmaller, lineOf3, passes],
+    rules: [stock332, coverSmaller, lineOf3, passes],
     options: stock,
     clock: quick,
     preview: 'A1S B2M B2L C3S',
     levels: rows([34_954, 34_954, 41_945, 69_908, 97_871]),
-    ceiling: () => 'exact', // every stock it offers passes the exactness check (7.3)
+    // Exact on the stocks that pass the exactness check (7.3): in M2 the default, the only one it offers.
+    ceiling: (o) => (stock.every((x) => o[x.key] === x.default) ? 'exact' : 'search'),
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-custom.gen.ts')).default }),
     setup: (o) => ({ ...three, ...sized, stock: [o.s, o.m, o.l] }),
   }),
