@@ -6,12 +6,7 @@ import { search } from './search.ts';
 
 type Value = -1 | 0 | 1;
 // The moves a level may play at a position, before the random pick, and what a Choice of any of them carries.
-export interface Plays {
-  moves: readonly Move[];
-  nodes: number;
-  exact: boolean;
-  value?: Value;
-}
+export type Plays = Omit<Choice, 'move'> & { moves: readonly Move[] };
 
 const books = new Map<string, Map<number, number>>(); // each Bot.book decoded once per isolate
 
