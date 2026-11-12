@@ -3,9 +3,10 @@
 // Writes a book of proved values for a variant whose ceiling is exact (7.3). From the start of each option set it
 // walks level 5's strategy tree for both seats, level 5 with no node limit, no noise and no book, and records
 // (Bot.key, Choice.value) for every exact choice in the first N plies. The book goes to <path>, grouped by value,
-// sorted and delta-encoded, with this command in its header. Worker threads solve the positions of each ply.
+// sorted and delta-encoded, with this command in its header. Worker threads solve the positions of each ply: the i-th
+// always in lane i mod LANES, each lane in order with one search table kept across its positions, so the walk, and
+// with it the book, is the same on every machine.
 import { writeFileSync } from 'node:fs';
-import { availableParallelism } from 'node:os';
 import { parseArgs } from 'node:util';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
 import { plays } from '../engine/src/bot/policy.ts';
@@ -14,26 +15,29 @@ import { byId } from '../engine/src/games/index.ts';
 import { checkOpts, replay } from '../engine/src/play.ts';
 import { random } from '../engine/src/random.ts';
 
-const TABLE = 23; // log2 entries of each thread's search table, kept across its positions: 8M entries, 192 MB
+const LANES = 16;
+const TABLE = 23; // log2 entries of each lane's search table: 8M entries, 192 MB
 
 // A position as the option set and the names that reach it.
 export interface Start {
   opts: Opts;
   moves: readonly string[];
 }
+type Job = Start & { key: number };
 interface Solved {
   key: number;
   value?: number;
   move: string;
 }
 
-// Level 5 with no node limit, no noise and no book: its key, its value when the choice is exact, and the first of
-// the moves it may play.
+// Level 5 with no node limit, no noise and no book: the position's key, its value when the choice is exact, and the
+// first of the moves level 5 may play.
 function solver(v: Variant, b: Bot) {
   const rows = v.levels.map((row, i) => (i === 4 ? { ...row, nodes: Infinity, noise: 0 } : row));
   const five = { ...v, levels: rows as unknown as Five<Level> };
   const bare = { ...b, book: undefined };
-  return (p: Position, key: number): Solved => {
+  return ({ opts, moves, key }: Job): Solved => {
+    const p = replay(v, opts, moves).pos;
     const r = plays(five, bare, p, 5, random(0), TABLE);
     return { key, ...(r.exact && { value: r.value }), move: p.name(r.moves[0]) };
   };
@@ -41,37 +45,28 @@ function solver(v: Variant, b: Bot) {
 
 // The book of v from the starts, `plies` deep: each key of a position where level 5 moves, with its value for the
 // side to move. Positions are walked by ply, each key once per tree, so mirrors and transpositions share a walk.
-export async function walk(v: Variant, starts: readonly Start[], plies: number, threads = availableParallelism()) {
+export async function walk(v: Variant, starts: readonly Start[], plies: number) {
   const b = await v.bot();
   const { key } = b;
   if (!key) throw new Error(`${v.id}: a book needs Bot.key`);
   const keyOf = (p: Position) => key(b.fast?.(p) ?? p);
-  const workers = Array.from({ length: threads }, () =>
-    new Worker(new URL(import.meta.url), { workerData: { walk: v.id } }).on('error', (e) => {
+  const lanes = Array.from({ length: LANES }, () =>
+    new Worker(new URL(import.meta.url), { workerData: { book: v.id } }).on('error', (e) => {
       throw e;
     }),
   );
-  const solve = solver(v, b);
-  // Each job goes to the next idle thread, or is solved here when there are none.
-  const run = async (jobs: (Start & { key: number })[]) => {
-    if (!workers.length) return jobs.map((j) => solve(replay(v, j.opts, j.moves).pos, j.key));
-    const out: Solved[] = [];
-    let next = 0;
-    const feed = (w: Worker) =>
-      new Promise<void>((done) => {
-        const send = () => {
-          const i = next++;
-          if (i >= jobs.length) return done();
-          w.once('message', (r: Solved) => {
-            out[i] = r;
-            send();
-          });
-          w.postMessage(jobs[i]);
-        };
-        send();
-      });
-    await Promise.all(workers.map(feed));
-    return out;
+  // Each lane solves its share of the jobs in order; the answers come back in job order.
+  const run = async (jobs: Job[]) => {
+    const answers = await Promise.all(
+      lanes.map(
+        (w, lane) =>
+          new Promise<Solved[]>((done) => {
+            w.once('message', done);
+            w.postMessage(jobs.filter((_, i) => i % LANES === lane));
+          }),
+      ),
+    );
+    return jobs.map((_, i) => answers[i % LANES][Math.floor(i / LANES)]);
   };
   const book = new Map<number, number>();
   const seen = new Set<number>();
@@ -79,7 +74,7 @@ export async function walk(v: Variant, starts: readonly Start[], plies: number, 
   try {
     for (let ply = 0; ply < plies && level.length; ply++) {
       const next: typeof level = [];
-      const mine: ((typeof level)[number] & { key: number })[] = [];
+      const mine: ((typeof level)[number] & Job)[] = [];
       for (const n of level) {
         const { pos } = replay(v, n.opts, n.moves);
         const t = pos.turn();
@@ -99,7 +94,7 @@ export async function walk(v: Variant, starts: readonly Start[], plies: number, 
       level = next;
     }
   } finally {
-    for (const w of workers) await w.terminate();
+    for (const w of lanes) await w.terminate();
   }
   return book;
 }
@@ -118,12 +113,12 @@ export function encode(book: Map<number, number>): string {
     .join(';');
 }
 
-if (!isMainThread && workerData?.walk) {
-  const v = byId.get(workerData.walk);
-  if (!v || !parentPort) throw new Error(`no variant ${workerData.walk}`);
+if (!isMainThread && workerData?.book) {
+  const v = byId.get(workerData.book);
+  if (!v || !parentPort) throw new Error(`no variant ${workerData.book}`);
   const solve = solver(v, await v.bot());
   const port = parentPort;
-  port.on('message', (j: Start & { key: number }) => port.postMessage(solve(replay(v, j.opts, j.moves).pos, j.key)));
+  port.on('message', (jobs: Job[]) => port.postMessage(jobs.map(solve)));
 } else if (import.meta.main) {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
