@@ -2,8 +2,8 @@
 //
 // Writes a book of proved values for a variant whose ceiling is exact (7.3). From the start of each option set it
 // walks level 5's strategy tree for both seats, level 5 with no node limit, no noise and no book, and records
-// (Bot.key, Choice.value) for every exact choice in the first N plies. The book goes to <path>, grouped by value,
-// sorted and delta-encoded, with this command in its header. Worker threads solve the positions of each ply: the i-th
+// (Bot.key, Choice.value) for every exact choice in the first N plies. The book goes to <path> in the format that
+// policy.ts decodes, with this command in its header. Worker threads solve the positions of each ply: the i-th
 // always in lane i mod LANES, each lane in order with one search table kept across its positions, so the walk, and
 // with it the book, is the same on every machine.
 import { writeFileSync } from 'node:fs';
@@ -18,12 +18,8 @@ import { random } from '../engine/src/random.ts';
 const LANES = 16;
 const TABLE = 23; // log2 entries of each lane's search table: 8M entries, 192 MB
 
-// A position as the option set and the names that reach it.
-export interface Start {
-  opts: Opts;
-  moves: readonly string[];
-}
-type Job = Start & { key: number };
+// A position where level 5 moves: the option set, the names that reach it and its key.
+type Job = { opts: Opts; moves: readonly string[]; key: number };
 interface Solved {
   key: number;
   value?: number;
@@ -43,9 +39,10 @@ function solver(v: Variant, b: Bot) {
   };
 }
 
-// The book of v from the starts, `plies` deep: each key of a position where level 5 moves, with its value for the
-// side to move. Positions are walked by ply, each key once per tree, so mirrors and transpositions share a walk.
-export async function walk(v: Variant, starts: readonly Start[], plies: number) {
+// The book of v from the start of each option set, `plies` deep: each key of a position where level 5 moves, with
+// its value for the side to move. Positions are walked by ply, each key once per tree, so mirrors and transpositions
+// share a walk.
+async function walk(v: Variant, sets: readonly Opts[], plies: number) {
   const b = await v.bot();
   const { key } = b;
   if (!key) throw new Error(`${v.id}: a book needs Bot.key`);
@@ -70,7 +67,7 @@ export async function walk(v: Variant, starts: readonly Start[], plies: number) 
   };
   const book = new Map<number, number>();
   const seen = new Set<number>();
-  let level = starts.flatMap((s) => [0, 1].map((tree) => ({ ...s, tree })));
+  let level = sets.flatMap((opts) => [0, 1].map((tree) => ({ opts, moves: [] as readonly string[], tree })));
   try {
     for (let ply = 0; ply < plies && level.length; ply++) {
       const next: typeof level = [];
@@ -99,8 +96,8 @@ export async function walk(v: Variant, starts: readonly Start[], plies: number) 
   return book;
 }
 
-// Keys grouped by value (-1, 0, 1), each group sorted and written as base-36 differences: the format of Bot.book.
-export function encode(book: Map<number, number>): string {
+// The book in the format that policy.ts decodes.
+function encode(book: Map<number, number>): string {
   const groups: number[][] = [[], [], []];
   for (const [key, value] of book) groups[value + 1].push(key);
   return groups
@@ -141,11 +138,7 @@ if (!isMainThread && workerData?.book) {
   );
   for (const o of sets)
     if (v.ceiling(o) !== 'exact') throw new Error(`${v.id} ${JSON.stringify(o)}: the ceiling is not exact`);
-  const book = await walk(
-    v,
-    sets.map((opts) => ({ opts, moves: [] })),
-    plies,
-  );
+  const book = await walk(v, sets, plies);
   const count = (x: number) => [...book.values()].filter((y) => y === x).length;
   const command = ['node tools/book.ts', ...process.argv.slice(2)].join(' ');
   writeFileSync(
