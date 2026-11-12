@@ -9,15 +9,18 @@ const row: Level = Object.freeze({ rating: 0, tip: '', ms: 0, depth: 0, nodes: 0
 const placeholder: Five<Level> = Object.freeze([row, row, row, row, row]);
 // The 3×3 levels of 7.2, with each variant's nodes from checks/arena/bench, which sets them at the variant's slowest
 // option value so that the p95 move time in workerd meets ms. Ratings and tips are starting values that M4 tunes.
+// Omega's target is 140 ms unless its variant raises it to pass the exactness check (7.3).
 const LEVELS = [
-  { rating: 800, tip: 'Plays on a hunch and often misses a win', ms: 20, depth: 1, noise: 0.4 },
-  { rating: 1100, tip: 'Takes a win, blocks a loss, otherwise guesses', ms: 30, depth: 2, noise: 0 },
+  { rating: 800, tip: 'Plays on a hunch and often misses a win', ms: 50, depth: 1, noise: 0.4 },
+  { rating: 1100, tip: 'Takes a win, blocks a loss, otherwise guesses', ms: 50, depth: 2, noise: 0 },
   { rating: 1400, tip: 'Reads four moves ahead', ms: 60, depth: 4, noise: 0.05 },
   { rating: 1700, tip: 'Plays perfectly, with the odd slip', ms: 100, depth: 99, noise: 0.02 },
   { rating: 2000, tip: 'Plays perfectly and sets traps', ms: 140, depth: 99, noise: 0 },
 ];
-const rows = (nodes: Five<number>) =>
-  Object.freeze(LEVELS.map((level, i) => Object.freeze({ ...level, nodes: nodes[i] }))) as unknown as Five<Level>;
+const rows = (nodes: Five<number>, omegaMs = 140) =>
+  Object.freeze(
+    LEVELS.map((level, i) => Object.freeze({ ...level, ...(i === 4 && { ms: omegaMs }), nodes: nodes[i] })),
+  ) as unknown as Five<Level>;
 const quick: Clock = Object.freeze({ initialMs: 180_000, incrementMs: 2_000, capMs: 180_000 }); // 3+2
 const three = { size: 3, line: 3, win: 'Three in a row' } as const;
 const sized = { piece: 'ring', cover: 'smaller', hint: 'Drop a ring or cover a smaller one' } as const;
@@ -31,12 +34,12 @@ const lineOf3 = Object.freeze({
   moves: 'A1S B2S A2S C3S A3S',
 });
 const passes = Object.freeze({ text: 'A player who cannot move passes. When neither can, the game is a draw.' });
-const upTo5 = Object.freeze([0, 1, 2, 3, 4, 5]);
-// Custom's stock options.
+// Custom's stock options: only its default stock, which M2 proves, until M4 checks the other 205 (7.3) and widens
+// these lists to the stocks that pass, with the 3-ring minimum that start() then checks.
 const stock = [
-  { key: 's', label: 'Small rings', values: upTo5, default: 3 },
-  { key: 'm', label: 'Medium rings', values: upTo5, default: 3 },
-  { key: 'l', label: 'Large rings', values: upTo5, default: 2 },
+  { key: 's', label: 'Small rings', values: Object.freeze([3]), default: 3 },
+  { key: 'm', label: 'Medium rings', values: Object.freeze([3]), default: 3 },
+  { key: 'l', label: 'Large rings', values: Object.freeze([2]), default: 2 },
 ];
 
 // Every entry is hidden until M4.
@@ -109,7 +112,7 @@ export default [
     preview: 'B2M A1S A1M B2L',
     levels: rows([100_000, 100_000, 100_000, 100_000, 100_000]),
     ceiling: () => 'exact',
-    bot: async () => (await import('./bot3.ts')).hooks,
+    bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-conquer.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, stock: [3, 3, 3] }),
   }),
   ring({
@@ -139,23 +142,13 @@ export default [
     title: 'Custom',
     line: 'Pick the ring stock',
     tone: 'x',
-    rules: [
-      { text: 'The creator picks 0 to 5 rings of each size, at least 3 in all, and both players get that stock.' },
-      coverSmaller,
-      lineOf3,
-      passes,
-    ],
+    rules: [{ text: 'Each player has three small, three medium and two large rings.' }, coverSmaller, lineOf3, passes],
     options: stock,
     clock: quick,
     preview: 'A1S B2M B2L C3S',
     levels: rows([100_000, 100_000, 100_000, 100_000, 100_000]),
-    // Every allowed stock passes M2's exactness check (7.3), so the exact set is all of them.
-    ceiling: () => 'exact',
-    bot: async () => (await import('./bot3.ts')).hooks,
-    setup: (o) => {
-      const total = o.s + o.m + o.l; // at most 15, since start() takes only 0 to 5 of each
-      if (total < 3) throw new RangeError(`Custom takes at least 3 rings in all, not ${total}`);
-      return { ...three, ...sized, stock: [o.s, o.m, o.l] };
-    },
+    ceiling: () => 'exact', // every stock it offers passes the exactness check (7.3)
+    bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-custom.gen.ts')).default }),
+    setup: (o) => ({ ...three, ...sized, stock: [o.s, o.m, o.l] }),
   }),
 ];
