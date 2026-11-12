@@ -36,13 +36,14 @@ export function search<S extends Searchable>(
     evaluate?(s: S): number;
     margin?: number; // best also holds unproven root moves within margin; never widens a proved win
     wdl?: boolean; // callers pass Bot.wdl
-    table?: number; // log2 entries kept across calls; tools/book.ts only
+    keep?: boolean; // the entries of earlier calls still count: the trap rule's leaves, inside one choice
+    table?: number; // log2 entries of a table kept across calls, one per size and rule set; tools/book.ts only
   },
 ): { best: Move[]; value: number; exact: boolean; nodes: number } {
   const t = (o.table ? kept.get(o.table) : shared) ?? table(o.table ?? 19);
   if (o.table) kept.set(o.table, t);
   else shared = t;
-  if (!o.table && ++t.gen === GENS) {
+  if (!o.table && !o.keep && ++t.gen === GENS) {
     t.meta.fill(0);
     t.gen = 1;
   }
@@ -58,6 +59,8 @@ export function search<S extends Searchable>(
   // Each move's child, scored for `me`: a terminal from its Outcome, the same seat again with the same window and no
   // negation, the other seat negated.
   const child = (m: Move, me: Seat, depth: number, alpha: number, beta: number, ply: number) => {
+    stopped = count >= o.nodes;
+    if (stopped) return 0;
     count++;
     s.play(m);
     const next = s.turn();
@@ -110,8 +113,6 @@ export function search<S extends Searchable>(
     let all = true;
     let bound = UPPER;
     for (const m of moves) {
-      if (count >= o.nodes) stopped = true;
-      if (stopped) return 0;
       const v = child(m, me, depth, alpha, beta, ply);
       if (stopped) return 0;
       if (v > top) [top, topMove] = [v, m];
@@ -142,16 +143,14 @@ export function search<S extends Searchable>(
   let order = s.moves().slice();
   let result = { best: order.slice(), value: 0, exact: false }; // until an iteration completes
   const margin = o.margin ?? 0;
+  const me = s.turn() as Seat;
   // Without evaluate() every cut scores 0, so flat iterations past a few plies cost more than the full-depth one
   // that proves the result: such a search deepens to 4 plies, a fallback when the nodes run out, then takes the depth.
   for (let depth = 1; depth <= o.depth; depth = evaluate || depth < 4 ? depth + 1 : Math.max(depth + 1, o.depth)) {
-    const me = s.turn() as Seat;
     const values: number[] = [];
     const proofs: boolean[] = [];
     let top = -Infinity;
     for (const m of order) {
-      if (count >= o.nodes) stopped = true;
-      if (stopped) break;
       values.push(child(m, me, depth, top - margin - EPS, wdl ? WIN : WIN - 1, 0));
       proofs.push(proved);
       if (stopped) break;

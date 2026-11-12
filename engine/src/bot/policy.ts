@@ -6,7 +6,7 @@ import { search } from './search.ts';
 
 type Value = -1 | 0 | 1;
 // The moves a level may play at a position, before the random pick, and what a Choice of any of them carries.
-export type Plays = Omit<Choice, 'move'> & { moves: readonly Move[] };
+type Plays = Omit<Choice, 'move'> & { moves: readonly Move[] };
 
 const books = new Map<string, Map<number, number>>(); // each Bot.book decoded once per isolate
 
@@ -39,15 +39,22 @@ export function plays(
   const s = b.fast?.(p) ?? p;
   const me = s.turn() as Seat;
   let nodes = 0;
+  // Every step spends the row's nodes one play at a time and stops when they run out.
+  let short = false;
+  const spend = () => {
+    if (nodes >= row.nodes) short = true;
+    else nodes++;
+    return !short;
+  };
   // The value for me of a game that has ended, else undefined.
   const ended = (q: Searchable): Value | undefined => {
     const t = q.turn();
     return typeof t !== 'object' ? undefined : t.winner === null ? 0 : t.winner === me ? 1 : -1;
   };
-  // The moves of q after which `keep` holds.
+  // The moves of q after which `keep` holds, as many as the nodes allow.
   const where = (q: Searchable, keep: (q: Searchable) => boolean) =>
     [...q.moves()].filter((m) => {
-      nodes++;
+      if (!spend()) return false;
       q.play(m);
       const ok = keep(q);
       q.undo();
@@ -63,13 +70,6 @@ export function plays(
     return { moves: safe.length ? safe : [...p.moves()], nodes, exact: false };
   }
 
-  // The book probe and the trap rule spend the row's nodes one play at a time and stop when they run out.
-  let short = false;
-  const spend = () => {
-    if (nodes >= row.nodes) short = true;
-    else nodes++;
-    return !short;
-  };
   // After one of my moves: my value, the worst reply for me, and the replies that do not lose for the seat turn()
   // names next (none when I move again). `leaf` values the positions where I move; the other seat's replies are
   // opened. Undefined when a leaf is.
@@ -129,10 +129,11 @@ export function plays(
   nodes += r.nodes;
   const value = (Math.sign(r.value) + 0) as Value; // + 0 turns a drawn -0 into 0
   // The trap rule, on an exact result without margin: under a win every reply loses, so only draws and losses
-  // count. It spends only the nodes left and keeps the random pick when they run out.
+  // count. It spends only the nodes left, its searches keep what this choice proved so far, and it keeps the random
+  // pick when the nodes run out.
   if (level === 5 && r.exact && !row.margin && value < 1 && r.best.length > 1) {
     leaf = (q) => {
-      const x = search(q, { ...o, nodes: row.nodes - nodes });
+      const x = search(q, { ...o, nodes: row.nodes - nodes, keep: true });
       nodes += x.nodes;
       short ||= !x.exact;
       return Math.sign(x.value);
