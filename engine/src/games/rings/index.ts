@@ -7,9 +7,10 @@ import { RingPosition, type RingSetup } from './rules.ts';
 // Gomoku's levels and bot come with its engine in M3; until then it has placeholder rows and no hooks.
 const row: Level = Object.freeze({ rating: 0, tip: '', ms: 0, depth: 0, nodes: 0, noise: 0 });
 const placeholder: Five<Level> = Object.freeze([row, row, row, row, row]);
-// The 3×3 levels of 7.2, with each variant's nodes from checks/arena/bench, which sets them at the variant's slowest
-// option value so that the p95 move time in workerd meets ms, a cold first move included (7.3). Ratings and tips are
-// starting values that M4 tunes. Omega's target is 140 ms unless its variant raises it to pass the exactness check.
+// The 3×3 levels of 7.2. checks/arena/bench sets each row's nodes, or checks a row set by hand, at the variant's
+// slowest option value so that the p95 move time in workerd meets ms, a cold first move included (7.3). Ratings and
+// tips are starting values that M4 tunes. Omega's target is 140 ms unless its variant raises it to pass the exactness
+// check.
 const LEVELS = [
   { rating: 800, tip: 'Plays on a hunch and often misses a win', ms: 50, depth: 1, noise: 0.4 },
   { rating: 1100, tip: 'Takes a win, blocks a loss, otherwise guesses', ms: 50, depth: 2, noise: 0 },
@@ -135,8 +136,9 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M B2M A1S C3L',
-    // Omega's target is raised so that it passes the exactness check past its book (7.3).
-    levels: rows([39_631, 39_631, 17_947, 35_444, 228_767], 320),
+    // Vex's nodes finish a depth-4 search in the opening, and Omega's target is raised so that it passes the
+    // exactness check past its book (7.3).
+    levels: rows([39_631, 39_631, 28_000, 35_444, 228_767], 320),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-chaos.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, cover: 'same', hint: 'Drop a ring or cover one no larger', stock: [3, 3, 2] }),
@@ -150,7 +152,7 @@ export default [
     options: stock,
     clock: quick,
     preview: 'A1S B2M B2L C3S',
-    levels: rows([23_794, 23_794, 47_589, 66_624, 66_624]),
+    levels: rows([23_794, 23_794, 47_589, 59_961, 66_624]), // Nova-9's nodes leave a margin for a cold first move
     // Exact on the stocks that pass the exactness check (7.3): in M2 the default, the only one it offers.
     ceiling: (o) => (stock.every((x) => o[x.key] === x.default) ? 'exact' : 'search'),
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-custom.gen.ts')).default }),
