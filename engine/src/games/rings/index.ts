@@ -3,10 +3,25 @@
 import type { Clock, Five, Level, Opts, Variant } from '../../game.ts';
 import { RingPosition, type RingSetup } from './rules.ts';
 
-// Placeholder rows: M2 sets the five levels of 7.2, and K1's level clause checks them from then on. Objects that
-// several entries share are frozen, so a caller that edits one entry cannot change another.
+// Objects that several entries share are frozen, so a caller that edits one entry cannot change another.
+// Gomoku's levels and bot come with its engine in M3; until then it has placeholder rows and no hooks.
 const row: Level = Object.freeze({ rating: 0, tip: '', ms: 0, depth: 0, nodes: 0, noise: 0 });
-const levels: Five<Level> = Object.freeze([row, row, row, row, row]);
+const placeholder: Five<Level> = Object.freeze([row, row, row, row, row]);
+// The 3×3 levels of 7.2. checks/arena/bench sets each row's nodes, or checks a row set by hand, at the variant's
+// slowest option value so that the p95 move time in workerd meets ms, a cold first move included (7.3). Ratings and
+// tips are starting values that M4 tunes. Omega's target is 140 ms unless its variant raises it to pass the exactness
+// check.
+const LEVELS = [
+  { rating: 800, tip: 'Plays on a hunch and often misses a win', ms: 50, depth: 1, noise: 0.4 },
+  { rating: 1100, tip: 'Takes a win, blocks a loss, otherwise guesses', ms: 50, depth: 2, noise: 0 },
+  { rating: 1400, tip: 'Reads four moves ahead', ms: 120, depth: 4, noise: 0.05 },
+  { rating: 1700, tip: 'Sees far ahead and rarely slips', ms: 140, depth: 99, noise: 0.02 },
+  { rating: 2000, tip: 'Plays perfectly and sets traps', ms: 140, depth: 99, noise: 0 },
+];
+const rows = (nodes: Five<number>, omegaMs = LEVELS[4].ms) =>
+  Object.freeze(
+    LEVELS.map((level, i) => Object.freeze({ ...level, ...(i === 4 && { ms: omegaMs }), nodes: nodes[i] })),
+  ) as unknown as Five<Level>;
 const quick: Clock = Object.freeze({ initialMs: 180_000, incrementMs: 2_000, capMs: 180_000 }); // 3+2
 const three = { size: 3, line: 3, win: 'Three in a row' } as const;
 const sized = { piece: 'ring', cover: 'smaller', hint: 'Drop a ring or cover a smaller one' } as const;
@@ -20,27 +35,28 @@ const lineOf3 = Object.freeze({
   moves: 'A1S B2S A2S C3S A3S',
 });
 const passes = Object.freeze({ text: 'A player who cannot move passes. When neither can, the game is a draw.' });
-const upTo5 = Object.freeze([0, 1, 2, 3, 4, 5]);
-// Custom's stock options; its ceiling reads their defaults.
+const stock332 = Object.freeze({ text: 'Each player has three small, three medium and two large rings.' });
+// Custom's stock options: only its default stock, which M2 proves, until M4 checks the other 205 (7.3) and widens
+// these lists to the stocks that pass, with the 3-ring minimum that start() then checks.
 const stock = [
-  { key: 's', label: 'Small rings', values: upTo5, default: 3 },
-  { key: 'm', label: 'Medium rings', values: upTo5, default: 3 },
-  { key: 'l', label: 'Large rings', values: upTo5, default: 2 },
+  { key: 's', label: 'Small rings', values: Object.freeze([3]), default: 3 },
+  { key: 'm', label: 'Medium rings', values: Object.freeze([3]), default: 3 },
+  { key: 'l', label: 'Large rings', values: Object.freeze([2]), default: 2 },
 ];
 
-// Every entry is hidden with placeholder levels until M2 and M4, and gets its bot hooks in M2.
-type Entry = Omit<Variant<RingPosition>, 'levels' | 'status' | 'start' | 'bot'> & { setup(o: Opts): RingSetup };
+// Every entry is hidden until M4.
+type Entry = Omit<Variant<RingPosition>, 'status' | 'start'> & { setup(o: Opts): RingSetup };
 const ring = ({ setup, ...entry }: Entry): Variant<RingPosition> => ({
   ...entry,
-  levels,
   status: 'hidden',
   // Values off the option list (a raw caller, an old stored row) throw like a bad mix instead of building a board.
-  start: (o) => {
+  // The check and the board read one copy, so an option cannot pass with one value and build with another.
+  start: (raw) => {
+    const o = { ...raw };
     if (entry.options.some(({ key, values }) => !values.includes(o[key])))
       throw new RangeError(`options off the list: ${JSON.stringify(o)}`);
     return new RingPosition(setup(o));
   },
-  bot: async () => ({}),
 });
 
 export default [
@@ -57,7 +73,9 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2 A1 C1 A3 A2',
+    levels: rows([38_974, 38_974, 46_769, 77_948, 109_128]),
     ceiling: () => 'exact',
+    bot: async () => (await import('./bot3.ts')).hooks,
     setup: () => ({ ...three, piece: 'glyph', hint: 'Three in a row wins' }),
   }),
   ring({
@@ -77,7 +95,9 @@ export default [
     options: [{ key: 'size', label: 'Board size', values: [10, 13, 15, 19], default: 15 }],
     clock: { initialMs: 600_000, incrementMs: 5_000, capMs: 600_000 }, // 10+5
     preview: 'H8 J9 J8 G8 K7 H9',
+    levels: placeholder,
     ceiling: () => 'search',
+    bot: async () => ({}),
     setup: (o) => ({ size: o.size, line: 5, win: 'Five in a row', piece: 'stone', hint: 'Five or more in a row wins' }),
   }),
   ring({
@@ -94,7 +114,9 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M A1S A1M B2L',
+    levels: rows([45_159, 45_159, 90_319, 75_147, 126_446]),
     ceiling: () => 'exact',
+    bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-conquer.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, stock: [3, 3, 3] }),
   }),
   ring({
@@ -103,7 +125,7 @@ export default [
     line: 'Same-size captures',
     tone: 'o',
     rules: [
-      { text: 'Each player has three small, three medium and two large rings.' },
+      stock332,
       {
         text: `Drop a ring from your stock on an empty cell, or on a ring of the same size or smaller of either colour. ${covers}`,
         moves: 'B2M B2M',
@@ -114,29 +136,26 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M B2M A1S C3L',
+    // Vex's nodes finish a depth-4 search in the opening, and Omega's target is raised so that it passes the
+    // exactness check past its book (7.3).
+    levels: rows([39_631, 39_631, 28_000, 33_056, 228_767], 320),
     ceiling: () => 'exact',
+    bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-chaos.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, cover: 'same', hint: 'Drop a ring or cover one no larger', stock: [3, 3, 2] }),
   }),
   ring({
     id: 'custom',
     title: 'Custom',
-    line: 'Pick the ring stock',
+    line: 'Small, medium and large rings, 3/3/2',
     tone: 'x',
-    rules: [
-      { text: 'The creator picks 0 to 5 rings of each size, at least 3 in all, and both players get that stock.' },
-      coverSmaller,
-      lineOf3,
-      passes,
-    ],
+    rules: [stock332, coverSmaller, lineOf3, passes],
     options: stock,
     clock: quick,
     preview: 'A1S B2M B2L C3S',
-    // Exact on the default stock until M2 lists the exact set (7.3), search elsewhere.
+    levels: rows([23_794, 23_794, 47_589, 46_000, 66_624]), // Nova-9's nodes leave a margin for a cold first move
+    // Exact on the stocks that pass the exactness check (7.3): in M2 the default, the only one it offers.
     ceiling: (o) => (stock.every((x) => o[x.key] === x.default) ? 'exact' : 'search'),
-    setup: (o) => {
-      const total = o.s + o.m + o.l; // at most 15, since start() takes only 0 to 5 of each
-      if (total < 3) throw new RangeError(`Custom takes at least 3 rings in all, not ${total}`);
-      return { ...three, ...sized, stock: [o.s, o.m, o.l] };
-    },
+    bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-custom.gen.ts')).default }),
+    setup: (o) => ({ ...three, ...sized, stock: [o.s, o.m, o.l] }),
   }),
 ];

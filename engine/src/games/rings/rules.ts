@@ -18,16 +18,23 @@ const NO_MOVES = 'No moves left';
 // A move is cell * 3 + size; a cell holds 0 when empty, else 1 + seat * 3 + size of its top ring.
 export class RingPosition implements Position {
   private readonly setup: RingSetup;
-  private readonly cells: Uint8Array;
-  private readonly stock = new Int8Array(6); // rings left, seat * 3 + size; unused when the stock is unlimited
+  readonly cells: Uint8Array; // cells and stock are read by bot3.ts's key, and written only here
+  readonly stock = new Int8Array(6); // rings left, seat * 3 + size; unused when the stock is unlimited
   private readonly history: number[] = []; // per play: cell << 3 | the cell's old value; the cell now holds the ring played
   private side: Seat = 0;
   private end: Outcome | undefined;
   private readonly owner = (cell: number) => (this.cells[cell] ? Math.floor((this.cells[cell] - 1) / 3) : -1);
+  private readonly order: number[]; // the cells nearest the centre first, the search order of moves()
 
   constructor(setup: RingSetup) {
     this.setup = setup;
     this.cells = new Uint8Array(setup.size * setup.size);
+    const away = (cell: number) =>
+      Math.max(
+        Math.abs((cell % setup.size) * 2 + 1 - setup.size),
+        Math.abs(Math.floor(cell / setup.size) * 2 + 1 - setup.size),
+      );
+    this.order = [...this.cells.keys()].sort((a, b) => away(a) - away(b) || a - b);
     this.stock.set([...(setup.stock ?? []), ...(setup.stock ?? [])]);
   }
 
@@ -46,8 +53,7 @@ export class RingPosition implements Position {
   private legal(seat: Seat, out?: Move[]): boolean {
     for (let size = this.setup.stock ? 2 : 0; size >= 0; size--) {
       if (this.setup.stock && !this.stock[seat * 3 + size]) continue;
-      for (let cell = 0; cell < this.cells.length; cell++)
-        if (this.fits(cell, size) && out?.push(cell * 3 + size) === undefined) return true;
+      for (const cell of this.order) if (this.fits(cell, size) && out?.push(cell * 3 + size) === undefined) return true;
     }
     return false;
   }

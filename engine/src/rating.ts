@@ -31,24 +31,29 @@ export function rate(p: Rating, games: readonly Game[]): Rating {
   let gain = 0;
   for (const { r, rd, score } of games) {
     const g = 1 / Math.sqrt(1 + (3 * (rd / SCALE) ** 2) / Math.PI ** 2);
-    const e = 1 / (1 + Math.exp(-g * (mu - (r - 1500) / SCALE)));
-    info += g * g * e * (1 - e);
-    gain += g * (score - e);
+    const x = g * (mu - (r - 1500) / SCALE);
+    // The logistic's smaller side, E below the opponent and 1 - E above, so a wide gap rounds neither to zero.
+    const tail = 1 / (1 + Math.exp(Math.abs(x)));
+    info += g * g * tail * (1 - tail);
+    gain += g * (score - (x < 0 ? tail : 1 - tail));
   }
-  const v = 1 / info;
-  const vol = volatility(phi * phi, v, (v * gain) ** 2, p.vol);
-  const after = 1 / Math.sqrt(1 / (phi * phi + vol * vol) + 1 / v);
+  const vol = volatility(phi * phi, info, gain * gain, p.vol);
+  const after = 1 / Math.sqrt(1 / (phi * phi + vol * vol) + info);
   return { r: 1500 + SCALE * (mu + after * after * gain), rd: SCALE * after, vol };
 }
 
-// Step 5 of the paper: the new volatility by the Illinois algorithm, from φ², v and Δ².
-function volatility(phi2: number, v: number, delta2: number, sigma: number): number {
+// Step 5 of the paper: the new volatility by the Illinois algorithm. The paper's v and Δ² are 1 / w and (gain / w)²,
+// with w the information above; its f is multiplied through by w², so a tiny w never makes v or Δ² overflow.
+function volatility(phi2: number, w: number, gain2: number, sigma: number): number {
   const a = Math.log(sigma * sigma);
-  const f = (x: number) =>
-    (Math.exp(x) * (delta2 - phi2 - v - Math.exp(x))) / (2 * (phi2 + v + Math.exp(x)) ** 2) - (x - a) / TAU ** 2;
+  const f = (x: number) => {
+    const q = 1 + w * (phi2 + Math.exp(x));
+    return (Math.exp(x) * (gain2 - w * q)) / (2 * q * q) - (x - a) / TAU ** 2;
+  };
   // The paper steps down from a - τ while f stays negative; f(a - kτ) > 2k - 1/2 at τ = 0.5, so a - τ brackets.
+  const above = gain2 - w * (1 + w * phi2); // (Δ² - φ² - v) × w²
   let lo = a;
-  let hi = delta2 > phi2 + v ? Math.log(delta2 - phi2 - v) : a - TAU;
+  let hi = above > 0 ? Math.log(above) - 2 * Math.log(w) : a - TAU;
   let fLo = f(lo);
   let fHi = f(hi);
   while (Math.abs(hi - lo) > 1e-6) {
