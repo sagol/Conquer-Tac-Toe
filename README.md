@@ -29,7 +29,7 @@ pnpm exec wrangler deploy --tag "$(git rev-parse HEAD)"
 
 Production deploys from `main` through Workers Builds. Its build command is `pnpm verify && CLOUDFLARE_ENV=production pnpm build`, and its deploy command is `CLOUDFLARE_ENV=production wrangler d1 migrations apply conquer --remote && wrangler deploy`.
 
-None of this works until the Cloudflare account is set up: both `database_id` values in `wrangler.jsonc` are placeholders to fill in once the D1 databases exist, and Workers Builds is not connected yet.
+Both hostnames sit behind Cloudflare Access until launch. Workers Builds is not connected yet, so production does not deploy on its own.
 
 ## License
 

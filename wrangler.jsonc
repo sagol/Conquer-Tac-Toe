@@ -15,8 +15,7 @@
         {
           "binding": "DB",
           "database_name": "conquer-staging",
-          // PLACEHOLDER: replace with the id of conquer-staging once the database exists.
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "684678a1-c739-4e0c-8870-cb831b6dcb45",
           "migrations_dir": "migrations"
         }
       ]
@@ -28,8 +27,7 @@
         {
           "binding": "DB",
           "database_name": "conquer",
-          // PLACEHOLDER: replace with the id of conquer once the database exists.
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "f80c5aab-464e-4d4c-a48c-362d6635084b",
           "migrations_dir": "migrations"
         }
       ]
