@@ -1,6 +1,6 @@
 // engine/src/bot/policy.ts: chooseMove, the one bot policy of 7.3 for every game and level. A level changes only the
 // parameters of its row; the steps run in order and the first that yields moves ends the call.
-import type { Bot, Choice, Move, Position, Searchable, Seat, Variant } from '../game.ts';
+import type { Bot, Choice, Move, Position, Searchable, Variant } from '../game.ts';
 import { random } from '../random.ts';
 import { search } from './search.ts';
 
@@ -37,7 +37,8 @@ export function plays(
 ): Plays {
   const row = v.levels[level - 1];
   const s = b.fast?.(p) ?? p;
-  const me = s.turn() as Seat;
+  const me = s.turn();
+  if (typeof me === 'object') throw new RangeError('no move to choose: the game is over');
   let nodes = 0;
   // Every step spends the row's nodes one play at a time and stops when they run out.
   let short = false;
@@ -129,8 +130,9 @@ export function plays(
   nodes += r.nodes;
   const value = (Math.sign(r.value) + 0) as Value; // + 0 turns a drawn -0 into 0
   // The trap rule, on an exact result without margin: under a win every reply loses, so only draws and losses
-  // count. It spends only the nodes left, its searches keep what this choice proved so far, and it keeps the random
-  // pick when the nodes run out.
+  // count; under a loss it is a swindle that keeps the moves leaving the other seat the fewest replies that do not
+  // lose for it. It spends only the nodes left, its searches keep what this choice proved so far, and it keeps the
+  // random pick when the nodes run out.
   if (level === 5 && r.exact && !row.margin && value < 1 && r.best.length > 1) {
     leaf = (q) => {
       const x = search(q, { ...o, nodes: row.nodes - nodes, keep: true });
