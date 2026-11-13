@@ -122,7 +122,8 @@ export function plays(
     const kept = value === undefined ? [] : least([...s.moves()], value);
     if (kept.length) return { moves: kept, nodes, exact: true, value };
   }
-  const own = b.choose?.(p, row, rng);
+  // The own engine gets only the nodes the steps above left, and none once they ran out.
+  const own = nodes < row.nodes ? b.choose?.(p, { ...row, nodes: row.nodes - nodes }, rng) : undefined;
   if (own) return { moves: [own.move], nodes: nodes + own.nodes, exact: own.exact, value: own.value };
 
   const o = { depth: row.depth, key, evaluate: b.evaluate, wdl: b.wdl, table };
