@@ -138,8 +138,9 @@ export function search<S extends Searchable>(
 
   // Iterative deepening at the root. Every root move gets a window that opens just below the floor, the top value
   // less the margin, so moves at or above it come back exact and the rest as upper bounds. A win, which only a forced
-  // line can score, makes the root exact and ends the search at once, with the winning moves found so far; otherwise
-  // the root is exact when every root move is proved.
+  // line can score, makes the root exact; with wdl it ends the search at once, with the winning moves found so far,
+  // and by distance every root move is still searched for a faster one. Otherwise the root is exact when every root
+  // move is proved.
   let order = s.moves().slice();
   let result = { best: order.slice(), value: 0, exact: false }; // until an iteration completes
   const margin = o.margin ?? 0;
@@ -155,9 +156,18 @@ export function search<S extends Searchable>(
       proofs.push(proved);
       if (stopped) break;
       top = Math.max(top, values[values.length - 1]);
-      if (top >= MATE) break;
+      if (top >= MATE && wdl) break; // by distance the other root moves may still win faster
     }
-    if (stopped) break;
+    if (stopped) {
+      // A win this iteration proved still beats the last one's result, though its distance is not proved least.
+      if (top >= MATE)
+        result = {
+          best: order.filter((_, j) => j < values.length - 1 && values[j] === top).sort((a, b) => a - b),
+          value: top,
+          exact: false,
+        };
+      break;
+    }
     const best = order.filter(
       (_, j) => j < values.length && (values[j] === top || (top < MATE && !proofs[j] && values[j] >= top - margin)),
     );
