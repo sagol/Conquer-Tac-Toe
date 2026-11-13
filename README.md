@@ -27,9 +27,9 @@ CLOUDFLARE_ENV=staging pnpm exec wrangler d1 migrations apply conquer-staging --
 pnpm exec wrangler deploy --tag "$(git rev-parse HEAD)"
 ```
 
-Production deploys from `main` through Workers Builds. Its build command is `pnpm verify && CLOUDFLARE_ENV=production pnpm build`, and its deploy command is `CLOUDFLARE_ENV=production wrangler d1 migrations apply conquer --remote && wrangler deploy`.
+Production deploys from `main` through Workers Builds. Its build command is `pnpm verify && CLOUDFLARE_ENV=production pnpm build`, and its deploy command is `CLOUDFLARE_ENV=production pnpm exec wrangler d1 migrations apply conquer --remote && pnpm exec wrangler deploy`.
 
-Both hostnames sit behind Cloudflare Access until launch. Workers Builds is not connected yet, so production does not deploy on its own.
+Both hostnames sit behind Cloudflare Access until launch.
 
 ## License
 
