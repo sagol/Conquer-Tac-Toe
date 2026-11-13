@@ -14,7 +14,7 @@ const placeholder: Five<Level> = Object.freeze([row, row, row, row, row]);
 const LEVELS = [
   { rating: 800, tip: 'Plays on a hunch and often misses a win', ms: 50, depth: 1, noise: 0.4 },
   { rating: 1100, tip: 'Takes a win, blocks a loss, otherwise guesses', ms: 50, depth: 2, noise: 0 },
-  { rating: 1400, tip: 'Reads four moves ahead', ms: 100, depth: 4, noise: 0.05 },
+  { rating: 1400, tip: 'Reads four moves ahead', ms: 120, depth: 4, noise: 0.05 },
   { rating: 1700, tip: 'Sees far ahead and rarely slips', ms: 140, depth: 99, noise: 0.02 },
   { rating: 2000, tip: 'Plays perfectly and sets traps', ms: 140, depth: 99, noise: 0 },
 ];
@@ -138,7 +138,7 @@ export default [
     preview: 'B2M B2M A1S C3L',
     // Vex's nodes finish a depth-4 search in the opening, and Omega's target is raised so that it passes the
     // exactness check past its book (7.3).
-    levels: rows([39_631, 39_631, 28_000, 35_444, 228_767], 320),
+    levels: rows([39_631, 39_631, 28_000, 33_056, 228_767], 320),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-chaos.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, cover: 'same', hint: 'Drop a ring or cover one no larger', stock: [3, 3, 2] }),
@@ -152,7 +152,7 @@ export default [
     options: stock,
     clock: quick,
     preview: 'A1S B2M B2L C3S',
-    levels: rows([23_794, 23_794, 47_589, 59_961, 66_624]), // Nova-9's nodes leave a margin for a cold first move
+    levels: rows([23_794, 23_794, 47_589, 52_000, 66_624]), // Nova-9's nodes leave a margin for a cold first move
     // Exact on the stocks that pass the exactness check (7.3): in M2 the default, the only one it offers.
     ceiling: (o) => (stock.every((x) => o[x.key] === x.default) ? 'exact' : 'search'),
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-custom.gen.ts')).default }),
