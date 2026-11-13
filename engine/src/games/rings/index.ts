@@ -8,13 +8,14 @@ import { RingPosition, type RingSetup } from './rules.ts';
 const row: Level = Object.freeze({ rating: 0, tip: '', ms: 0, depth: 0, nodes: 0, noise: 0 });
 const placeholder: Five<Level> = Object.freeze([row, row, row, row, row]);
 // The 3×3 levels of 7.2, with each variant's nodes from checks/arena/bench, which sets them at the variant's slowest
-// option value so that the p95 move time in workerd meets ms. Ratings and tips are starting values that M4 tunes.
-// Omega's target is 140 ms unless its variant raises it to pass the exactness check (7.3).
+// option value so that the p95 move time in workerd and a cold first move, which spends 30 to 60 ms before its search
+// starts, meet ms. Ratings and tips are starting values that M4 tunes. Omega's target is 140 ms unless its variant
+// raises it to pass the exactness check (7.3).
 const LEVELS = [
   { rating: 800, tip: 'Plays on a hunch and often misses a win', ms: 50, depth: 1, noise: 0.4 },
   { rating: 1100, tip: 'Takes a win, blocks a loss, otherwise guesses', ms: 50, depth: 2, noise: 0 },
-  { rating: 1400, tip: 'Reads four moves ahead', ms: 60, depth: 4, noise: 0.05 },
-  { rating: 1700, tip: 'Plays perfectly, with the odd slip', ms: 100, depth: 99, noise: 0.02 },
+  { rating: 1400, tip: 'Reads four moves ahead', ms: 100, depth: 4, noise: 0.05 },
+  { rating: 1700, tip: 'Plays perfectly, with the odd slip', ms: 140, depth: 99, noise: 0.02 },
   { rating: 2000, tip: 'Plays perfectly and sets traps', ms: 140, depth: 99, noise: 0 },
 ];
 const rows = (nodes: Five<number>, omegaMs = LEVELS[4].ms) =>
@@ -111,7 +112,7 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M A1S A1M B2L',
-    levels: rows([39_547, 39_547, 47_457, 79_095, 110_733]),
+    levels: rows([45_159, 45_159, 90_319, 75_147, 126_446]),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-conquer.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, stock: [3, 3, 3] }),
@@ -133,8 +134,8 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M B2M A1S C3L',
-    // Omega proves the positions past its 10-ply book from about 300,000 nodes, so its target is 500 ms (7.3).
-    levels: rows([49_067, 49_067, 58_881, 98_135, 490_678], 500),
+    // Past its 10-ply book Omega proves every position it can face from 201,482 nodes, so its target is 320 ms (7.3).
+    levels: rows([39_631, 39_631, 17_947, 35_444, 228_767], 320),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-chaos.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, cover: 'same', hint: 'Drop a ring or cover one no larger', stock: [3, 3, 2] }),
@@ -148,7 +149,7 @@ export default [
     options: stock,
     clock: quick,
     preview: 'A1S B2M B2L C3S',
-    levels: rows([34_954, 34_954, 41_945, 69_908, 97_871]),
+    levels: rows([23_794, 23_794, 47_589, 66_624, 66_624]),
     // Exact on the stocks that pass the exactness check (7.3): in M2 the default, the only one it offers.
     ceiling: (o) => (stock.every((x) => o[x.key] === x.default) ? 'exact' : 'search'),
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-custom.gen.ts')).default }),
