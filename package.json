@@ -1,0 +1,22 @@
+{
+  "name": "conquer-tac-toe",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.15.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "wrangler types worker/worker-configuration.d.ts && tsc -p engine && tsc -p worker && tsc -p web && tsc -p .",
+    "verify": "pnpm typecheck && biome ci --error-on-warnings && node tools/budget.mjs && pnpm build && node tools/bundle.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.2",
+    "@cloudflare/vite-plugin": "1.65.0",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "wrangler": "4.152.0"
+  }
+}

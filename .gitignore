@@ -1,23 +1,6 @@
-.env
 node_modules/
-__pycache__/
-.DS_Store
-
-# ClickHouse configuration with sensitive data
-**/clickhouse-config/users.xml
-
-# Database data directories (stored on host, not in git)
-**/data/postgres/
-**/data/clickhouse/
-
-# Backup files
-backups/
-*.sql.gz
-*.tar.gz
-
-# Postgres data
-pgdata/
-**/pgdata/
-
-# PDF research papers (too large for git)
-**/pdf/
+dist/
+.wrangler/
+.dev.vars*
+.env*
+worker/worker-configuration.d.ts

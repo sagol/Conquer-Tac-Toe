@@ -1,0 +1,12 @@
+packages:
+  - engine
+  - worker
+  - web
+
+# Every package, transitive ones included, is at least 14 days old when it is resolved.
+minimumReleaseAge: 20160
+
+# Both ship their native binary as an optional dependency; their install scripts only re-check it.
+allowBuilds:
+  esbuild: false
+  workerd: false

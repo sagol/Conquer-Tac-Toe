@@ -1,0 +1,36 @@
+// One Worker: the top level is local development, env.staging and env.production deploy (README, Deploy it).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "conquer-local",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-10-19",
+  "workers_dev": false,
+  "preview_urls": false,
+  "d1_databases": [{ "binding": "DB", "database_name": "conquer-local", "migrations_dir": "migrations" }],
+  "env": {
+    "staging": {
+      "name": "conquer-staging",
+      "routes": [{ "pattern": "staging.gurudo.com", "custom_domain": true }],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "conquer-staging",
+          "database_id": "684678a1-c739-4e0c-8870-cb831b6dcb45",
+          "migrations_dir": "migrations"
+        }
+      ]
+    },
+    "production": {
+      "name": "conquer",
+      "routes": [{ "pattern": "gurudo.com", "custom_domain": true }],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "conquer",
+          "database_id": "f80c5aab-464e-4d4c-a48c-362d6635084b",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
+}
