@@ -152,7 +152,7 @@ export default [
     options: stock,
     clock: quick,
     preview: 'A1S B2M B2L C3S',
-    levels: rows([23_794, 23_794, 47_589, 52_000, 66_624]), // Nova-9's nodes leave a margin for a cold first move
+    levels: rows([23_794, 23_794, 47_589, 46_000, 66_624]), // Nova-9's nodes leave a margin for a cold first move
     // Exact on the stocks that pass the exactness check (7.3): in M2 the default, the only one it offers.
     ceiling: (o) => (stock.every((x) => o[x.key] === x.default) ? 'exact' : 'search'),
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-custom.gen.ts')).default }),
