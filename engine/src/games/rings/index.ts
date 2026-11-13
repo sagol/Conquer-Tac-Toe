@@ -8,14 +8,13 @@ import { RingPosition, type RingSetup } from './rules.ts';
 const row: Level = Object.freeze({ rating: 0, tip: '', ms: 0, depth: 0, nodes: 0, noise: 0 });
 const placeholder: Five<Level> = Object.freeze([row, row, row, row, row]);
 // The 3×3 levels of 7.2, with each variant's nodes from checks/arena/bench, which sets them at the variant's slowest
-// option value so that the p95 move time in workerd and a cold first move, which spends 30 to 60 ms before its search
-// starts, meet ms. Ratings and tips are starting values that M4 tunes. Omega's target is 140 ms unless its variant
-// raises it to pass the exactness check (7.3).
+// option value so that the p95 move time in workerd meets ms, a cold first move included (7.3). Ratings and tips are
+// starting values that M4 tunes. Omega's target is 140 ms unless its variant raises it to pass the exactness check.
 const LEVELS = [
   { rating: 800, tip: 'Plays on a hunch and often misses a win', ms: 50, depth: 1, noise: 0.4 },
   { rating: 1100, tip: 'Takes a win, blocks a loss, otherwise guesses', ms: 50, depth: 2, noise: 0 },
   { rating: 1400, tip: 'Reads four moves ahead', ms: 100, depth: 4, noise: 0.05 },
-  { rating: 1700, tip: 'Plays perfectly, with the odd slip', ms: 140, depth: 99, noise: 0.02 },
+  { rating: 1700, tip: 'Sees far ahead and rarely slips', ms: 140, depth: 99, noise: 0.02 },
   { rating: 2000, tip: 'Plays perfectly and sets traps', ms: 140, depth: 99, noise: 0 },
 ];
 const rows = (nodes: Five<number>, omegaMs = LEVELS[4].ms) =>
@@ -50,7 +49,9 @@ const ring = ({ setup, ...entry }: Entry): Variant<RingPosition> => ({
   ...entry,
   status: 'hidden',
   // Values off the option list (a raw caller, an old stored row) throw like a bad mix instead of building a board.
-  start: (o) => {
+  // The check and the board read one copy, so an option cannot pass with one value and build with another.
+  start: (raw) => {
+    const o = { ...raw };
     if (entry.options.some(({ key, values }) => !values.includes(o[key])))
       throw new RangeError(`options off the list: ${JSON.stringify(o)}`);
     return new RingPosition(setup(o));
@@ -134,7 +135,7 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M B2M A1S C3L',
-    // Past its 10-ply book Omega proves every position it can face from 201,482 nodes, so its target is 320 ms (7.3).
+    // Omega's target is raised so that it passes the exactness check past its book (7.3).
     levels: rows([39_631, 39_631, 17_947, 35_444, 228_767], 320),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-chaos.gen.ts')).default }),
@@ -143,7 +144,7 @@ export default [
   ring({
     id: 'custom',
     title: 'Custom',
-    line: 'Pick the ring stock',
+    line: 'Small, medium and large rings, 3/3/2',
     tone: 'x',
     rules: [stock332, coverSmaller, lineOf3, passes],
     options: stock,
