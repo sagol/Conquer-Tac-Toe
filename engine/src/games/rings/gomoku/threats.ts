@@ -17,16 +17,12 @@ export function threat(b: Board, plies: number, threes: boolean, budget: { nodes
   const attack = (left: number): Move[] | undefined => {
     if (b.has(a, FIVE)) return b.with(a, FIVE).slice(0, 1);
     if (left < 3) return undefined;
-    let tries: Move[];
-    if (b.has(d, FIVE))
-      tries = b.with(d, FIVE).slice(0, 1); // the block first; the defender's node asks what it threatens
-    else if (b.has(a, WIN)) return b.with(a, WIN).slice(0, 1);
-    else
-      tries = threes
-        ? [...b.with(a, FOUR), ...b.with(a, THREE).filter((m) => !(b.worth[(m / 3) * 2 + a] & FOUR))]
-        : b.with(a, FOUR);
+    if (!b.has(d, FIVE) && b.has(a, WIN)) return b.with(a, WIN).slice(0, 1);
     const k = b.key();
     if ((failed.get(k) ?? 0) >= left) return undefined;
+    // The block first, when the defender threatens five; the defender's node then asks what it threatens.
+    let tries = b.has(d, FIVE) ? b.with(d, FIVE).slice(0, 1) : b.with(a, FOUR);
+    if (threes && !b.has(d, FIVE)) tries = [...new Set([...tries, ...b.with(a, THREE)])];
     for (const m of tries) {
       if (budget.nodes <= 0) return undefined;
       budget.nodes--;
@@ -40,12 +36,11 @@ export function threat(b: Board, plies: number, threes: boolean, budget: { nodes
   };
 
   const defend = (left: number): Move[] | undefined => {
-    if (typeof b.turn() === 'object' || b.has(d, FIVE)) return undefined;
-    let replies: Move[];
-    if (b.has(a, FIVE)) replies = b.with(a, FIVE);
-    else if (threes && b.has(a, WIN)) replies = [...new Set([...b.with(d, FOUR), ...b.with(a, FOUR)])];
-    else return undefined;
-    if (replies.length > 1 && b.has(a, FIVE)) return [replies[0], ...b.with(a, FIVE).slice(1, 2)];
+    // The board's own moves are the replies: the block of a five, else (against a threat to come) every four cell.
+    const threatened = b.has(a, FIVE) || (threes && b.has(a, WIN));
+    if (typeof b.turn() === 'object' || b.has(d, FIVE) || !threatened) return undefined;
+    const replies = b.moves();
+    if (replies.length > 1 && b.has(a, FIVE)) return replies.slice(0, 2);
     let first: Move[] | undefined;
     for (const r of replies) {
       if (budget.nodes <= 0) return undefined;

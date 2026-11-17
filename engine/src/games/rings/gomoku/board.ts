@@ -2,17 +2,17 @@
 // keeps, for every cell and direction, the eight cells around it as a 16-bit line code, updated only around the
 // last move, and from those codes each empty cell's pattern for both seats, its score and the evaluation sums.
 import type { Move, Outcome, Searchable, Seat } from '../../../game.ts';
-import { lines } from '../../../grid.ts';
+import { DIRECTIONS, lines } from '../../../grid.ts';
 import { random } from '../../../random.ts';
 import type { RingPosition } from '../rules.ts';
 
 // What a stone of the seat on the empty centre cell makes along one line, from best to worst: five or more (F5), a
 // four with two five points (F4) or one (B4), a three that one more stone turns into F4 (F3) or only B4 (B3), and
 // the twos below them.
-export const F5 = 7;
-export const F4 = 6;
-export const B4 = 5;
-export const F3 = 4;
+const F5 = 7;
+const F4 = 6;
+const B4 = 5;
+const F3 = 4;
 
 // A line code holds the cells at offsets -4..-1 and 1..4 from the centre, two bits each (slot j at bits 2j):
 // 0 empty, 1 a stone of the seat the code is read for, 2 the other seat's stone, 3 off the board.
@@ -78,8 +78,8 @@ const WORTH = Int32Array.from({ length: 1 << 12 }, (_, i) => {
 
 // Per size, the neighbour of every cell in each direction and slot (-1 off the board), the empty board's line codes
 // and the Zobrist numbers, high and low 32 bits: two per cell (seat 0, seat 1), then the side to move.
-const DIRS = [1, 0, 0, 1, 1, 1, 1, -1];
-const shapes = new Map<number, ReturnType<typeof shape>>();
+type Shape = ReturnType<typeof shape>;
+const shapes = new Map<number, Shape>();
 function shape(n: number) {
   const cells = n * n;
   const near = new Int16Array(cells * 32);
@@ -87,8 +87,8 @@ function shape(n: number) {
   for (let cell = 0; cell < cells; cell++)
     for (let d = 0; d < 4; d++)
       for (let j = 0; j < 8; j++) {
-        const c = (cell % n) + DIRS[2 * d] * OFFSETS[j];
-        const r = Math.floor(cell / n) + DIRS[2 * d + 1] * OFFSETS[j];
+        const c = (cell % n) + DIRECTIONS[d][0] * OFFSETS[j];
+        const r = Math.floor(cell / n) + DIRECTIONS[d][1] * OFFSETS[j];
         const inside = c >= 0 && c < n && r >= 0 && r < n;
         near[(cell * 4 + d) * 8 + j] = inside ? r * n + c : -1;
         if (!inside) codes[cell * 4 + d] |= 3 << (2 * j);
@@ -101,9 +101,9 @@ function shape(n: number) {
 export class Board implements Searchable {
   readonly n: number;
   readonly cells: Uint8Array; // 0 empty, else 1 + the seat
-  readonly worth: Int32Array; // cell * 2 + seat, for empty cells: a stone of the seat there, score << 4 | flags
-  readonly sum = [0, 0]; // each seat's scores over the empty cells
-  readonly count = new Int32Array(8); // seat * 4 + flag bit: empty cells that carry the flag
+  private readonly worth: Int32Array; // cell * 2 + seat, for empty cells: a stone of the seat there, score << 4 | flags
+  private readonly sum = [0, 0]; // each seat's scores over the empty cells
+  private readonly count = new Int32Array(8); // seat * 4 + flag bit: empty cells that carry the flag
   side: Seat = 0;
   private end: Outcome | undefined;
   private stones = 0;
@@ -112,13 +112,17 @@ export class Board implements Searchable {
   private readonly codes: Uint16Array;
   private readonly index: Uint16Array; // cell * 2 + seat: the cell's four patterns for the seat, its WORTH index
   private readonly around: Uint8Array; // stones within two cells, in each direction, of each cell
-  private readonly shape: ReturnType<typeof shape>;
+  private readonly shape: Shape;
   private readonly history: number[] = [];
 
   constructor(n: number) {
     this.n = n;
-    if (!shapes.has(n)) shapes.set(n, shape(n));
-    this.shape = shapes.get(n) as ReturnType<typeof shape>;
+    let known = shapes.get(n);
+    if (!known) {
+      known = shape(n);
+      shapes.set(n, known);
+    }
+    this.shape = known;
     this.cells = new Uint8Array(n * n);
     this.worth = new Int32Array(n * n * 2);
     this.index = new Uint16Array(n * n * 2);
@@ -151,7 +155,12 @@ export class Board implements Searchable {
     const you = (1 - me) as Seat;
     if (this.has(me, FIVE)) return this.with(me, FIVE);
     if (this.has(you, FIVE)) return this.with(you, FIVE);
-    if (this.has(you, WIN)) return [...new Set([...this.with(me, FOUR), ...this.with(you, FOUR)])];
+    if (this.has(you, WIN)) {
+      const out = this.with(me, FOUR);
+      for (let cell = 0; cell < this.cells.length; cell++)
+        if (this.worth[cell * 2 + you] & ~this.worth[cell * 2 + me] & FOUR) out.push(cell * 3);
+      return out;
+    }
     return this.near(width);
   }
 
@@ -167,6 +176,10 @@ export class Board implements Searchable {
       if (this.cells[cell] || !this.around[cell]) continue;
       const v = (this.worth[cell * 2] >> 4) + (this.worth[cell * 2 + 1] >> 4) + (this.worth[cell * 2 + me] >> 4);
       let i = out.length;
+      if (i === width) {
+        if (value[i - 1] >= v) continue; // the list is full and the cell ranks below all of it
+        i--;
+      }
       for (; i > 0 && value[i - 1] < v; i--) {
         out[i] = out[i - 1];
         value[i] = value[i - 1];
@@ -174,17 +187,22 @@ export class Board implements Searchable {
       out[i] = cell * 3;
       value[i] = v;
     }
-    return out.length > width ? out.slice(0, width) : out;
+    return out;
   }
 
   has(seat: Seat, flag: number): boolean {
     return this.count[seat * 4 + 31 - Math.clz32(flag)] > 0;
   }
 
-  // The moves to the empty cells that carry the flag for the seat.
+  // The moves to the empty cells that carry the flag (one flag bit) for the seat; the scan stops at the last one.
   with(seat: Seat, flag: number): Move[] {
     const out: Move[] = [];
-    for (let cell = 0; cell < this.cells.length; cell++) if (this.worth[cell * 2 + seat] & flag) out.push(cell * 3);
+    let left = this.count[seat * 4 + 31 - Math.clz32(flag)];
+    for (let cell = 0; left && cell < this.cells.length; cell++)
+      if (this.worth[cell * 2 + seat] & flag) {
+        out.push(cell * 3);
+        left--;
+      }
     return out;
   }
 

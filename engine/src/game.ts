@@ -61,7 +61,7 @@ export interface Level {
   rating: number; // display rating in this variant; level 1 near 800
   tip: string; // BOT PATTERN line
   ms: number; // p95 move-time target in workerd, at most BOT_MS; the bench sets nodes from it
-  depth: number; // kernel search plies, 99 = no cap; own engines ignore it
+  depth: number; // kernel search plies, 99 = no cap; an own engine reads it for the searches it runs
   nodes: number; // the only work budget: search nodes or an own engine's unit
   noise: number; // chance of a random move; from level 2 never one that ends the game in the mover's loss
   margin?: number; // root moves within margin of the best are equally likely; engine's own scale

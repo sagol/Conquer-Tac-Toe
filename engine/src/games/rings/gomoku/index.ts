@@ -1,16 +1,14 @@
 // budget: 810 lines, 200 KB
 // Gomoku's own engine (7.3): the pattern board as the fast copy, its key and evaluation, and choose(), which runs the
 // fixed decision order. A level's knobs sit in its row's x: `vcf` and `vct` are the plies of the threat searches (0 or
-// absent: none), `top` and `wide` the chance of a random pick among the top moves, `raw` a level that takes no
-// forced step and searches every cell near a stone, and `open` a level that plays the opening data.
+// absent: none), `top` and `wide` the chance of a random pick among the top moves, `raw` a level whose root list is
+// every cell near a stone, with no forced move kept apart, and `open` a level that plays the opening data.
 import { search } from '../../../bot/search.ts';
 import type { Bot, Choice, Level, Move, Searchable, Seat } from '../../../game.ts';
 import type { RingPosition } from '../rules.ts';
 import { Board, FIVE, FOUR, WIN } from './board.ts';
 import opening from './opening.gen.ts';
 import { threat } from './threats.ts';
-
-const WIN_SCORE = 2000; // the kernel search's score of a win in one, which the top picks compare with
 
 // The board with its root moves replaced: the search's root list holds step 4's defences.
 function rooted(b: Board, root: readonly Move[]): Searchable {
@@ -29,9 +27,16 @@ function rooted(b: Board, root: readonly Move[]): Searchable {
   };
 }
 
-// The square's eight symmetries as (x, y) → (a x + b y, c x + d y).
+// The square's eight symmetries as [a, b, c, d]: (x, y) → (a x + b y, c x + d y).
 const SYMMETRIES = [
-  1, 0, 0, 1, -1, 0, 0, 1, 1, 0, 0, -1, -1, 0, 0, -1, 0, 1, 1, 0, 0, -1, 1, 0, 0, 1, -1, 0, 0, -1, -1, 0,
+  [1, 0, 0, 1],
+  [-1, 0, 0, 1],
+  [1, 0, 0, -1],
+  [-1, 0, 0, -1],
+  [0, 1, 1, 0],
+  [0, -1, 1, 0],
+  [0, 1, -1, 0],
+  [0, -1, -1, 0],
 ];
 const data = opening as Readonly<Record<string, readonly (readonly number[])[]>>;
 
@@ -43,9 +48,8 @@ function opened(b: Board): Move[] {
   if (!stones.length || stones.length > 2) return [];
   const [first, second] = stones.map((c) => [c % n, Math.floor(c / n)]);
   const out = new Set<Move>();
-  for (let i = 0; i < SYMMETRIES.length; i += 4) {
-    const [a, c, e, g] = SYMMETRIES.slice(i, i + 4);
-    const map = ([x, y]: readonly number[]) => [first[0] + a * x + c * y, first[1] + e * x + g * y];
+  for (const [a, b2, c, d] of SYMMETRIES) {
+    const map = ([x, y]: readonly number[]) => [first[0] + a * x + b2 * y, first[1] + c * x + d * y];
     const shape = second
       ? Object.keys(data).find((k) => k !== 'one' && map(k.split(',').map(Number)).join() === second.join())
       : 'one';
@@ -68,14 +72,14 @@ function choose(p: RingPosition, row: Level, rng: () => number): Choice {
     exact: value !== undefined,
     ...(value && { value }),
   });
+  const kernel = { key: () => b.key(), evaluate: () => b.evaluate() };
+  // Steps 1 and 2 come with the board's moves, which then hold only the fives to make, else only the blocks of the
+  // other seat's fives. 1. Make five (from level 2 up the policy's win in one has already played it). 2. Block the
+  // other seat's five: one block is forced, and with two the game is lost.
   let root = x.raw ? b.near(Number.POSITIVE_INFINITY) : b.moves(Number.POSITIVE_INFINITY);
-
-  if (!x.raw) {
-    // 1. Make five. 2. Block the other seat's five; with two of them the game is lost.
-    if (b.has(me, FIVE)) return played(pick(b.with(me, FIVE)), 1);
-    const blocks = b.with(you, FIVE);
-    if (blocks.length) return played(pick(blocks), blocks.length > 1 ? -1 : undefined);
-  }
+  if (!x.raw && b.has(me, FIVE)) return played(pick(root), 1);
+  if (root.length === 1) return played(root[0]);
+  if (!x.raw && b.has(you, FIVE)) return played(pick(root), -1);
   const book = x.open ? opened(b) : [];
   if (book.length) return played(pick(book));
   if (x.vcf) {
@@ -104,7 +108,7 @@ function choose(p: RingPosition, row: Level, rng: () => number): Choice {
     const [, line] = danger();
     b.flip();
     if (line.length) {
-      const tries = new Set([...line, ...b.with(me, FOUR), ...(b.has(you, WIN) ? b.with(you, FOUR) : [])]);
+      const tries = new Set([...line, ...(b.has(you, WIN) ? b.moves() : b.with(me, FOUR))]);
       const left = [...tries].map((m) => {
         b.play(m);
         nodes++;
@@ -128,11 +132,11 @@ function choose(p: RingPosition, row: Level, rng: () => number): Choice {
       b.play(m);
       const t = b.turn();
       let v: number;
-      if (typeof t === 'object') v = t.winner === null ? 0 : WIN_SCORE;
+      if (typeof t === 'object') v = t.winner === null ? 0 : Number.POSITIVE_INFINITY;
       else if (row.depth < 2) v = -b.evaluate();
       else {
         const share = Math.floor((row.nodes - nodes) / (root.length - i));
-        const r = search(b, { depth: row.depth - 1, nodes: share, key: () => b.key(), evaluate: () => b.evaluate() });
+        const r = search(b, { ...kernel, depth: row.depth - 1, nodes: share });
         nodes += r.nodes;
         v = -r.value;
       }
@@ -145,13 +149,7 @@ function choose(p: RingPosition, row: Level, rng: () => number): Choice {
     return played(pick(valued.filter(([, v]) => v === valued[0][1]).map(([m]) => m)));
   }
   // 5. The kernel search over the pattern board from the root list.
-  const r = search(rooted(b, root), {
-    depth: row.depth,
-    nodes: row.nodes - nodes,
-    key: () => b.key(),
-    evaluate: () => b.evaluate(),
-    margin: row.margin,
-  });
+  const r = search(rooted(b, root), { ...kernel, depth: row.depth, nodes: row.nodes - nodes, margin: row.margin });
   nodes += r.nodes;
   return played(pick(r.best));
 }

@@ -106,11 +106,11 @@ export default [
     preview: 'H8 J9 J8 G8 K7 H9',
     // The Gomoku levels of 7.2, run by its own engine with the knobs in x (gomoku/index.ts); the bench sets nodes.
     levels: Object.freeze([
-      gomoku(0, 'Looks one move ahead and often drifts', 50, 1, 3_000, { raw: 1, top: 5, wide: 0.3 }),
-      gomoku(1, 'Always blocks a four, otherwise plays loose', 100, 2, 10_000, { top: 3, wide: 0.1 }),
-      gomoku(2, 'Reads four moves ahead and spots quick fours', 300, 4, 30_000, { vcf: 7 }),
-      gomoku(3, 'Reads deep and sees threats coming', 1000, 8, 100_000, { vcf: 13, vct: 5 }),
-      gomoku(4, 'Hunts forced wins and rarely lets one through', 2500, 99, 300_000, { vcf: 21, vct: 9, open: 1 }, 0.02),
+      gomoku(0, 'Looks one move ahead and often drifts', 50, 1, 7_141, { raw: 1, top: 5, wide: 0.3 }),
+      gomoku(1, 'Always blocks a four, otherwise plays loose', 100, 2, 14_283, { top: 3, wide: 0.1 }),
+      gomoku(2, 'Reads four moves ahead and spots quick fours', 300, 4, 42_849, { vcf: 7 }),
+      gomoku(3, 'Reads deep and sees threats coming', 1000, 8, 142_832, { vcf: 13, vct: 5 }),
+      gomoku(4, 'Hunts forced wins and rarely lets one through', 2500, 99, 357_080, { vcf: 21, vct: 9, open: 1 }, 0.02),
     ]) as unknown as Five<Level>,
     ceiling: () => 'search',
     bot: async () => (await import('./gomoku/index.ts')).hooks,

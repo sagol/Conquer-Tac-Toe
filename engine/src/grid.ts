@@ -5,7 +5,8 @@ export function cellName(cell: number, cols: number): string {
   return String.fromCharCode(65 + (cell % cols)) + (Math.floor(cell / cols) + 1);
 }
 
-const DIRECTIONS = [
+// The four line directions as [column step, row step]: across, up, and the two diagonals.
+export const DIRECTIONS = [
   [1, 0],
   [0, 1],
   [1, 1],
