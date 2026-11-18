@@ -119,22 +119,26 @@ function choose(p: RingPosition, row: Level, rng: () => number): Choice | undefi
     b.flip();
     if (line.length) {
       const tries = new Set([...line, ...(b.has(you, WIN) ? b.moves() : b.with(me, FOUR))]);
-      const left = [...tries].map((m) => {
-        if (budget.nodes <= 0) return [m, 2] as const;
+      // What is left of the threat after a try, as danger() counts it; a play the nodes cannot pay for leaves it
+      // not known (2).
+      const judge = (m: Move): number => {
+        if (budget.nodes <= 0) return 2;
         step(m);
         const block = b.with(me, FIVE);
-        if (block.length === 1) {
+        let still = 2;
+        if (block.length > 1) still = 0;
+        else if (!block.length) [still] = danger();
+        else if (budget.nodes > 0) {
           step(block[0]);
           b.flip();
-        }
-        const [still] = block.length > 1 ? [0] : danger();
-        if (block.length === 1) {
+          [still] = danger();
           b.flip();
           b.undo();
         }
         b.undo();
-        return [m, still] as const;
-      });
+        return still;
+      };
+      const left = [...tries].map((m) => [m, judge(m)] as const);
       const least = Math.min(...left.map(([, still]) => still));
       if (least < 2) root = left.filter(([, still]) => still === least).map(([m]) => m);
     }
