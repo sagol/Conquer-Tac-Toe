@@ -2,7 +2,7 @@
 // keeps, for every cell and direction, the eight cells around it as a 16-bit line code, updated only around the
 // last move, and from those codes each empty cell's pattern for both seats, its score and the evaluation sums.
 import type { Move, Outcome, Searchable, Seat } from '../../../game.ts';
-import { DIRECTIONS, lines } from '../../../grid.ts';
+import { lines } from '../../../grid.ts';
 import { random } from '../../../random.ts';
 import type { RingPosition } from '../rules.ts';
 
@@ -17,6 +17,13 @@ const F3 = 4;
 // A line code holds the cells at offsets -4..-1 and 1..4 from the centre, two bits each (slot j at bits 2j):
 // 0 empty, 1 a stone of the seat the code is read for, 2 the other seat's stone, 3 off the board.
 const OFFSETS = [-4, -3, -2, -1, 1, 2, 3, 4];
+// The four line directions as [column step, row step].
+const DIRECTIONS = [
+  [1, 0],
+  [0, 1],
+  [1, 1],
+  [1, -1],
+];
 const PATTERNS = new Int8Array(1 << 16).fill(-1); // filled on first use
 function pattern(code: number): number {
   const known = PATTERNS[code];
@@ -148,7 +155,8 @@ export class Board implements Searchable {
   // The moves the search tries, a subset of the legal ones that keeps every win in one: the fives when there are
   // any; else the blocks of the other seat's fives; else, when the other seat threatens a four it cannot be stopped
   // from, the cells where either seat makes a four (blocks and counter-fours); else the empty cells within two of a
-  // stone, best first, at most `width` of them, and the centre on an empty board.
+  // stone, best first, at most `width` of them (7.3's candidate list at the root; inside the searches the 16 best,
+  // which M3 measured stronger at the same nodes), and the centre on an empty board.
   moves(width = 16): Move[] {
     if (this.end) return [];
     const me = this.side;
@@ -166,7 +174,7 @@ export class Board implements Searchable {
 
   // The empty cells within two of a stone along a line, best first, at most `width` of them; the centre on an
   // empty board.
-  near(width: number): Move[] {
+  near(width = Number.POSITIVE_INFINITY): Move[] {
     const half = (this.n - 1) >> 1;
     if (!this.stones) return [(half * this.n + half) * 3];
     const me = this.side;
@@ -188,6 +196,11 @@ export class Board implements Searchable {
       value[i] = v;
     }
     return out;
+  }
+
+  // The pattern score a stone of the seat makes on the move's empty cell.
+  gain(m: Move, seat: Seat): number {
+    return this.worth[(m / 3) * 2 + seat] >> 4;
   }
 
   has(seat: Seat, flag: number): boolean {

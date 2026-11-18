@@ -1,8 +1,9 @@
 // budget: 810 lines, 200 KB
 // Gomoku's own engine (7.3): the pattern board as the fast copy, its key and evaluation, and choose(), which runs the
 // fixed decision order. A level's knobs sit in its row's x: `vcf` and `vct` are the plies of the threat searches (0 or
-// absent: none), `top` and `wide` the chance of a random pick among the top moves, `raw` a level whose root list is
-// every cell near a stone, with no forced move kept apart, and `open` a level that plays the opening data.
+// absent: none), `top` the number of best moves a top-pick level values and `wide` its chance of a random pick among
+// them, `raw` a level whose root list is every cell near a stone, with no forced move kept apart, and `open` a level
+// that plays the opening data. A row without x leaves the move to the policy's kernel search (the arena's Greedy).
 import { search } from '../../../bot/search.ts';
 import type { Bot, Choice, Level, Move, Searchable, Seat } from '../../../game.ts';
 import type { RingPosition } from '../rules.ts';
@@ -40,12 +41,13 @@ const SYMMETRIES = [
 ];
 const data = opening as Readonly<Record<string, readonly (readonly number[])[]>>;
 
-// The opening data's moves on the second and third moves: its replies under every symmetry that maps its shape onto
-// the board's, set out from the first stone, kept where they fall on an empty cell.
+// The opening data's moves on the second and third moves, on the board it was made for, 15 × 15 with the first stone
+// on the centre: its replies under every symmetry that maps its shape onto the board's, set out from the first stone,
+// kept where they fall on an empty cell.
 function opened(b: Board): Move[] {
   const n = b.n;
   const stones = [...b.cells.keys()].filter((c) => b.cells[c]).sort((u, w) => b.cells[u] - b.cells[w]);
-  if (!stones.length || stones.length > 2) return [];
+  if (n !== 15 || !stones.length || stones.length > 2 || stones[0] !== (n * n - 1) / 2) return [];
   const [first, second] = stones.map((c) => [c % n, Math.floor(c / n)]);
   const out = new Set<Move>();
   for (const [a, b2, c, d] of SYMMETRIES) {
@@ -59,9 +61,10 @@ function opened(b: Board): Move[] {
   return [...out];
 }
 
-function choose(p: RingPosition, row: Level, rng: () => number): Choice {
+function choose(p: RingPosition, row: Level, rng: () => number): Choice | undefined {
+  if (!row.x) return undefined;
+  const x = row.x;
   const b = Board.from(p);
-  const x = row.x ?? {};
   const me = b.side;
   const you = (1 - me) as Seat;
   let nodes = 0;
@@ -73,18 +76,17 @@ function choose(p: RingPosition, row: Level, rng: () => number): Choice {
     ...(value && { value }),
   });
   const kernel = { key: () => b.key(), evaluate: () => b.evaluate() };
-  // Steps 1 and 2 come with the board's moves, which then hold only the fives to make, else only the blocks of the
-  // other seat's fives. 1. Make five (from level 2 up the policy's win in one has already played it). 2. Block the
-  // other seat's five: one block is forced, and with two the game is lost.
-  let root = x.raw ? b.near(Number.POSITIVE_INFINITY) : b.moves(Number.POSITIVE_INFINITY);
-  if (!x.raw && b.has(me, FIVE)) return played(pick(root), 1);
+  // 1. Make five: the policy's win in one has played it already. 2. Block the other seat's five, the board's moves
+  // when it has one: one block is forced, and with two the game is lost.
+  let root = x.raw ? b.near() : b.moves(Number.POSITIVE_INFINITY);
   if (root.length === 1) return played(root[0]);
   if (!x.raw && b.has(you, FIVE)) return played(pick(root), -1);
   const book = x.open ? opened(b) : [];
   if (book.length) return played(pick(book));
-  if (x.vcf) {
-    // The threat searches share half the row's nodes.
-    const budget = { nodes: row.nodes >> 1 };
+  if (x.vcf || x.vct) {
+    // Each threat step gets a quarter of the row's nodes, and step 4 also what step 3 left.
+    const share = Math.floor(row.nodes / 4);
+    const budget = { nodes: share };
     const run = (plies: number, threes: boolean) => {
       const before = budget.nodes;
       const line = plies ? threat(b, plies, threes, budget) : undefined;
@@ -94,25 +96,42 @@ function choose(p: RingPosition, row: Level, rng: () => number): Choice {
     // The other seat's threat, as it would play it: 2 a VCF, or not known once the nodes ran out, 1 a VCT only, 0
     // none; and its line.
     const danger = (): [number, Move[]] => {
-      const vcf = run(x.vcf, false);
+      const vcf = run(x.vcf ?? 0, false);
       const vct = vcf ? undefined : run(x.vct ?? 0, true);
       return vcf ? [2, vcf] : vct ? [1, vct] : [budget.nodes > 0 ? 0 : 2, []];
     };
+    // A move's own play, counted against the threat budget.
+    const step = (m: Move) => {
+      budget.nodes--;
+      nodes++;
+      b.play(m);
+    };
     // 3. Win by continuous fours.
-    const win = run(x.vcf, false);
+    const win = run(x.vcf ?? 0, false);
     if (win) return played(win[0], 1);
+    budget.nodes += share;
     // 4. Against the other seat's VCF or VCT, only the moves that break it, tried among the cells of its line, fours
     // of mine, and, when it threatens an unstoppable four, its four cells: those that leave no threat, else those
-    // that leave at most a VCT.
+    // that leave at most a VCT. A four of mine is judged after the block it forces, with me to move again, so a four
+    // that only delays the threat does not count as breaking it.
     b.flip();
     const [, line] = danger();
     b.flip();
     if (line.length) {
       const tries = new Set([...line, ...(b.has(you, WIN) ? b.moves() : b.with(me, FOUR))]);
       const left = [...tries].map((m) => {
-        b.play(m);
-        nodes++;
-        const [still] = danger();
+        if (budget.nodes <= 0) return [m, 2] as const;
+        step(m);
+        const block = b.with(me, FIVE);
+        if (block.length === 1) {
+          step(block[0]);
+          b.flip();
+        }
+        const [still] = block.length > 1 ? [0] : danger();
+        if (block.length === 1) {
+          b.flip();
+          b.undo();
+        }
         b.undo();
         return [m, still] as const;
       });
@@ -122,18 +141,20 @@ function choose(p: RingPosition, row: Level, rng: () => number): Choice {
   }
   if (root.length === 1) return played(root[0]);
 
-  // 5. The top picks of the low levels: every root move valued by a search one ply shorter, then the best or, with
-  // the row's chance, any of the top few.
+  // 5. The top picks of the low levels: every root move valued, then the best or, with the row's chance, any of the
+  // top few. Pip (depth 1) values a move by the pattern score it makes for itself and shuns a move that leaves the
+  // other seat a five to make, blind to its threes (7.2); deeper levels by a search one ply shorter.
   if (x.top) {
     const valued: [Move, number][] = [];
     for (const [i, m] of root.entries()) {
       if (nodes >= row.nodes) break;
       nodes++;
+      const gain = b.gain(m, me);
       b.play(m);
       const t = b.turn();
       let v: number;
       if (typeof t === 'object') v = t.winner === null ? 0 : Number.POSITIVE_INFINITY;
-      else if (row.depth < 2) v = -b.evaluate();
+      else if (row.depth < 2) v = b.has(you, FIVE) ? Number.NEGATIVE_INFINITY : gain;
       else {
         const share = Math.floor((row.nodes - nodes) / (root.length - i));
         const r = search(b, { ...kernel, depth: row.depth - 1, nodes: share });
