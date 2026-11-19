@@ -4,9 +4,6 @@ import type { Clock, Five, Level, Opts, Variant } from '../../game.ts';
 import { RingPosition, type RingSetup } from './rules.ts';
 
 // Objects that several entries share are frozen, so a caller that edits one entry cannot change another.
-// Gomoku's levels and bot come with its engine in M3; until then it has placeholder rows and no hooks.
-const row: Level = Object.freeze({ rating: 0, tip: '', ms: 0, depth: 0, nodes: 0, noise: 0 });
-const placeholder: Five<Level> = Object.freeze([row, row, row, row, row]);
 // The 3×3 levels of 7.2. checks/arena/bench sets each row's nodes, or checks a row set by hand, at the variant's
 // slowest option value so that the p95 move time in workerd meets ms, a cold first move included (7.3). Ratings and
 // tips are starting values that M4 tunes. Omega's target is 140 ms unless its variant raises it to pass the exactness
@@ -22,6 +19,18 @@ const rows = (nodes: Five<number>, omegaMs = LEVELS[4].ms) =>
   Object.freeze(
     LEVELS.map((level, i) => Object.freeze({ ...level, ...(i === 4 && { ms: omegaMs }), nodes: nodes[i] })),
   ) as unknown as Five<Level>;
+// A Gomoku row: the 3×3 rating of its level, no policy noise (its engine keeps its own top picks, 7.2).
+const gomoku = (i: number, tip: string, ms: number, depth: number, nodes: number, x: Level['x'], margin?: number) =>
+  Object.freeze({
+    rating: LEVELS[i].rating,
+    tip,
+    ms,
+    depth,
+    nodes,
+    noise: 0,
+    ...(margin && { margin }),
+    x: Object.freeze(x),
+  });
 const quick: Clock = Object.freeze({ initialMs: 180_000, incrementMs: 2_000, capMs: 180_000 }); // 3+2
 const three = { size: 3, line: 3, win: 'Three in a row' } as const;
 const sized = { piece: 'ring', cover: 'smaller', hint: 'Drop a ring or cover a smaller one' } as const;
@@ -95,9 +104,16 @@ export default [
     options: [{ key: 'size', label: 'Board size', values: [10, 13, 15, 19], default: 15 }],
     clock: { initialMs: 600_000, incrementMs: 5_000, capMs: 600_000 }, // 10+5
     preview: 'H8 J9 J8 G8 K7 H9',
-    levels: placeholder,
+    // The Gomoku levels of 7.2, run by its own engine with the knobs in x (gomoku/index.ts); the bench sets nodes.
+    levels: Object.freeze([
+      gomoku(0, 'Looks one move ahead and often drifts', 50, 1, 9_361, { raw: 1, top: 5, wide: 0.3 }),
+      gomoku(1, 'Always blocks a four, otherwise plays loose', 100, 2, 18_722, { top: 3, wide: 0.1 }),
+      gomoku(2, 'Reads four moves ahead and spots quick fours', 300, 4, 56_168, { vcf: 7 }),
+      gomoku(3, 'Reads deep and sees threats coming', 1000, 8, 163_933, { vcf: 13, vct: 5 }),
+      gomoku(4, 'Hunts forced wins and rarely lets one through', 2500, 99, 468_074, { vcf: 21, vct: 9, open: 1 }, 0.02),
+    ]) as unknown as Five<Level>,
     ceiling: () => 'search',
-    bot: async () => ({}),
+    bot: async () => (await import('./gomoku/index.ts')).hooks,
     setup: (o) => ({ size: o.size, line: 5, win: 'Five in a row', piece: 'stone', hint: 'Five or more in a row wins' }),
   }),
   ring({
