@@ -45,12 +45,13 @@ const lineOf3 = Object.freeze({
 });
 const passes = Object.freeze({ text: 'A player who cannot move passes. When neither can, the game is a draw.' });
 const stock332 = Object.freeze({ text: 'Each player has three small, three medium and two large rings.' });
-// Custom's stock options: only its default stock, which M2 proves, until M4 checks the other 205 (7.3) and widens
-// these lists to the stocks that pass, with the 3-ring minimum that start() then checks.
+// Custom's stock: 0 to 5 rings of each size, at least 3 in all (6.1), each of the 206 stocks proved by the
+// exactness check (7.3, M4).
+const upTo5 = Object.freeze([0, 1, 2, 3, 4, 5]);
 const stock = [
-  { key: 's', label: 'Small rings', values: Object.freeze([3]), default: 3 },
-  { key: 'm', label: 'Medium rings', values: Object.freeze([3]), default: 3 },
-  { key: 'l', label: 'Large rings', values: Object.freeze([2]), default: 2 },
+  { key: 's', label: 'Small rings', values: upTo5, default: 3 },
+  { key: 'm', label: 'Medium rings', values: upTo5, default: 3 },
+  { key: 'l', label: 'Large rings', values: upTo5, default: 2 },
 ];
 
 // Every entry is hidden until M4.
@@ -162,16 +163,25 @@ export default [
   ring({
     id: 'custom',
     title: 'Custom',
-    line: 'Small, medium and large rings, 3/3/2',
+    line: 'Pick your own small, medium and large rings',
     tone: 'x',
-    rules: [stock332, coverSmaller, lineOf3, passes],
+    rules: [
+      { text: 'Both players get the same stock of small, medium and large rings, chosen when the game is made.' },
+      coverSmaller,
+      lineOf3,
+      passes,
+    ],
     options: stock,
     clock: quick,
     preview: 'A1S B2M B2L C3S',
-    levels: rows([23_794, 23_794, 47_589, 46_000, 66_624]), // Nova-9's nodes leave a margin for a cold first move
-    // Exact on the stocks that pass the exactness check (7.3): in M2 the default, the only one it offers.
-    ceiling: (o) => (stock.every((x) => o[x.key] === x.default) ? 'exact' : 'search'),
+    // Nova-9's nodes leave a margin for a cold first move; Omega's target is raised so that it passes the exactness
+    // check past its book on every stock (7.3).
+    levels: rows([23_794, 23_794, 47_589, 46_000, 230_000], 320),
+    ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-custom.gen.ts')).default }),
-    setup: (o) => ({ ...three, ...sized, stock: [o.s, o.m, o.l] }),
+    setup: (o) => {
+      if (o.s + o.m + o.l < 3) throw new RangeError('Custom takes at least 3 rings in all');
+      return { ...three, ...sized, stock: [o.s, o.m, o.l] };
+    },
   }),
 ];
