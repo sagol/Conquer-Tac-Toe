@@ -9,9 +9,7 @@ import { settings } from './settings.ts';
 
 // Google sign-in, dev login and sessions (plan 4.2, M5 tasks 2 and 3). A session is 32 random bytes in a __Host-
 // cookie; D1 holds only its SHA-256, so there is no signing key (4.5).
-const DAY = 86_400_000;
-const LIFE = 30 * DAY; // sliding (P:858)
-const CAP = 90 * DAY; // absolute, from sign-in (spec A-14)
+const LIFE = 30 * 86_400_000; // absolute from sign-in, never extended (ASVS 3.3.2)
 const COOKIE = { prefix: 'host', httpOnly: true, sameSite: 'Lax' } as const; // Secure, Path=/, no Domain
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 const enc = new TextEncoder();
@@ -25,7 +23,6 @@ const hashOf = async (sid: string) =>
   Array.from(new Uint8Array(await sha256(sid)), (b) => b.toString(16).padStart(2, '0')).join('');
 const u32 = () => crypto.getRandomValues(new Uint32Array(1))[0];
 const timingSafe = (a: Uint8Array, b: Uint8Array) => a.length === b.length && crypto.subtle.timingSafeEqual(a, b);
-const setSid = (c: Context<App>, sid: string, ms: number) => setCookie(c, 'sid', sid, { ...COOKIE, maxAge: ms / 1000 });
 const isBanned = (u: db.User) => (u.banned_until ?? 0) > Date.now();
 const banned = (c: Context<App>, u: db.User) => fail(c, 403, 'banned', 'Banned', { until: u.banned_until });
 const callbackUrl = (c: Context<App>) => `${new URL(c.req.url).origin}/api/auth/google/callback`;
@@ -33,12 +30,11 @@ const callbackUrl = (c: Context<App>) => `${new URL(c.req.url).origin}/api/auth/
 // The caller's own allow-listed fields and nothing else (S-05).
 export const me = (u: db.User) => ({ id: u.id, handle: u.handle, name: u.name, createdAt: u.created_at });
 
-// Routes that need a session: 401 when it is missing, expired, past the cap or its user deleted.
+// Routes that need a session: 401 when it is missing, expired or its user deleted.
 export async function session(c: Context<App>, next: Next) {
   const sid = getCookie(c, 'sid', 'host');
   const s = sid ? await db.session(c.env.DB, await hashOf(sid)) : null;
-  const now = Date.now();
-  if (!sid || !s || s.expires_at <= now || s.started + CAP <= now || s.deleted_at !== null) {
+  if (!sid || !s || s.expires_at <= Date.now() || s.deleted_at !== null) {
     deleteCookie(c, 'sid', COOKIE);
     return fail(c, 401, 'unauthorized', 'Sign in first');
   }
@@ -49,25 +45,13 @@ export async function session(c: Context<App>, next: Next) {
 // After the session: the ban (every session route but logout, A-29).
 export const notBanned = async (c: Context<App>, next: Next) => (isBanned(c.var.user) ? banned(c, c.var.user) : next());
 
-// After the ban and the user's limit, so a refused request never slides: every allowed call, an upgrade included,
-// slides the expiry at most once a day (A-15), never past the cap. Logout does not slide.
-export async function slide(c: Context<App>, next: Next) {
-  const [s, now] = [c.var.user, Date.now()];
-  const expires = Math.min(now + LIFE, s.started + CAP);
-  if (s.expires_at - now < LIFE - DAY && expires > s.expires_at) {
-    await db.slide(c.env.DB, s.id_hash, expires);
-    setSid(c, getCookie(c, 'sid', 'host') ?? '', expires - now);
-    s.expires_at = expires; // an upgrade passes the new expiry on (index.ts, forward)
-  }
-  return next();
-}
-
-// A new session at every sign-in (ASVS 3.2.1): the one this browser presented is deleted in the same batch.
+// A new session at every sign-in (ASVS 3.2.1): the one this browser presented is deleted in the same batch. Its
+// expiry and the cookie's Max-Age are set here once, so the cookie lives exactly as long as the session.
 async function signIn(c: Context<App>, uid: number) {
   const old = getCookie(c, 'sid', 'host');
-  const [sid, now] = [random(), Date.now()];
-  await db.swapSession(c.env.DB, old ? await hashOf(old) : '', await hashOf(sid), uid, now, now + LIFE);
-  setSid(c, sid, LIFE);
+  const sid = random();
+  await db.swapSession(c.env.DB, old ? await hashOf(old) : '', await hashOf(sid), uid, Date.now() + LIFE);
+  setCookie(c, 'sid', sid, { ...COOKIE, maxAge: LIFE / 1000 });
 }
 
 // A new user with a random id below 2^53 (4.3). A UNIQUE clash on the id or the handle retries with new values, at
@@ -134,13 +118,17 @@ export async function googleCallback(c: Context<App>) {
   if (!user && !(await settings(c.env.DB)).registrations) return refuse(c, 'closed'); // S-08
   const created = !user;
   // The name without CONTROL characters, whitespace collapsed, at most 32 characters. The handle (A-23): the name
-  // NFKC-folded to lowercase letters and digits of any script, 3 to 20 of them, or "player"; a clash puts six random
-  // digits on its first 14, so clashes stay rare however many names share a base. Never the email.
+  // NFKD-folded, lowercased, and only ASCII a-z and 0-9 kept (combining marks go with the rest), so no other script
+  // and no cross-script lookalike survives; 3 to 20 of them, or with fewer "player". "player" and every retry after a
+  // clash put six random digits after the first 14, so clashes stay rare however many names share a base. Never the
+  // email.
   const name =
     [...claims.name.replace(CONTROL, '').replace(/\s+/g, ' ').trim()].slice(0, 32).join('').trim() || 'Player';
-  const letters = [...name.normalize('NFKC').toLowerCase()].filter((ch) => /[\p{L}\p{N}]/u.test(ch));
-  const base = letters.length >= 3 ? letters.slice(0, 20) : [...'player'];
-  const handle = (i: number) => base.slice(0, i ? 14 : 20).join('') + (i ? String(u32() % 1e6).padStart(6, '0') : '');
+  const folded = name.normalize('NFKD').toLowerCase();
+  const ascii = folded.replace(/[^a-z0-9]/g, '');
+  const base = ascii.length >= 3 ? ascii.slice(0, 20) : '';
+  const handle = (i: number) =>
+    base && !i ? base : (base || 'player').slice(0, 14) + String(u32() % 1e6).padStart(6, '0');
   user ??= await create(c.env.DB, { ...claims, name }, handle);
   if (!user) return refuse(c, 'failed');
   await signIn(c, user.id);

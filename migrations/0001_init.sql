@@ -1,12 +1,12 @@
--- The D1 schema of plan 4.3, with sessions.created_at for the 90-day absolute cap (spec A-14). Migrations are
--- additive only (plan 4.5): once this file is applied anywhere remote it never changes. Times are Unix milliseconds.
+-- The D1 schema of plan 4.3. Migrations are additive only (plan 4.5): once this file is applied anywhere remote it
+-- never changes. Times are Unix milliseconds.
 CREATE TABLE users (
   id INTEGER PRIMARY KEY, google_sub TEXT UNIQUE, email TEXT, handle TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL, created_at INTEGER NOT NULL, banned_until INTEGER, ban_reason TEXT,
   deleted_at INTEGER);
 CREATE TABLE sessions (
   id_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);
+  expires_at INTEGER NOT NULL);
 CREATE INDEX sessions_user ON sessions(user_id);
 CREATE TABLE games (
   id TEXT PRIMARY KEY, variant TEXT NOT NULL, options TEXT NOT NULL,

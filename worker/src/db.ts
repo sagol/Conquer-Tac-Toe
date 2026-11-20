@@ -1,15 +1,15 @@
 // All SQL (plan 5, "SQL"): plain statements, every value bound. No triggers and no upserts (4.3).
 type Status = { banned_until: number | null; deleted_at: number | null };
 export type User = { id: number; handle: string; name: string; created_at: number; google_sub: string | null } & Status;
-export type Session = User & { id_hash: string; expires_at: number; started: number };
+export type Session = User & { id_hash: string; expires_at: number };
 export type NewUser = Pick<User, 'google_sub' | 'name'> & { email: string | null };
 export type Row = { key: string; value: string };
 
 const sql = (db: D1Database, query: string, ...values: unknown[]) => db.prepare(query).bind(...values);
 const USER = 'id, handle, name, created_at, google_sub, banned_until, deleted_at';
-const SESSION = `SELECT ${USER.replace(/\w+/g, 'u.$&')}, s.id_hash, s.expires_at, s.created_at AS started
+const SESSION = `SELECT ${USER.replace(/\w+/g, 'u.$&')}, s.id_hash, s.expires_at
   FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id_hash = ?`;
-const ADD_SESSION = 'INSERT INTO sessions (id_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)';
+const ADD_SESSION = 'INSERT INTO sessions (id_hash, user_id, expires_at) VALUES (?, ?, ?)';
 const ADD_USER = `INSERT INTO users (id, google_sub, email, handle, name, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING ${USER}`;
 const RELEASE_SUB = 'UPDATE users SET google_sub = NULL WHERE google_sub = ? AND deleted_at IS NOT NULL';
 const USER_BY_SUB = `SELECT ${USER} FROM users WHERE google_sub = ?`;
@@ -21,11 +21,8 @@ export const session = (db: D1Database, hash: string) => sql(db, SESSION, hash).
 export const endSession = (db: D1Database, hash: string) => sql(db, 'DELETE FROM sessions WHERE id_hash = ?', hash);
 
 // A sign-in's new session, in one batch with the deletion of the one the browser presented ('' when none).
-export const swapSession = (db: D1Database, old: string, hash: string, uid: number, now: number, expires: number) =>
-  db.batch([endSession(db, old), sql(db, ADD_SESSION, hash, uid, now, expires)]);
-
-export const slide = (db: D1Database, hash: string, expires: number) =>
-  sql(db, 'UPDATE sessions SET expires_at = ? WHERE id_hash = ?', expires, hash).run();
+export const swapSession = (db: D1Database, old: string, hash: string, uid: number, expires: number) =>
+  db.batch([endSession(db, old), sql(db, ADD_SESSION, hash, uid, expires)]);
 
 export const expireSessions = async (db: D1Database, now: number) =>
   (await sql(db, 'DELETE FROM sessions WHERE expires_at <= ?', now).run()).meta.changes;

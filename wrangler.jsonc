@@ -18,7 +18,13 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom", "Hub"] }],
   "triggers": { "crons": ["17 3 * * *"] },
-  "observability": { "enabled": true, "head_sampling_rate": 1, "redact_query_string": true },
+  // Application logs only: invocation logs would store every caller's IP and location (spec 11).
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": true,
+    "logs": { "invocation_logs": false }
+  },
   "vars": { "DEV_LOGIN": "1" },
   "d1_databases": [{ "binding": "DB", "database_name": "conquer-local", "migrations_dir": "migrations" }],
   "durable_objects": {

@@ -6,7 +6,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { except } from 'hono/combine';
 import { matchedRoutes, routePath } from 'hono/route';
 import { access, isAdmin } from './admin.ts';
-import { devLogin, devOnly, googleCallback, googleStart, logout, me, notBanned, session, slide } from './auth.ts';
+import { devLogin, devOnly, googleCallback, googleStart, logout, me, notBanned, session } from './auth.ts';
 import * as db from './db.ts';
 import { fail, limit, log } from './http.ts';
 import { getSettings, putSettings, settings } from './settings.ts';
@@ -68,12 +68,12 @@ app.on('GET', ['/admin', '/admin/*'], access, (c) => c.env.ASSETS.fetch(c.req.ra
 
 // Everything else under /api and /ws, by scope (spec 3.1), so a new route gets every step: the sign-in IP limit (not
 // logout, which is limited per user, A-18); for a socket 426 without an upgrade, then its IP limit; the gate; then,
-// on all but the public routes, session, ban, user limit and the slide, so a refused request never slides (A-15).
-// Logout takes the session and its limit only (A-29). Unknown paths skip the per-route steps and answer 404.
+// on all but the public routes, session, ban and user limit. Logout takes the session and its limit only (A-29).
+// Unknown paths skip the per-route steps and answer 404.
 const unrouted = (c: Context<App>) => !matchedRoutes(c).some((route) => route.method !== 'ALL');
 const UNGATED = ['/api/health', '/api/admin/*'];
 const EXEMPT = [...UNGATED, '/api/auth/google', '/api/auth/google/callback', '/api/auth/dev', '/api/auth/logout'];
-const signedIn = (name: Limit) => except([...EXEMPT, unrouted], session, notBanned, userLimit(name), slide);
+const signedIn = (name: Limit) => except([...EXEMPT, unrouted], session, notBanned, userLimit(name));
 const upgradeOnly = async (c: Context<App>, next: Next) =>
   isUpgrade(c) ? next() : fail(c, 426, 'upgrade_required', 'Expected a WebSocket upgrade');
 app.use('/api/auth/*', except('/api/auth/logout', ipLimit('AUTH_LIMIT')));
@@ -87,16 +87,14 @@ app.post('/api/auth/logout', session, userLimit('API_LIMIT'), logout);
 app.get('/api/me', (c) => c.json(me(c.get('user'))));
 
 // Upgrades (spec 2.3): the object gets the user and session expiry in headers that replace any client value; it has
-// no public route. Its answer, a 101 or a refusal, keeps the object's headers with the Worker's own set so far laid
-// over them (a slid cookie; the global no-store follows), so an upgrade slides like any other call.
+// no public route. Its answer, a 101 or a refusal, is copied with the object's headers so the global no-store can
+// be added to it.
 async function forward(c: Context<App>, stub: DurableObjectStub) {
   const headers = new Headers(c.req.raw.headers);
   headers.set('x-conquer-uid', String(c.get('user').id));
   headers.set('x-conquer-exp', String(c.get('user').expires_at));
   const res = await stub.fetch(new Request(c.req.raw, { headers }));
-  const out = new Response(res.body, res);
-  for (const cookie of c.res.headers.getSetCookie()) out.headers.append('set-cookie', cookie);
-  return out;
+  return new Response(res.body, res);
 }
 app.get('/ws/hub', (c) => forward(c, c.env.HUB.getByName('hub')));
 app.get('/ws/game/:id', (c) => {
