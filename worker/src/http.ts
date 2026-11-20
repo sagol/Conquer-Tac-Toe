@@ -1,6 +1,6 @@
 // Request helpers shared by the Worker's modules. index.ts is imported for its types only, so no runtime import
 // points back at it.
-import type { Context } from 'hono';
+import type { Context, Next } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { App, Limit } from './index.ts';
 
@@ -22,17 +22,18 @@ export function parse(text: string): unknown {
   }
 }
 
-// Request bodies (spec 3): a JSON object, or undefined. The 4 KB cap is the route's bodyLimit (index.ts, json).
+// Request bodies (spec 3): a JSON object, or undefined. The 4 KB cap applies to every route (index.ts, bodyLimit).
 export async function readJson(c: Context<App>) {
   if (!/^application\/json\s*(;|$)/i.test(c.req.header('content-type') ?? '')) return;
   const body = parse(await c.req.text());
   return body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : undefined;
 }
 
-// Soft rate limits (4.5): a refusal is 429 with Retry-After and a log line naming the limit, never the key.
-export async function limited(c: Context<App>, name: Limit, key: string) {
-  if ((await c.env[name].limit({ key })).success) return;
+// Soft rate limits (4.5), keyed by IP or user: a refusal is 429 with Retry-After and a log line naming the limit, never
+// the key.
+export const limit = (name: Limit, key: (c: Context<App>) => string) => async (c: Context<App>, next: Next) => {
+  if ((await c.env[name].limit({ key: key(c) })).success) return next();
   log('rate', { limit: name });
   c.header('Retry-After', '60');
   return fail(c, 429, 'rate', 'Too many requests');
-}
+};

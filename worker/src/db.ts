@@ -3,6 +3,7 @@ type Status = { banned_until: number | null; deleted_at: number | null };
 export type User = { id: number; handle: string; name: string; created_at: number; google_sub: string | null } & Status;
 export type Session = User & { id_hash: string; expires_at: number; started: number };
 export type NewUser = Pick<User, 'google_sub' | 'name'> & { email: string | null };
+export type Row = { key: string; value: string };
 
 const sql = (db: D1Database, query: string, ...values: unknown[]) => db.prepare(query).bind(...values);
 const USER = 'id, handle, name, created_at, google_sub, banned_until, deleted_at';
@@ -40,17 +41,19 @@ export const userByHandle = (db: D1Database, handle: string) =>
 export const addUser = (db: D1Database, id: number, handle: string, u: NewUser, now: number) =>
   sql(db, ADD_USER, id, u.google_sub, u.email, handle, u.name, now).first<User>();
 
-export const settingRows = async (db: D1Database) =>
-  (await db.prepare('SELECT key, value FROM settings').all<{ key: string; value: string }>()).results;
+const ROWS = 'SELECT key, value FROM settings';
+export const settingRows = (db: D1Database) => db.prepare(ROWS).all<Row>();
 
-// One transaction: each key's row replaced by DELETE then INSERT, and one audit row naming the Access subject.
+// One transaction: each key's row replaced by DELETE then INSERT, one audit row naming the Access subject, then the
+// rows as the write left them, the batch's last result.
 export const writeSettings = (db: D1Database, values: Record<string, unknown>, actor: string, now: number) =>
-  db.batch([
+  db.batch<Row>([
     ...Object.entries(values).flatMap(([key, value]) => [
       sql(db, 'DELETE FROM settings WHERE key = ?', key),
       sql(db, 'INSERT INTO settings (key, value) VALUES (?, ?)', key, JSON.stringify(value)),
     ]),
     sql(db, AUDIT, actor, JSON.stringify(values), now),
+    db.prepare(ROWS),
   ]);
 
 export const ping = async (db: D1Database) => db.prepare('SELECT 1').first();

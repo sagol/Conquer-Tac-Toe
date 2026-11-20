@@ -3,8 +3,8 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { base64url, createRemoteJWKSet, jwtVerify } from 'jose';
 import { JWT, verifyAccess } from './admin.ts';
 import * as db from './db.ts';
-import { fail, limited, log, readJson } from './http.ts';
-import type { App, Limit } from './index.ts';
+import { fail, log, readJson } from './http.ts';
+import type { App } from './index.ts';
 import { settings } from './settings.ts';
 
 // Google sign-in, dev login and sessions (plan 4.2, M5 tasks 2 and 3). A session is 32 random bytes in a __Host-
@@ -15,7 +15,9 @@ const CAP = 90 * DAY; // absolute, from sign-in (spec A-14)
 const COOKIE = { prefix: 'host', httpOnly: true, sameSite: 'Lax' } as const; // Secure, Path=/, no Domain
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 const enc = new TextEncoder();
-const CONTROL = /[^\P{C}\s]/gu; // control, format, private-use and unassigned characters, whitespace aside
+// Removed from names: controls, format characters (bidi overrides among them), private-use and unassigned code
+// points. Whitespace, ZWNJ and ZWJ stay: some scripts and emoji sequences need the joiners.
+const CONTROL = /[^\P{C}\s\u200c\u200d]/gu;
 
 const random = () => base64url.encode(crypto.getRandomValues(new Uint8Array(32)));
 const sha256 = (text: string) => crypto.subtle.digest('SHA-256', enc.encode(text));
@@ -31,8 +33,7 @@ const callbackUrl = (c: Context<App>) => `${new URL(c.req.url).origin}/api/auth/
 // The caller's own allow-listed fields and nothing else (S-05).
 export const me = (u: db.User) => ({ id: u.id, handle: u.handle, name: u.name, createdAt: u.created_at });
 
-// Routes that need a session: 401 when it is missing, expired, past the cap or its user deleted. Every call, an
-// upgrade included, slides the expiry at most once a day (A-15), never past the cap.
+// Routes that need a session: 401 when it is missing, expired, past the cap or its user deleted.
 export async function session(c: Context<App>, next: Next) {
   const sid = getCookie(c, 'sid', 'host');
   const s = sid ? await db.session(c.env.DB, await hashOf(sid)) : null;
@@ -41,20 +42,25 @@ export async function session(c: Context<App>, next: Next) {
     deleteCookie(c, 'sid', COOKIE);
     return fail(c, 401, 'unauthorized', 'Sign in first');
   }
-  const expires = Math.min(now + LIFE, s.started + CAP);
-  if (s.expires_at - now < LIFE - DAY && expires > s.expires_at) {
-    await db.slide(c.env.DB, s.id_hash, expires);
-    setSid(c, sid, expires - now);
-    s.expires_at = expires; // an upgrade passes the new expiry on (index.ts, forward)
-  }
   c.set('user', s);
   return next();
 }
 
-// After the session: the ban (every session route but logout, A-29), then the user's rate limit.
-export const notBanned = (c: Context<App>, next: Next) => (isBanned(c.get('user')) ? banned(c, c.get('user')) : next());
-export const userLimit = (name: Limit) => async (c: Context<App>, next: Next) =>
-  (await limited(c, name, String(c.get('user').id))) ?? next();
+// After the session: the ban (every session route but logout, A-29).
+export const notBanned = async (c: Context<App>, next: Next) => (isBanned(c.var.user) ? banned(c, c.var.user) : next());
+
+// After the ban and the user's limit, so a refused request never slides: every allowed call, an upgrade included,
+// slides the expiry at most once a day (A-15), never past the cap. Logout does not slide.
+export async function slide(c: Context<App>, next: Next) {
+  const [s, now] = [c.var.user, Date.now()];
+  const expires = Math.min(now + LIFE, s.started + CAP);
+  if (s.expires_at - now < LIFE - DAY && expires > s.expires_at) {
+    await db.slide(c.env.DB, s.id_hash, expires);
+    setSid(c, getCookie(c, 'sid', 'host') ?? '', expires - now);
+    s.expires_at = expires; // an upgrade passes the new expiry on (index.ts, forward)
+  }
+  return next();
+}
 
 // A new session at every sign-in (ASVS 3.2.1): the one this browser presented is deleted in the same batch.
 async function signIn(c: Context<App>, uid: number) {
@@ -99,24 +105,20 @@ function refuse(c: Context<App>, reason: string, until?: number | null) {
 }
 
 // The code exchange and the ID token's checks (signature, issuer, audience, RS256, exp, nbf); the access and refresh
-// tokens are dropped unread (S-06). Any failure, the network's included, is a refusal.
+// tokens are dropped unread (S-06). The caller turns any failure, the network's included, into a refusal.
 async function googleClaims(c: Context<App>, code: string, verifier: string) {
   const { GOOGLE_CLIENT_ID: clientId, GOOGLE_CLIENT_SECRET: secret } = c.env;
   if (!clientId || !secret) return;
   const body = new URLSearchParams({ code, client_id: clientId, client_secret: secret, code_verifier: verifier });
   body.set('redirect_uri', callbackUrl(c));
   body.set('grant_type', 'authorization_code');
-  try {
-    const res = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', body });
-    const token = res.ok ? (await res.json<{ id_token?: unknown }>()).id_token : undefined;
-    if (typeof token !== 'string') return;
-    const issuer = ['https://accounts.google.com', 'accounts.google.com'];
-    const { payload: p } = await jwtVerify(token, googleKeys, { ...JWT, issuer, audience: clientId });
-    const text = (v: unknown) => (typeof v === 'string' ? v : '');
-    return text(p.sub) ? { google_sub: text(p.sub), email: text(p.email) || null, name: text(p.name) } : undefined;
-  } catch {
-    return;
-  }
+  const res = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', body });
+  const token = res.ok ? (await res.json<{ id_token?: unknown }>()).id_token : undefined;
+  if (typeof token !== 'string') return;
+  const issuer = ['https://accounts.google.com', 'accounts.google.com'];
+  const { payload: p } = await jwtVerify(token, googleKeys, { ...JWT, issuer, audience: clientId });
+  const text = (v: unknown) => (typeof v === 'string' ? v : '');
+  return text(p.sub) ? { google_sub: text(p.sub), email: text(p.email) || null, name: text(p.name) } : undefined;
 }
 
 // GET /api/auth/google/callback. The state cookie is cleared on every outcome; state and code must each appear once.
@@ -125,19 +127,20 @@ export async function googleCallback(c: Context<App>) {
   const [given, code] = [c.req.queries('state') ?? [], c.req.queries('code') ?? []];
   const stateOk = verifier && given.length === 1 && timingSafe(enc.encode(state), enc.encode(given[0]));
   if (!stateOk || c.req.query('error') !== undefined) return refuse(c, 'state');
-  const claims = code.length === 1 ? await googleClaims(c, code[0], verifier) : undefined;
+  const claims = code.length === 1 ? await googleClaims(c, code[0], verifier).catch(() => undefined) : undefined;
   if (!claims) return refuse(c, 'token');
   let user = await db.userBySub(c.env.DB, claims.google_sub); // D-25: a deleted account counts as absent
   if (user && isBanned(user)) return refuse(c, 'banned', user.banned_until);
   if (!user && !(await settings(c.env.DB)).registrations) return refuse(c, 'closed'); // S-08
   const created = !user;
-  // The name without CONTROL characters, whitespace collapsed, at most 32 characters. The handle (A-23): the
-  // name folded to letters and digits, 3 to 20 of them, or "player"; a clash adds four random digits. Never the email.
+  // The name without CONTROL characters, whitespace collapsed, at most 32 characters. The handle (A-23): the name
+  // NFKC-folded to lowercase letters and digits of any script, 3 to 20 of them, or "player"; a clash puts six random
+  // digits on its first 14, so clashes stay rare however many names share a base. Never the email.
   const name =
     [...claims.name.replace(CONTROL, '').replace(/\s+/g, ' ').trim()].slice(0, 32).join('').trim() || 'Player';
-  const folded = name.normalize('NFKD').toLowerCase().replace(/\W|_/g, '').slice(0, 20);
-  const base = folded.length >= 3 ? folded : 'player';
-  const handle = (i: number) => (i ? base.slice(0, 16) + String(u32() % 10_000).padStart(4, '0') : base);
+  const letters = [...name.normalize('NFKC').toLowerCase()].filter((ch) => /[\p{L}\p{N}]/u.test(ch));
+  const base = letters.length >= 3 ? letters.slice(0, 20) : [...'player'];
+  const handle = (i: number) => base.slice(0, i ? 14 : 20).join('') + (i ? String(u32() % 1e6).padStart(6, '0') : '');
   user ??= await create(c.env.DB, { ...claims, name }, handle);
   if (!user) return refuse(c, 'failed');
   await signIn(c, user.id);
