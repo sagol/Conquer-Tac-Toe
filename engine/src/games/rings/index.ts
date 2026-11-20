@@ -23,7 +23,7 @@ const rows = (rating: Five<number>, nodes: Five<number>, noise: Five<number>, om
   ) as unknown as Five<Level>;
 // Gomoku's display ratings by level (M4, 7.4), and a Gomoku row: no policy noise (its engine keeps its own top picks,
 // 7.2).
-const GOMOKU = [800, 940, 1090, 1220, 1650];
+const GOMOKU = [800, 970, 1100, 1250, 1670];
 const gomoku = (i: number, tip: string, ms: number, depth: number, nodes: number, x: Level['x'], margin?: number) =>
   Object.freeze({
     rating: GOMOKU[i],
@@ -118,8 +118,8 @@ export default [
     levels: Object.freeze([
       gomoku(0, 'Looks one move ahead and often drifts', 50, 1, 9_361, { raw: 1, top: 5, wide: 0.3 }),
       gomoku(1, 'Always blocks a four, otherwise plays loose', 100, 2, 18_722, { top: 5, wide: 0.5 }),
-      gomoku(2, 'Reads three moves ahead and spots quick fours', 300, 3, 56_168, { vcf: 7, top: 7, wide: 1 }),
-      gomoku(3, 'Reads deep and sees threats coming', 1000, 5, 163_933, { vcf: 13, vct: 5 }, 0.11),
+      gomoku(2, 'Reads four moves ahead and spots quick fours', 300, 4, 56_168, { vcf: 7 }, 0.1),
+      gomoku(3, 'Reads deep and sees threats coming', 1000, 5, 163_933, { vcf: 13, vct: 5, small: 0.12 }, 0.11),
       gomoku(4, 'Hunts forced wins and rarely lets one through', 2500, 99, 468_074, { vcf: 21, open: 1 }, 0.02),
     ]) as unknown as Five<Level>,
     ceiling: () => 'search',
