@@ -1,10 +1,11 @@
 import type { Context, Next } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { base64url, createRemoteJWKSet, jwtVerify } from 'jose';
 import { JWT, verifyAccess } from './admin.ts';
 import * as db from './db.ts';
-import { hub } from './hub.ts';
-import { type App, fail, type Limit, limited, log, readJson } from './index.ts';
+import { fail, limited, log, readJson } from './http.ts';
+import type { App, Limit } from './index.ts';
+import { settings } from './settings.ts';
 
 // Google sign-in, dev login and sessions (plan 4.2, M5 tasks 2 and 3). A session is 32 random bytes in a __Host-
 // cookie; D1 holds only its SHA-256, so there is no signing key (4.5).
@@ -16,58 +17,50 @@ const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2
 const enc = new TextEncoder();
 const CONTROL = /[^\P{C}\s]/gu; // control, format, private-use and unassigned characters, whitespace aside
 
-const b64url = (bytes: ArrayBuffer | Uint8Array) => {
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-};
-const random = () => b64url(crypto.getRandomValues(new Uint8Array(32)));
+const random = () => base64url.encode(crypto.getRandomValues(new Uint8Array(32)));
 const sha256 = (text: string) => crypto.subtle.digest('SHA-256', enc.encode(text));
 const hashOf = async (sid: string) =>
   Array.from(new Uint8Array(await sha256(sid)), (b) => b.toString(16).padStart(2, '0')).join('');
 const u32 = () => crypto.getRandomValues(new Uint32Array(1))[0];
 const timingSafe = (a: Uint8Array, b: Uint8Array) => a.length === b.length && crypto.subtle.timingSafeEqual(a, b);
 const setSid = (c: Context<App>, sid: string, ms: number) => setCookie(c, 'sid', sid, { ...COOKIE, maxAge: ms / 1000 });
-const isBanned = (u: db.Account) => (u.banned_until ?? 0) > Date.now();
-const banned = (c: Context<App>, u: db.Account) => fail(c, 403, 'banned', 'Banned', { until: u.banned_until });
+const isBanned = (u: db.User) => (u.banned_until ?? 0) > Date.now();
+const banned = (c: Context<App>, u: db.User) => fail(c, 403, 'banned', 'Banned', { until: u.banned_until });
 const callbackUrl = (c: Context<App>) => `${new URL(c.req.url).origin}/api/auth/google/callback`;
 
 // The caller's own allow-listed fields and nothing else (S-05).
 export const me = (u: db.User) => ({ id: u.id, handle: u.handle, name: u.name, createdAt: u.created_at });
 
-// Routes that need a session: 401 when it is missing, expired, past the cap or its user deleted; then the ban
-// (logout is exempt, A-29) and the user's rate limit. API calls slide the expiry at most once a day (A-15), never past
-// the cap; an upgrade passes the current expiry on and does not slide, since the object's 101 carries no cookie.
-export const signedIn =
-  (limit: Limit, ban = true) =>
-  async (c: Context<App>, next: Next) => {
-    const sid = getCookie(c, 'sid', 'host');
-    const hash = sid ? await hashOf(sid) : '';
-    const s = sid ? await db.session(c.env.DB, hash) : null;
-    const now = Date.now();
-    if (!sid || !s || s.expires_at <= now || s.started + CAP <= now || s.deleted_at !== null) {
-      deleteCookie(c, 'sid', COOKIE);
-      return fail(c, 401, 'unauthorized', 'Sign in first');
-    }
-    if (ban && isBanned(s)) return banned(c, s);
-    const refused = await limited(c, limit, String(s.id));
-    if (refused) return refused;
-    const expires = Math.min(now + LIFE, s.started + CAP);
-    if (limit === 'API_LIMIT' && s.expires_at - now < LIFE - DAY && expires > s.expires_at) {
-      await db.slide(c.env.DB, hash, expires);
-      setSid(c, sid, expires - now);
-      s.expires_at = expires;
-    }
-    c.set('user', s);
-    c.set('sid', hash);
-    return next();
-  };
+// Routes that need a session: 401 when it is missing, expired, past the cap or its user deleted. Every call, an
+// upgrade included, slides the expiry at most once a day (A-15), never past the cap.
+export async function session(c: Context<App>, next: Next) {
+  const sid = getCookie(c, 'sid', 'host');
+  const s = sid ? await db.session(c.env.DB, await hashOf(sid)) : null;
+  const now = Date.now();
+  if (!sid || !s || s.expires_at <= now || s.started + CAP <= now || s.deleted_at !== null) {
+    deleteCookie(c, 'sid', COOKIE);
+    return fail(c, 401, 'unauthorized', 'Sign in first');
+  }
+  const expires = Math.min(now + LIFE, s.started + CAP);
+  if (s.expires_at - now < LIFE - DAY && expires > s.expires_at) {
+    await db.slide(c.env.DB, s.id_hash, expires);
+    setSid(c, sid, expires - now);
+    s.expires_at = expires; // an upgrade passes the new expiry on (index.ts, forward)
+  }
+  c.set('user', s);
+  return next();
+}
 
-// A new session at every sign-in (ASVS 3.2.1): the one this browser presented is deleted first.
+// After the session: the ban (every session route but logout, A-29), then the user's rate limit.
+export const notBanned = (c: Context<App>, next: Next) => (isBanned(c.get('user')) ? banned(c, c.get('user')) : next());
+export const userLimit = (name: Limit) => async (c: Context<App>, next: Next) =>
+  (await limited(c, name, String(c.get('user').id))) ?? next();
+
+// A new session at every sign-in (ASVS 3.2.1): the one this browser presented is deleted in the same batch.
 async function signIn(c: Context<App>, uid: number) {
   const old = getCookie(c, 'sid', 'host');
-  if (old) await db.endSession(c.env.DB, await hashOf(old));
   const [sid, now] = [random(), Date.now()];
-  await db.addSession(c.env.DB, await hashOf(sid), uid, now, now + LIFE);
+  await db.swapSession(c.env.DB, old ? await hashOf(old) : '', await hashOf(sid), uid, now, now + LIFE);
   setSid(c, sid, LIFE);
 }
 
@@ -93,7 +86,7 @@ export async function googleStart(c: Context<App>) {
   setCookie(c, 'oauth', `${state}.${verifier}`, { ...COOKIE, maxAge: 600 });
   const query = new URLSearchParams({ client_id: id, response_type: 'code', scope: 'openid email profile', state });
   query.set('redirect_uri', callbackUrl(c));
-  query.set('code_challenge', b64url(await sha256(verifier)));
+  query.set('code_challenge', base64url.encode(new Uint8Array(await sha256(verifier))));
   query.set('code_challenge_method', 'S256');
   return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${query}`);
 }
@@ -134,10 +127,9 @@ export async function googleCallback(c: Context<App>) {
   if (!stateOk || c.req.query('error') !== undefined) return refuse(c, 'state');
   const claims = code.length === 1 ? await googleClaims(c, code[0], verifier) : undefined;
   if (!claims) return refuse(c, 'token');
-  await db.releaseSub(c.env.DB, claims.google_sub); // D-25: a deleted account counts as absent
-  let user = await db.userBySub(c.env.DB, claims.google_sub);
+  let user = await db.userBySub(c.env.DB, claims.google_sub); // D-25: a deleted account counts as absent
   if (user && isBanned(user)) return refuse(c, 'banned', user.banned_until);
-  if (!user && !c.get('settings').registrations) return refuse(c, 'closed'); // S-08
+  if (!user && !(await settings(c.env.DB)).registrations) return refuse(c, 'closed'); // S-08
   const created = !user;
   // The name without CONTROL characters, whitespace collapsed, at most 32 characters. The handle (A-23): the
   // name folded to letters and digits, 3 to 20 of them, or "player"; a clash adds four random digits. Never the email.
@@ -153,16 +145,20 @@ export async function googleCallback(c: Context<App>) {
   return c.redirect('/');
 }
 
-// POST /api/auth/dev (D-12): absent without DEV_LOGIN, answering as an unknown route does. Fail closed (A-10): with
-// STAGING_AUD set the staging Access token is required whatever the host, without it only localhost passes. Dev users
-// have no Google subject, a row that has one is never signed in here, and registrations do not apply (A-9).
-export async function devLogin(c: Context<App>) {
+// POST /api/auth/dev (D-12): absent without DEV_LOGIN, answering as an unknown route does, before the body is read.
+// Fail closed (A-10): with STAGING_AUD set the staging Access token is required whatever the host, a service token's
+// included; without it only localhost passes.
+export async function devOnly(c: Context<App>, next: Next) {
   if (c.env.DEV_LOGIN !== '1') return c.notFound();
   const aud = c.env.STAGING_AUD;
   const passed = aud
-    ? (await verifyAccess(c, c.req.header('cf-access-jwt-assertion'), aud)) !== undefined
+    ? await verifyAccess(c, c.req.header('cf-access-jwt-assertion'), aud, { service: true })
     : ['localhost', '127.0.0.1'].includes(new URL(c.req.url).hostname);
-  if (!passed) return fail(c, 403, 'forbidden', 'Forbidden');
+  return passed ? next() : fail(c, 403, 'forbidden', 'Forbidden');
+}
+
+// Dev users have no Google subject, a row that has one is never signed in here, and registrations do not apply (A-9).
+export async function devLogin(c: Context<App>) {
   const name = (await readJson(c))?.name;
   if (typeof name !== 'string' || !/^[a-z0-9]{1,20}$/.test(name)) return fail(c, 400, 'bad_request', 'Bad name');
   const find = () => db.userByHandle(c.env.DB, `dev-${name}`);
@@ -178,11 +174,11 @@ export async function devLogin(c: Context<App>) {
 // POST /api/auth/logout: the Hub closes the user's sockets first (4.2 Revocation); if it fails the session stays and
 // the client retries.
 export async function logout(c: Context<App>) {
-  const uid = c.get('user').id;
-  const stub = hub(c.env);
+  const { id: uid, id_hash } = c.get('user');
+  const stub = c.env.HUB.getByName('hub');
   const revoked = await stub.revoke(uid).catch(() => false);
   if (!revoked) return fail(c, 503, 'unavailable', 'Try again');
-  await db.endSession(c.env.DB, c.get('sid'));
+  await db.endSession(c.env.DB, id_hash).run();
   deleteCookie(c, 'sid', COOKIE);
   log('logout', { uid });
   return c.body(null, 204);

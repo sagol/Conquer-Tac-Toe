@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import { settingRows, writeSettings } from './db.ts';
-import { type App, fail, log, parse, readJson } from './index.ts';
+import { fail, log, parse, readJson } from './http.ts';
+import type { App } from './index.ts';
 
 // The admin settings (plan M5 task 7, AD-07): known keys with typed validators, no debug mode and no session
 // timeout. A missing row means the default; a stored value its validator refuses is ignored and logged.
@@ -18,19 +19,25 @@ const VALID: Record<Key, (v: unknown) => boolean> = {
 };
 const valid = (key: string, value: unknown) => Object.hasOwn(VALID, key) && VALID[key as Key](value);
 
-// Cached per isolate for 15 s (P:863); a write refreshes the writing isolate's copy at once.
-let cache = { at: -Infinity, values: DEFAULTS };
+// Cached per isolate for 15 s (P:863): concurrent requests share one read, a failed read is not kept, and a write
+// sets the writing isolate's copy at once.
+let cache = { at: -Infinity, values: Promise.resolve(DEFAULTS) };
 
-export async function settings(db: D1Database): Promise<Settings> {
+export function settings(db: D1Database): Promise<Settings> {
   if (Date.now() - cache.at < 15_000) return cache.values;
+  cache = { at: Date.now(), values: read(db) };
+  cache.values.catch(() => (cache.at = -Infinity));
+  return cache.values;
+}
+
+async function read(db: D1Database) {
   const values: Record<string, unknown> = { ...DEFAULTS };
   for (const { key, value } of await settingRows(db)) {
     const v = parse(value);
     if (valid(key, v)) values[key] = v;
     else log('settings_invalid', { key });
   }
-  cache = { at: Date.now(), values: values as Settings };
-  return cache.values;
+  return values as Settings;
 }
 
 export const getSettings = async (c: Context<App>) => c.json(await settings(c.env.DB));
@@ -42,7 +49,7 @@ export async function putSettings(c: Context<App>) {
   const bad = Object.entries(body).find(([key, value]) => !valid(key, value));
   if (bad) return fail(c, 400, 'bad_request', `Bad setting: ${bad[0].slice(0, 40)}`);
   await writeSettings(c.env.DB, body, c.get('admin'), Date.now());
-  cache.at = -Infinity;
+  cache = { at: Date.now(), values: settings(c.env.DB).then((values) => ({ ...values, ...body }) as Settings) };
   log('settings', { keys: Object.keys(body) });
-  return getSettings(c);
+  return c.json(await cache.values);
 }
