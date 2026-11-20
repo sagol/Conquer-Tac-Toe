@@ -139,7 +139,7 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M A1S A1M B2L',
-    levels: rows([800, 1000, 1180, 1400, 1690], [45_159, 45_159, 90_319, 75_147, 126_446], [0.4, 0.5, 0, 0.212, 0]),
+    levels: rows([800, 1000, 1180, 1400, 1690], [45_159, 45_159, 90_319, 36_000, 126_446], [0.4, 0.5, 0, 0.212, 0]),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-conquer.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, stock: [3, 3, 3] }),
