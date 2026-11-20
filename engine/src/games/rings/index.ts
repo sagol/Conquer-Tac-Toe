@@ -1,5 +1,5 @@
 // budget: 350 lines, 200 KB
-// The rings family: the five launch arenas of 6.1, hidden until M4 (D-21).
+// The rings family: the five launch arenas of 6.1, live since M4's gates (D-21).
 import type { Clock, Five, Level, Opts, Variant } from '../../game.ts';
 import { RingPosition, type RingSetup } from './rules.ts';
 
@@ -58,11 +58,10 @@ const stock = [
   { key: 'l', label: 'Large rings', values: upTo5, default: 2 },
 ];
 
-// Every entry is hidden until M4.
 type Entry = Omit<Variant<RingPosition>, 'status' | 'start'> & { setup(o: Opts): RingSetup };
 const ring = ({ setup, ...entry }: Entry): Variant<RingPosition> => ({
   ...entry,
-  status: 'hidden',
+  status: 'live',
   // Values off the option list (a raw caller, an old stored row) throw like a bad mix instead of building a board.
   // The check and the board read one copy, so an option cannot pass with one value and build with another.
   start: (raw) => {
