@@ -5,24 +5,28 @@ import { RingPosition, type RingSetup } from './rules.ts';
 
 // Objects that several entries share are frozen, so a caller that edits one entry cannot change another.
 // The 3×3 levels of 7.2. checks/arena/bench sets each row's nodes, or checks a row set by hand, at the variant's
-// slowest option value so that the p95 move time in workerd meets ms, a cold first move included (7.3). Ratings and
-// tips are starting values that M4 tunes. Omega's target is 140 ms unless its variant raises it to pass the exactness
-// check.
+// slowest option value so that the p95 move time in workerd meets ms, a cold first move included (7.3). Omega's
+// target is 140 ms unless its variant raises it to pass the exactness check.
 const LEVELS = [
-  { rating: 800, tip: 'Plays on a hunch and often misses a win', ms: 50, depth: 1, noise: 0.4 },
-  { rating: 1100, tip: 'Takes a win, blocks a loss, otherwise guesses', ms: 50, depth: 2, noise: 0 },
-  { rating: 1400, tip: 'Reads four moves ahead', ms: 120, depth: 4, noise: 0.05 },
-  { rating: 1700, tip: 'Sees far ahead and rarely slips', ms: 140, depth: 99, noise: 0.02 },
-  { rating: 2000, tip: 'Plays perfectly and sets traps', ms: 140, depth: 99, noise: 0 },
+  { tip: 'Plays on a hunch and often misses a win', ms: 50, depth: 1 },
+  { tip: 'Takes a win, often misses a block', ms: 50, depth: 2 },
+  { tip: 'Reads four moves ahead', ms: 120, depth: 4 },
+  { tip: 'Sees far ahead but slips now and then', ms: 140, depth: 99 },
+  { tip: 'Plays perfectly and sets traps', ms: 140, depth: 99 },
 ];
-const rows = (nodes: Five<number>, omegaMs = LEVELS[4].ms) =>
+// A 3×3 variant's rows: each level's display rating, nodes and noise, from M4's calibration (7.4).
+const rows = (rating: Five<number>, nodes: Five<number>, noise: Five<number>, omegaMs = LEVELS[4].ms) =>
   Object.freeze(
-    LEVELS.map((level, i) => Object.freeze({ ...level, ...(i === 4 && { ms: omegaMs }), nodes: nodes[i] })),
+    LEVELS.map((level, i) =>
+      Object.freeze({ rating: rating[i], ...level, ...(i === 4 && { ms: omegaMs }), nodes: nodes[i], noise: noise[i] }),
+    ),
   ) as unknown as Five<Level>;
-// A Gomoku row: the 3×3 rating of its level, no policy noise (its engine keeps its own top picks, 7.2).
+// Gomoku's display ratings by level (M4, 7.4), and a Gomoku row: no policy noise (its engine keeps its own top picks,
+// 7.2).
+const GOMOKU = [800, 1100, 1400, 1700, 2000];
 const gomoku = (i: number, tip: string, ms: number, depth: number, nodes: number, x: Level['x'], margin?: number) =>
   Object.freeze({
-    rating: LEVELS[i].rating,
+    rating: GOMOKU[i],
     tip,
     ms,
     depth,
@@ -83,7 +87,11 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2 A1 C1 A3 A2',
-    levels: rows([38_974, 38_974, 46_769, 77_948, 109_128]),
+    levels: rows(
+      [800, 920, 1030, 1140, 1280],
+      [38_974, 38_974, 46_769, 77_948, 109_128],
+      [0.4, 0.625, 0.282, 0.219, 0],
+    ),
     ceiling: () => 'exact',
     bot: async () => (await import('./bot3.ts')).hooks,
     setup: () => ({ ...three, piece: 'glyph', hint: 'Three in a row wins' }),
@@ -131,7 +139,7 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M A1S A1M B2L',
-    levels: rows([45_159, 45_159, 90_319, 75_147, 126_446]),
+    levels: rows([800, 1000, 1180, 1400, 1690], [45_159, 45_159, 90_319, 75_147, 126_446], [0.4, 0.5, 0, 0.212, 0]),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-conquer.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, stock: [3, 3, 3] }),
@@ -155,7 +163,12 @@ export default [
     preview: 'B2M B2M A1S C3L',
     // Vex's nodes finish a depth-4 search in the opening, and Omega's target is raised so that it passes the
     // exactness check past its book (7.3).
-    levels: rows([39_631, 39_631, 28_000, 33_056, 228_767], 320),
+    levels: rows(
+      [800, 970, 1130, 1300, 1550],
+      [39_631, 39_631, 28_000, 33_056, 228_767],
+      [0.4, 0.594, 0.25, 0.118, 0],
+      320,
+    ),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-chaos.gen.ts')).default }),
     setup: () => ({ ...three, ...sized, cover: 'same', hint: 'Drop a ring or cover one no larger', stock: [3, 3, 2] }),
@@ -176,7 +189,12 @@ export default [
     preview: 'A1S B2M B2L C3S',
     // Nova-9's nodes leave a margin for a cold first move; Omega's target is raised so that it passes the exactness
     // check past its book on every stock (7.3).
-    levels: rows([23_794, 23_794, 47_589, 46_000, 230_000], 320),
+    levels: rows(
+      [800, 950, 1130, 1290, 1530],
+      [23_794, 23_794, 47_589, 46_000, 230_000],
+      [0.4, 0.532, 0.094, 0.141, 0],
+      320,
+    ),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-custom.gen.ts')).default }),
     setup: (o) => {
