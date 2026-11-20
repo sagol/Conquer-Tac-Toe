@@ -193,7 +193,7 @@ export default [
       [800, 950, 1130, 1290, 1530],
       [23_794, 23_794, 47_589, 46_000, 230_000],
       [0.4, 0.532, 0.094, 0.141, 0],
-      320,
+      400,
     ),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-custom.gen.ts')).default }),
