@@ -31,6 +31,8 @@ Production deploys from `main` through Workers Builds. Its build command is `pnp
 
 Both hostnames sit behind Cloudflare Access until launch.
 
+Each environment needs its secrets, set once with `CLOUDFLARE_ENV=<env> pnpm exec wrangler secret put <NAME>`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` (the admin Access application), and on staging also `STAGING_AUD` (the Access application for the whole hostname). A deploy that lacks one fails. Locally none are needed: Google sign-in answers 503 without them, and dev login (`POST /api/auth/dev` with `{"name": "alice"}`) signs you in as `dev-alice` on localhost. Staging has dev login behind its Access application; production has none.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
