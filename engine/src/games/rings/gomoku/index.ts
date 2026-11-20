@@ -2,8 +2,10 @@
 // Gomoku's own engine (7.3): the pattern board as the fast copy, its key and evaluation, and choose(), which runs the
 // fixed decision order. A level's knobs sit in its row's x: `vcf` and `vct` are the plies of the threat searches (0 or
 // absent: none), `top` the number of best moves a top-pick level values and `wide` its chance of a random pick among
-// them, `raw` a level whose root list is every cell near a stone, with no forced move kept apart, and `open` a level
-// that plays the opening data. A row without x leaves the move to the policy's kernel search (the arena's Greedy).
+// them, `raw` a level whose root list is every cell near a stone, with no forced move kept apart, `open` a level
+// that plays the opening data, and `small` the margin a level adds on the 10 × 10 board, where draws come easily and
+// the levels would otherwise bunch up (M4, 7.4). A row without x leaves the move to the policy's kernel search (the
+// arena's Greedy).
 import { search } from '../../../bot/search.ts';
 import type { Bot, Choice, Level, Move, Searchable, Seat } from '../../../game.ts';
 import type { RingPosition } from '../rules.ts';
@@ -174,7 +176,8 @@ function choose(p: RingPosition, row: Level, rng: () => number): Choice | undefi
     return played(pick(valued.filter(([, v]) => v === valued[0][1]).map(([m]) => m)));
   }
   // 5. The kernel search over the pattern board from the root list.
-  const r = search(rooted(b, root), { ...kernel, depth: row.depth, nodes: row.nodes - nodes, margin: row.margin });
+  const margin = (row.margin ?? 0) + (b.n === 10 ? (x.small ?? 0) : 0);
+  const r = search(rooted(b, root), { ...kernel, depth: row.depth, nodes: row.nodes - nodes, margin });
   nodes += r.nodes;
   return played(pick(r.best));
 }
