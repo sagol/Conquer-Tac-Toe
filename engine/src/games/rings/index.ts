@@ -178,7 +178,7 @@ export default [
     // Nova-9's nodes leave a margin for a cold first move; Omega's target is raised to 400 ms, where the 230,000 nodes
     // that pass the exactness check on every stock (7.3) fit a cold first move.
     levels: rows(
-      [800, 950, 1130, 1290, 1530],
+      [800, 950, 1130, 1330, 1530],
       [23_794, 23_794, 47_589, 46_000, 230_000],
       [0.4, 0.532, 0.094, 0.094, 0],
       400,
