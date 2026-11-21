@@ -143,11 +143,11 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M B2M A1S C3L',
-    // Vex's nodes finish a depth-4 search in the opening, and Omega's target is raised so that it passes the
-    // exactness check past its book (7.3).
+    // Vex's nodes finish a depth-4 search in the opening, Nova-9's keep its cold first move within 90% of 140 ms (M4's
+    // bench), and Omega's target is raised so that it passes the exactness check past its book (7.3).
     levels: rows(
       [800, 970, 1130, 1300, 1550],
-      [39_631, 39_631, 28_000, 33_056, 228_767],
+      [39_631, 39_631, 28_000, 29_000, 228_767],
       [0.4, 0.594, 0.25, 0.118, 0],
       320,
     ),
@@ -175,11 +175,12 @@ export default [
     ],
     clock: quick,
     preview: 'A1S B2M B2L C3S',
-    // Nova-9's nodes leave a margin for a cold first move; Omega's target is raised to 400 ms, where the 230,000 nodes
-    // that pass the exactness check on every stock (7.3) fit a cold first move.
+    // Nova-9's nodes keep its cold first move on the heaviest stock within 90% of 140 ms (M4's bench); Omega's
+    // target is raised to 400 ms, where the 230,000 nodes that pass the exactness check on every stock (7.3) fit a
+    // cold first move.
     levels: rows(
       [800, 950, 1130, 1330, 1530],
-      [23_794, 23_794, 47_589, 46_000, 230_000],
+      [23_794, 23_794, 47_589, 42_000, 230_000],
       [0.4, 0.532, 0.094, 0.094, 0],
       400,
     ),
