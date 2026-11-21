@@ -143,13 +143,14 @@ export default [
     options: [],
     clock: quick,
     preview: 'B2M B2M A1S C3L',
-    // Vex's nodes finish a depth-4 search in the opening, Nova-9's keep its cold first move within 90% of 140 ms (M4's
-    // bench), and Omega's target is raised so that it passes the exactness check past its book (7.3).
+    // Vex's nodes finish a depth-4 search in the opening, Nova-9's keep its cold first move within 140 ms (M4's bench),
+    // and Omega's target is raised to 400 ms, where the nodes that pass the exactness check past its book (7.3) fit a
+    // cold first move.
     levels: rows(
       [800, 970, 1130, 1300, 1550],
       [39_631, 39_631, 28_000, 29_000, 228_767],
       [0.4, 0.594, 0.25, 0.118, 0],
-      320,
+      400,
     ),
     ceiling: () => 'exact',
     bot: async () => ({ ...(await import('./bot3.ts')).hooks, book: (await import('./book-chaos.gen.ts')).default }),
