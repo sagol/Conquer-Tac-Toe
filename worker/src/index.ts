@@ -68,11 +68,12 @@ app.on('GET', ['/admin', '/admin/*'], access, (c) => c.env.ASSETS.fetch(c.req.ra
 
 // Everything else under /api and /ws, by scope (spec 3.1), so a new route gets every step: the sign-in IP limit (not
 // logout, which is limited per user, A-18); for a socket 426 without an upgrade, then its IP limit; the gate; then,
-// on all but the public routes, session, ban and user limit. Logout takes the session and its limit only (A-29).
+// on all but the public routes, session, ban and user limit. Logout takes the session and its limit only (A-29), and
+// passes maintenance, so a user can always end a session.
 // Unknown paths skip the per-route steps and answer 404.
 const unrouted = (c: Context<App>) => !matchedRoutes(c).some((route) => route.method !== 'ALL');
-const UNGATED = ['/api/health', '/api/admin/*'];
-const EXEMPT = [...UNGATED, '/api/auth/google', '/api/auth/google/callback', '/api/auth/dev', '/api/auth/logout'];
+const UNGATED = ['/api/health', '/api/admin/*', '/api/auth/logout'];
+const EXEMPT = [...UNGATED, '/api/auth/google', '/api/auth/google/callback', '/api/auth/dev'];
 const signedIn = (name: Limit) => except([...EXEMPT, unrouted], session, notBanned, userLimit(name));
 const upgradeOnly = async (c: Context<App>, next: Next) =>
   isUpgrade(c) ? next() : fail(c, 426, 'upgrade_required', 'Expected a WebSocket upgrade');
