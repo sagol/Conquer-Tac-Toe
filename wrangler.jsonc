@@ -1,4 +1,7 @@
 // One Worker: the top level is local development, env.staging and env.production deploy (README, Deploy it).
+// Environments inherit compatibility_date, workers_dev, preview_urls, assets, migrations, triggers and observability;
+// vars, durable_objects, d1_databases, ratelimits and secrets are set in each one (plan 4.5). No limits: cpu_ms
+// stays unset (D-22). Rate-limit namespace ids are per binding and environment, so no two share a counter.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "conquer-local",
@@ -6,11 +9,40 @@
   "compatibility_date": "2026-10-19",
   "workers_dev": false,
   "preview_urls": false,
+  "assets": {
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Each prefix bare and with /*: the assets router matches the whole pathname, * as any run of characters, so
+    // "/api/*" alone would leave "/api" to the SPA shell.
+    "run_worker_first": ["/api", "/api/*", "/ws", "/ws/*", "/admin", "/admin/*"]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom", "Hub"] }],
+  "triggers": { "crons": ["17 3 * * *"] },
+  // Application logs only: invocation logs would store every caller's IP and location (spec 11).
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": true,
+    "logs": { "invocation_logs": false }
+  },
+  "vars": { "DEV_LOGIN": "1" },
   "d1_databases": [{ "binding": "DB", "database_name": "conquer-local", "migrations_dir": "migrations" }],
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }, { "name": "HUB", "class_name": "Hub" }]
+  },
+  "ratelimits": [
+    { "name": "AUTH_LIMIT", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
+    { "name": "API_LIMIT", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } },
+    { "name": "WS_IP_LIMIT", "namespace_id": "1003", "simple": { "limit": 30, "period": 60 } },
+    { "name": "WS_USER_LIMIT", "namespace_id": "1004", "simple": { "limit": 30, "period": 60 } }
+  ],
   "env": {
+    // Dev login also needs the Access token of the whole-hostname application (STAGING_AUD); the limits leave
+    // room for the load tests.
     "staging": {
       "name": "conquer-staging",
       "routes": [{ "pattern": "staging.gurudo.com", "custom_domain": true }],
+      "vars": { "DEV_LOGIN": "1" },
       "d1_databases": [
         {
           "binding": "DB",
@@ -18,11 +50,25 @@
           "database_id": "684678a1-c739-4e0c-8870-cb831b6dcb45",
           "migrations_dir": "migrations"
         }
-      ]
+      ],
+      "durable_objects": {
+        "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }, { "name": "HUB", "class_name": "Hub" }]
+      },
+      "ratelimits": [
+        { "name": "AUTH_LIMIT", "namespace_id": "2001", "simple": { "limit": 2000, "period": 60 } },
+        { "name": "API_LIMIT", "namespace_id": "2002", "simple": { "limit": 1200, "period": 60 } },
+        { "name": "WS_IP_LIMIT", "namespace_id": "2003", "simple": { "limit": 3000, "period": 60 } },
+        { "name": "WS_USER_LIMIT", "namespace_id": "2004", "simple": { "limit": 300, "period": 60 } }
+      ],
+      "secrets": {
+        "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "ACCESS_TEAM_DOMAIN", "ACCESS_AUD", "STAGING_AUD"]
+      }
     },
+    // No DEV_LOGIN: vars is empty on purpose, so the built configuration shows none (S-01).
     "production": {
       "name": "conquer",
       "routes": [{ "pattern": "gurudo.com", "custom_domain": true }],
+      "vars": {},
       "d1_databases": [
         {
           "binding": "DB",
@@ -30,7 +76,17 @@
           "database_id": "f80c5aab-464e-4d4c-a48c-362d6635084b",
           "migrations_dir": "migrations"
         }
-      ]
+      ],
+      "durable_objects": {
+        "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }, { "name": "HUB", "class_name": "Hub" }]
+      },
+      "ratelimits": [
+        { "name": "AUTH_LIMIT", "namespace_id": "3001", "simple": { "limit": 10, "period": 60 } },
+        { "name": "API_LIMIT", "namespace_id": "3002", "simple": { "limit": 120, "period": 60 } },
+        { "name": "WS_IP_LIMIT", "namespace_id": "3003", "simple": { "limit": 30, "period": 60 } },
+        { "name": "WS_USER_LIMIT", "namespace_id": "3004", "simple": { "limit": 30, "period": 60 } }
+      ],
+      "secrets": { "required": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "ACCESS_TEAM_DOMAIN", "ACCESS_AUD"] }
     }
   }
 }
